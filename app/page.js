@@ -12,24 +12,24 @@ export default function Page() {
   const [members, setMembers] = useState([]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
 
   const [selectedMember, setSelectedMember] = useState(null);
   const [attendanceList, setAttendanceList] = useState([]);
+  const [lastAction, setLastAction] = useState(null);
 
-  // 회원 불러오기
   async function loadMembers() {
     const { data } = await supabase
       .from("members")
-      .select("*, attendance_logs(visited_at,is_cancelled)")
+      .select("*, attendance_logs(visited_at,is_cancelled,cancelled_at)")
       .order("created_at", { ascending: false });
 
     const formatted = (data || []).map((m) => {
-      const logs = (m.attendance_logs || []).filter(l => !l.is_cancelled);
-      const latest = logs.map(l => l.visited_at).sort().reverse()[0];
-
+      const validLogs = (m.attendance_logs || []).filter((l) => !l.is_cancelled);
+      const latest = validLogs.map((l) => l.visited_at).sort().reverse()[0];
       return { ...m, latest_visit: latest || null };
     });
 
@@ -40,202 +40,593 @@ export default function Page() {
     loadMembers();
   }, []);
 
-  // 회원 추가
   async function addMember() {
-    if (!name) return;
+    if (!name.trim()) return alert("이름을 입력하세요.");
 
-    await supabase.from("members").insert({ name, phone });
+    await supabase.from("members").insert({
+      name: name.trim(),
+      phone: phone.trim(),
+      pt_remaining: 0,
+    });
+
     setName("");
     setPhone("");
     loadMembers();
   }
 
-  // 수정 시작
-  function startEdit(m) {
-    setEditingId(m.id);
-    setEditName(m.name);
-    setEditPhone(m.phone || "");
+  function startEdit(member) {
+    setEditingId(member.id);
+    setEditName(member.name);
+    setEditPhone(member.phone || "");
   }
 
-  // 수정 저장
   async function saveEdit(id) {
-    await supabase.from("members").update({
-      name: editName,
-      phone: editPhone,
-    }).eq("id", id);
+    if (!editName.trim()) return alert("이름을 입력하세요.");
+
+    await supabase
+      .from("members")
+      .update({
+        name: editName.trim(),
+        phone: editPhone.trim(),
+      })
+      .eq("id", id);
 
     setEditingId(null);
     loadMembers();
   }
 
-  // 삭제
-  async function deleteMember(id) {
-    if (!confirm("삭제할까요?")) return;
-    await supabase.from("members").delete().eq("id", id);
+  async function deleteMember(member) {
+    if (!confirm(`${member.name} 회원을 삭제할까요?`)) return;
+
+    await supabase.from("members").delete().eq("id", member.id);
+
+    if (selectedMember?.id === member.id) setSelectedMember(null);
     loadMembers();
   }
 
-  // PT 차감
-  async function minusPt(m) {
-    await supabase.from("members")
-      .update({ pt_remaining: m.pt_remaining - 1 })
-      .eq("id", m.id);
-    loadMembers();
-  }
+  async function minusPt(member) {
+    if (member.pt_remaining <= 0) return alert("남은 PT가 없습니다.");
 
-  // PT 추가
-  async function plusPt(m) {
-    await supabase.from("members")
-      .update({ pt_remaining: m.pt_remaining + 10 })
-      .eq("id", m.id);
-    loadMembers();
-  }
+    const before = member.pt_remaining;
 
-  // 출석
-  async function checkAttendance(m) {
-    await supabase.from("attendance_logs").insert({
-      member_id: m.id,
+    await supabase
+      .from("members")
+      .update({ pt_remaining: before - 1 })
+      .eq("id", member.id);
+
+    setLastAction({
+      type: "pt",
+      memberId: member.id,
+      previousPt: before,
+      memberName: member.name,
     });
+
     loadMembers();
-    openDetail(m);
   }
 
-  // 상세
-  async function openDetail(m) {
-    setSelectedMember(m);
+  async function plusPt(member) {
+    await supabase
+      .from("members")
+      .update({ pt_remaining: member.pt_remaining + 10 })
+      .eq("id", member.id);
+
+    loadMembers();
+  }
+
+  async function undo() {
+    if (!lastAction) return;
+
+    if (lastAction.type === "pt") {
+      await supabase
+        .from("members")
+        .update({ pt_remaining: lastAction.previousPt })
+        .eq("id", lastAction.memberId);
+    }
+
+    setLastAction(null);
+    loadMembers();
+  }
+
+  async function checkAttendance(member) {
+    const { error } = await supabase.from("attendance_logs").insert({
+      member_id: member.id,
+    });
+
+    if (error) return alert("출석 체크 실패: " + error.message);
+
+    setLastAction({
+      type: "attendance",
+      memberName: member.name,
+    });
+
+    loadMembers();
+    openDetail(member);
+  }
+
+  async function openDetail(member) {
+    setSelectedMember(member);
 
     const { data } = await supabase
       .from("attendance_logs")
       .select("*")
-      .eq("member_id", m.id)
+      .eq("member_id", member.id)
       .order("visited_at", { ascending: false });
 
     setAttendanceList(data || []);
   }
 
-  // 출석 취소
   async function cancelAttendance(log) {
-    await supabase.from("attendance_logs").update({
-      is_cancelled: true,
-      cancelled_at: new Date().toISOString(),
-    }).eq("id", log.id);
+    if (!confirm("이 출석 기록을 취소할까요?")) return;
+
+    await supabase
+      .from("attendance_logs")
+      .update({
+        is_cancelled: true,
+        cancelled_at: new Date().toISOString(),
+      })
+      .eq("id", log.id);
 
     openDetail(selectedMember);
     loadMembers();
   }
 
-  const format = (d) => new Date(d).toLocaleString("ko-KR");
+  function formatDate(date) {
+    if (!date) return "없음";
+    return new Date(date).toLocaleDateString("ko-KR");
+  }
+
+  function formatDateTime(date) {
+    return new Date(date).toLocaleString("ko-KR");
+  }
 
   return (
-    <main style={styles.container}>
-      <h1 style={styles.title}>Spotainer</h1>
+    <main style={styles.page}>
+      <header style={styles.header}>
+        <div>
+          <h1 style={styles.title}>Spotainer</h1>
+          <p style={styles.subtitle}>여성전용 PT 회원관리</p>
+        </div>
+        <div style={styles.adminBadge}>관리자</div>
+      </header>
 
-      {/* 회원 추가 */}
-      <div style={styles.addBox}>
-        <input placeholder="이름" value={name} onChange={e => setName(e.target.value)} style={styles.input}/>
-        <input placeholder="전화번호" value={phone} onChange={e => setPhone(e.target.value)} style={styles.input}/>
-        <button onClick={addMember} style={styles.primaryBtn}>추가</button>
-      </div>
+      {lastAction && (
+        <div style={styles.notice}>
+          <span>
+            <strong>{lastAction.memberName}</strong>
+            {lastAction.type === "pt" ? " PT 1회 차감됨" : " 출석 체크됨"}
+          </span>
 
-      {/* 상세 */}
-      {selectedMember && (
-        <div style={styles.detailBox}>
-          <h2>{selectedMember.name} 출석 기록</h2>
-          <button onClick={() => setSelectedMember(null)}>닫기</button>
-
-          {attendanceList.map(log => (
-            <div key={log.id} style={{
-              ...styles.logItem,
-              opacity: log.is_cancelled ? 0.4 : 1
-            }}>
-              <span>
-                {format(log.visited_at)}
-                {log.is_cancelled && " (취소됨)"}
-              </span>
-
-              {!log.is_cancelled && (
-                <button onClick={() => cancelAttendance(log)} style={styles.cancelBtn}>
-                  취소
-                </button>
-              )}
-            </div>
-          ))}
+          {lastAction.type === "pt" && (
+            <button onClick={undo} style={styles.noticeButton}>
+              실행 취소
+            </button>
+          )}
         </div>
       )}
 
-      <h2>회원 목록</h2>
+      {selectedMember && (
+        <section style={styles.detailBox}>
+          <div style={styles.detailTop}>
+            <div>
+              <h2 style={styles.detailName}>{selectedMember.name}</h2>
+              <p style={styles.muted}>{selectedMember.phone || "전화번호 없음"}</p>
+              <p style={styles.detailPt}>PT {selectedMember.pt_remaining}회</p>
+            </div>
 
-      {members.map(m => (
-        <div key={m.id} style={styles.card}>
-          {editingId === m.id ? (
-            <>
-              <input value={editName} onChange={e => setEditName(e.target.value)} style={styles.input}/>
-              <input value={editPhone} onChange={e => setEditPhone(e.target.value)} style={styles.input}/>
-              <button onClick={() => saveEdit(m.id)} style={styles.primaryBtn}>저장</button>
-            </>
+            <button onClick={() => setSelectedMember(null)} style={styles.closeButton}>
+              닫기
+            </button>
+          </div>
+
+          <h3 style={styles.subTitle}>출석 기록</h3>
+
+          {attendanceList.length === 0 ? (
+            <p style={styles.muted}>출석 기록이 없습니다.</p>
           ) : (
-            <>
-              <div onClick={() => openDetail(m)}>
-                <h3>{m.name}</h3>
-                <div>{m.phone}</div>
-                <div>최근 출석: {m.latest_visit ? format(m.latest_visit) : "없음"}</div>
-              </div>
+            attendanceList.map((log) => (
+              <div
+                key={log.id}
+                style={{
+                  ...styles.logItem,
+                  opacity: log.is_cancelled ? 0.45 : 1,
+                }}
+              >
+                <div>
+                  <div style={styles.logDate}>{formatDateTime(log.visited_at)}</div>
+                  {log.is_cancelled && <div style={styles.cancelText}>취소됨</div>}
+                </div>
 
-              <div style={styles.pt}>PT {m.pt_remaining}</div>
-
-              <div style={styles.buttonRow}>
-                <button onClick={() => minusPt(m)} style={styles.dangerBtn}>차감</button>
-                <button onClick={() => plusPt(m)} style={styles.grayBtn}>+10</button>
-                <button onClick={() => checkAttendance(m)} style={styles.blueBtn}>출석</button>
+                {!log.is_cancelled && (
+                  <button onClick={() => cancelAttendance(log)} style={styles.smallDanger}>
+                    출석 취소
+                  </button>
+                )}
               </div>
-
-              <div style={styles.buttonRow}>
-                <button onClick={() => startEdit(m)} style={styles.editBtn}>수정</button>
-                <button onClick={() => deleteMember(m.id)} style={styles.deleteBtn}>삭제</button>
-              </div>
-            </>
+            ))
           )}
-        </div>
-      ))}
+        </section>
+      )}
+
+      <section style={styles.addBox}>
+        <h2 style={styles.sectionTitle}>회원 추가</h2>
+
+        <label style={styles.label}>이름</label>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="예: 홍길동"
+          style={styles.input}
+        />
+
+        <label style={styles.label}>전화번호</label>
+        <input
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="예: 01012345678"
+          style={styles.input}
+        />
+
+        <button onClick={addMember} style={styles.primaryButton}>
+          회원 추가
+        </button>
+      </section>
+
+      <section>
+        <h2 style={styles.sectionTitle}>회원 목록</h2>
+
+        {members.map((member) => (
+          <article key={member.id} style={styles.card}>
+            {editingId === member.id ? (
+              <div style={styles.editBox}>
+                <h3 style={styles.editTitle}>회원 정보 수정</h3>
+
+                <label style={styles.label}>이름</label>
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  style={styles.input}
+                />
+
+                <label style={styles.label}>전화번호</label>
+                <input
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  style={styles.input}
+                />
+
+                <div style={styles.editActions}>
+                  <button onClick={() => saveEdit(member.id)} style={styles.primaryButton}>
+                    저장
+                  </button>
+                  <button onClick={() => setEditingId(null)} style={styles.cancelButton}>
+                    취소
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div onClick={() => openDetail(member)} style={styles.memberMain}>
+                  <h3 style={styles.memberName}>{member.name}</h3>
+                  <p style={styles.phone}>{member.phone || "전화번호 없음"}</p>
+                  <p style={styles.visit}>최근 출석: {formatDate(member.latest_visit)}</p>
+                  <p style={styles.hint}>눌러서 상세 출석기록 보기</p>
+                </div>
+
+                <div style={styles.memberSide}>
+                  <div
+                    style={{
+                      ...styles.ptCount,
+                      color: member.pt_remaining <= 3 ? "#f87171" : "#ffffff",
+                    }}
+                  >
+                    PT {member.pt_remaining}회
+                  </div>
+
+                  <div style={styles.buttonGrid}>
+                    <button onClick={() => minusPt(member)} style={styles.redButton}>
+                      1회 차감
+                    </button>
+                    <button onClick={() => plusPt(member)} style={styles.whiteButton}>
+                      10회 추가
+                    </button>
+                    <button onClick={() => checkAttendance(member)} style={styles.blueButton}>
+                      오늘 운동 체크
+                    </button>
+                    <button onClick={() => startEdit(member)} style={styles.darkButton}>
+                      수정
+                    </button>
+                    <button onClick={() => deleteMember(member)} style={styles.deleteButton}>
+                      삭제
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </article>
+        ))}
+      </section>
     </main>
   );
 }
 
 const styles = {
-  container: {
-    background: "#111",
-    color: "white",
+  page: {
     minHeight: "100vh",
-    padding: 20
+    background: "linear-gradient(180deg, #090909 0%, #111 100%)",
+    color: "#fff",
+    padding: 24,
+    fontFamily: "Arial, sans-serif",
   },
-  title: { fontSize: 28, marginBottom: 20 },
-  addBox: { display: "flex", gap: 10, marginBottom: 20 },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 28,
+  },
+  title: {
+    fontSize: 44,
+    margin: 0,
+    fontWeight: 900,
+    letterSpacing: -1,
+  },
+  subtitle: {
+    color: "#a3a3a3",
+    marginTop: 8,
+    fontSize: 16,
+  },
+  adminBadge: {
+    background: "#1f1f1f",
+    border: "1px solid #333",
+    padding: "10px 16px",
+    borderRadius: 999,
+    fontWeight: 700,
+    color: "#ddd",
+  },
+  notice: {
+    background: "#272111",
+    border: "1px solid #facc15",
+    color: "#fde68a",
+    padding: 16,
+    borderRadius: 18,
+    marginBottom: 22,
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "center",
+  },
+  noticeButton: {
+    background: "#facc15",
+    color: "#111",
+    border: "none",
+    borderRadius: 12,
+    padding: "10px 14px",
+    fontWeight: 800,
+  },
+  addBox: {
+    background: "#1a1a1a",
+    border: "1px solid #272727",
+    borderRadius: 28,
+    padding: 24,
+    marginBottom: 34,
+    boxShadow: "0 12px 34px rgba(0,0,0,.28)",
+  },
+  sectionTitle: {
+    fontSize: 30,
+    marginBottom: 18,
+    fontWeight: 900,
+  },
+  label: {
+    display: "block",
+    color: "#cfcfcf",
+    fontSize: 15,
+    marginBottom: 8,
+    fontWeight: 700,
+  },
   input: {
-    padding: 10,
-    borderRadius: 8,
-    border: "none"
+    width: "100%",
+    padding: 17,
+    borderRadius: 17,
+    border: "1px solid #333",
+    background: "#f7f7f7",
+    color: "#111",
+    fontSize: 18,
+    boxSizing: "border-box",
+    marginBottom: 16,
+  },
+  primaryButton: {
+    width: "100%",
+    padding: 17,
+    borderRadius: 17,
+    border: "none",
+    background: "#ffffff",
+    color: "#111",
+    fontSize: 18,
+    fontWeight: 900,
   },
   card: {
-    background: "#1f1f1f",
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 15
+    background: "#1c1c1c",
+    border: "1px solid #292929",
+    borderRadius: 28,
+    padding: 24,
+    marginBottom: 20,
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 20,
+    boxShadow: "0 10px 28px rgba(0,0,0,.25)",
   },
-  pt: { marginTop: 10, fontWeight: "bold" },
-  buttonRow: { display: "flex", gap: 8, marginTop: 10 },
-  primaryBtn: { background: "#2563eb", color: "white", padding: 10, borderRadius: 8 },
-  dangerBtn: { background: "#ef4444", color: "white", padding: 8, borderRadius: 8 },
-  grayBtn: { background: "#555", color: "white", padding: 8, borderRadius: 8 },
-  blueBtn: { background: "#3b82f6", color: "white", padding: 8, borderRadius: 8 },
-  editBtn: { background: "#333", color: "white", padding: 8, borderRadius: 8 },
-  deleteBtn: { background: "#7f1d1d", color: "white", padding: 8, borderRadius: 8 },
-  cancelBtn: { background: "#444", color: "white", padding: 6, borderRadius: 6 },
-  detailBox: { marginBottom: 20 },
+  memberMain: {
+    flex: 1,
+    cursor: "pointer",
+  },
+  memberName: {
+    fontSize: 32,
+    margin: 0,
+    marginBottom: 10,
+    fontWeight: 900,
+  },
+  phone: {
+    color: "#b3b3b3",
+    fontSize: 19,
+    margin: 0,
+    marginBottom: 8,
+  },
+  visit: {
+    color: "#93c5fd",
+    fontSize: 16,
+    margin: 0,
+  },
+  hint: {
+    color: "#666",
+    fontSize: 13,
+    marginTop: 8,
+  },
+  memberSide: {
+    minWidth: 210,
+    textAlign: "right",
+  },
+  ptCount: {
+    fontSize: 34,
+    fontWeight: 900,
+    marginBottom: 16,
+  },
+  buttonGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+  },
+  redButton: {
+    background: "#ef4444",
+    color: "#fff",
+    border: "none",
+    borderRadius: 14,
+    padding: "13px 14px",
+    fontSize: 16,
+    fontWeight: 900,
+  },
+  whiteButton: {
+    background: "#fff",
+    color: "#111",
+    border: "none",
+    borderRadius: 14,
+    padding: "13px 14px",
+    fontSize: 16,
+    fontWeight: 900,
+  },
+  blueButton: {
+    gridColumn: "1 / 3",
+    background: "#2563eb",
+    color: "#fff",
+    border: "none",
+    borderRadius: 14,
+    padding: "14px",
+    fontSize: 16,
+    fontWeight: 900,
+  },
+  darkButton: {
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #444",
+    borderRadius: 14,
+    padding: "13px 14px",
+    fontSize: 16,
+    fontWeight: 900,
+  },
+  deleteButton: {
+    background: "#3f1111",
+    color: "#fca5a5",
+    border: "1px solid #7f1d1d",
+    borderRadius: 14,
+    padding: "13px 14px",
+    fontSize: 16,
+    fontWeight: 900,
+  },
+  editBox: {
+    width: "100%",
+  },
+  editTitle: {
+    fontSize: 26,
+    marginTop: 0,
+    marginBottom: 18,
+  },
+  editActions: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+  },
+  cancelButton: {
+    padding: 17,
+    borderRadius: 17,
+    border: "1px solid #444",
+    background: "#111",
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: 900,
+  },
+  detailBox: {
+    background: "#181818",
+    border: "1px solid #333",
+    borderRadius: 28,
+    padding: 24,
+    marginBottom: 30,
+  },
+  detailTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 16,
+    alignItems: "flex-start",
+  },
+  detailName: {
+    fontSize: 34,
+    margin: 0,
+    marginBottom: 8,
+  },
+  muted: {
+    color: "#aaa",
+    margin: 0,
+    marginBottom: 8,
+  },
+  detailPt: {
+    fontSize: 22,
+    fontWeight: 900,
+  },
+  closeButton: {
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #444",
+    borderRadius: 14,
+    padding: "12px 16px",
+    fontWeight: 900,
+  },
+  subTitle: {
+    fontSize: 24,
+    marginTop: 22,
+    marginBottom: 14,
+  },
   logItem: {
     background: "#222",
-    padding: 10,
-    marginBottom: 8,
+    padding: 15,
+    borderRadius: 16,
+    marginBottom: 10,
     display: "flex",
-    justifyContent: "space-between"
-  }
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  logDate: {
+    fontSize: 16,
+    color: "#eee",
+  },
+  cancelText: {
+    color: "#fca5a5",
+    fontSize: 13,
+    marginTop: 4,
+  },
+  smallDanger: {
+    background: "#3f1111",
+    color: "#fca5a5",
+    border: "1px solid #7f1d1d",
+    borderRadius: 12,
+    padding: "9px 12px",
+    fontWeight: 800,
+  },
 };
