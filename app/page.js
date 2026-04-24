@@ -10,6 +10,7 @@ const supabase = createClient(
 
 export default function Page() {
   const [members, setMembers] = useState([]);
+  const [search, setSearch] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [editingId, setEditingId] = useState(null);
@@ -37,6 +38,29 @@ export default function Page() {
   useEffect(() => {
     loadMembers();
   }, []);
+
+  const filteredMembers = members.filter((member) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+
+    return (
+      member.name?.toLowerCase().includes(q) ||
+      member.phone?.toLowerCase().includes(q)
+    );
+  });
+
+  function daysSince(date) {
+    if (!date) return null;
+    const now = new Date();
+    const target = new Date(date);
+    const diff = now.getTime() - target.getTime();
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
+  }
+
+  function needsVisitWarning(member) {
+    const days = daysSince(member.latest_visit);
+    return days === null || days >= 7;
+  }
 
   async function addMember() {
     if (!name.trim()) return alert("이름을 입력하세요.");
@@ -286,79 +310,104 @@ export default function Page() {
         </button>
       </section>
 
+      <section style={styles.searchBox}>
+        <label style={styles.label}>회원 검색</label>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="이름 또는 전화번호 검색"
+          style={styles.input}
+        />
+      </section>
+
       <section>
         <h2 style={styles.sectionTitle}>회원 목록</h2>
 
-        {members.map((member) => (
-          <article key={member.id} style={styles.card}>
-            {editingId === member.id ? (
-              <div style={styles.editBox}>
-                <h3 style={styles.editTitle}>회원 정보 수정</h3>
+        {filteredMembers.length === 0 ? (
+          <p style={styles.muted}>검색 결과가 없습니다.</p>
+        ) : (
+          filteredMembers.map((member) => {
+            const visitWarning = needsVisitWarning(member);
+            const ptWarning = member.pt_remaining <= 3;
 
-                <label style={styles.label}>이름</label>
-                <input
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  style={styles.input}
-                />
+            return (
+              <article key={member.id} style={styles.card}>
+                {editingId === member.id ? (
+                  <div style={styles.editBox}>
+                    <h3 style={styles.editTitle}>회원 정보 수정</h3>
 
-                <label style={styles.label}>전화번호</label>
-                <input
-                  value={editPhone}
-                  onChange={(e) => setEditPhone(e.target.value)}
-                  style={styles.input}
-                />
+                    <label style={styles.label}>이름</label>
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      style={styles.input}
+                    />
 
-                <div style={styles.editActions}>
-                  <button onClick={() => saveEdit(member.id)} style={styles.primaryButton}>
-                    저장
-                  </button>
-                  <button onClick={() => setEditingId(null)} style={styles.cancelButton}>
-                    취소
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div onClick={() => openDetail(member)} style={styles.memberMain}>
-                  <h3 style={styles.memberName}>{member.name}</h3>
-                  <p style={styles.phone}>{member.phone || "전화번호 없음"}</p>
-                  <p style={styles.visit}>최근 출석: {formatDate(member.latest_visit)}</p>
-                  <p style={styles.hint}>눌러서 상세 출석기록 보기</p>
-                </div>
+                    <label style={styles.label}>전화번호</label>
+                    <input
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      style={styles.input}
+                    />
 
-                <div style={styles.memberSide}>
-                  <div
-                    style={{
-                      ...styles.ptCount,
-                      color: member.pt_remaining <= 3 ? "#f87171" : "#ffffff",
-                    }}
-                  >
-                    PT {member.pt_remaining}회
+                    <div style={styles.editActions}>
+                      <button onClick={() => saveEdit(member.id)} style={styles.primaryButton}>
+                        저장
+                      </button>
+                      <button onClick={() => setEditingId(null)} style={styles.cancelButton}>
+                        취소
+                      </button>
+                    </div>
                   </div>
+                ) : (
+                  <>
+                    <div onClick={() => openDetail(member)} style={styles.memberMain}>
+                      <h3 style={styles.memberName}>{member.name}</h3>
+                      <p style={styles.phone}>{member.phone || "전화번호 없음"}</p>
+                      <p style={styles.visit}>최근 출석: {formatDate(member.latest_visit)}</p>
 
-                  <div style={styles.buttonGrid}>
-                    <button onClick={() => minusPt(member)} style={styles.redButton}>
-                      1회 차감
-                    </button>
-                    <button onClick={() => plusPt(member)} style={styles.whiteButton}>
-                      10회 추가
-                    </button>
-                    <button onClick={() => checkAttendance(member)} style={styles.blueButton}>
-                      오늘 운동 체크
-                    </button>
-                    <button onClick={() => startEdit(member)} style={styles.darkButton}>
-                      수정
-                    </button>
-                    <button onClick={() => deleteMember(member)} style={styles.deleteButton}>
-                      삭제
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </article>
-        ))}
+                      <div style={styles.warningRow}>
+                        {ptWarning && <span style={styles.ptBadge}>재등록 필요</span>}
+                        {visitWarning && <span style={styles.visitBadge}>미출석 주의</span>}
+                      </div>
+
+                      <p style={styles.hint}>눌러서 상세 출석기록 보기</p>
+                    </div>
+
+                    <div style={styles.memberSide}>
+                      <div
+                        style={{
+                          ...styles.ptCount,
+                          color: ptWarning ? "#f87171" : "#ffffff",
+                        }}
+                      >
+                        PT {member.pt_remaining}회
+                      </div>
+
+                      <div style={styles.buttonGrid}>
+                        <button onClick={() => minusPt(member)} style={styles.redButton}>
+                          1회 차감
+                        </button>
+                        <button onClick={() => plusPt(member)} style={styles.whiteButton}>
+                          10회 추가
+                        </button>
+                        <button onClick={() => checkAttendance(member)} style={styles.blueButton}>
+                          오늘 운동 체크
+                        </button>
+                        <button onClick={() => startEdit(member)} style={styles.darkButton}>
+                          수정
+                        </button>
+                        <button onClick={() => deleteMember(member)} style={styles.deleteButton}>
+                          삭제
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </article>
+            );
+          })
+        )}
       </section>
     </main>
   );
@@ -422,8 +471,15 @@ const styles = {
     border: "1px solid #272727",
     borderRadius: 28,
     padding: 24,
-    marginBottom: 34,
+    marginBottom: 22,
     boxShadow: "0 12px 34px rgba(0,0,0,.28)",
+  },
+  searchBox: {
+    background: "#151515",
+    border: "1px solid #272727",
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 34,
   },
   sectionTitle: {
     fontSize: 30,
@@ -489,6 +545,30 @@ const styles = {
     color: "#93c5fd",
     fontSize: 16,
     margin: 0,
+  },
+  warningRow: {
+    display: "flex",
+    gap: 8,
+    marginTop: 10,
+    flexWrap: "wrap",
+  },
+  ptBadge: {
+    background: "#3f1111",
+    color: "#fca5a5",
+    border: "1px solid #7f1d1d",
+    borderRadius: 999,
+    padding: "6px 10px",
+    fontSize: 13,
+    fontWeight: 800,
+  },
+  visitBadge: {
+    background: "#33270a",
+    color: "#fde68a",
+    border: "1px solid #854d0e",
+    borderRadius: 999,
+    padding: "6px 10px",
+    fontSize: 13,
+    fontWeight: 800,
   },
   hint: {
     color: "#666",
