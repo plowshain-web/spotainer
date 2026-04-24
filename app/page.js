@@ -12,11 +12,9 @@ export default function Page() {
   const [members, setMembers] = useState([]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
-
   const [selectedMember, setSelectedMember] = useState(null);
   const [attendanceList, setAttendanceList] = useState([]);
   const [lastAction, setLastAction] = useState(null);
@@ -128,6 +126,23 @@ export default function Page() {
   }
 
   async function checkAttendance(member) {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+    const { data: todayLogs } = await supabase
+      .from("attendance_logs")
+      .select("id")
+      .eq("member_id", member.id)
+      .eq("is_cancelled", false)
+      .gte("visited_at", todayStart.toISOString())
+      .lt("visited_at", tomorrowStart.toISOString());
+
+    if (todayLogs && todayLogs.length > 0) {
+      alert("오늘 이미 출석 체크되었습니다.");
+      return;
+    }
+
     const { error } = await supabase.from("attendance_logs").insert({
       member_id: member.id,
     });
