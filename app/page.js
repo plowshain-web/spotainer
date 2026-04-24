@@ -309,9 +309,10 @@ export default function Page() {
       .filter((l) => l.type === "use")
       .reduce((sum, l) => sum + l.amount, 0);
 
-    const total = added > 0 ? added : (member?.pt_remaining || 0) + used;
+    const remain = member?.pt_remaining || 0;
+const total = remain + used;
 
-    return { total, used, remain: member?.pt_remaining || 0 };
+return { total, used, remain };
   }
 
   return (
