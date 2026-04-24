@@ -14,6 +14,7 @@ export default function Page() {
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");
 
+  const [showAddModal, setShowAddModal] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [age, setAge] = useState("");
@@ -30,6 +31,10 @@ export default function Page() {
 
   const isSearching = search.trim().length > 0;
 
+  useEffect(() => {
+    loadMembers();
+  }, []);
+
   async function loadMembers() {
     const { data } = await supabase
       .from("members")
@@ -44,10 +49,6 @@ export default function Page() {
 
     setMembers(formatted);
   }
-
-  useEffect(() => {
-    loadMembers();
-  }, []);
 
   const filteredMembers = members.filter((member) => {
     const q = search.trim().toLowerCase();
@@ -85,6 +86,7 @@ export default function Page() {
     setPhone("");
     setAge("");
     setSearch("");
+    setShowAddModal(false);
     loadMembers();
   }
 
@@ -241,6 +243,53 @@ export default function Page() {
         <div style={styles.adminBadge}>관리자</div>
       </header>
 
+      {showAddModal && (
+        <div style={styles.modalOverlay}>
+          <section style={styles.modalBox}>
+            <div style={styles.detailTop}>
+              <h2 style={styles.modalTitle}>회원 추가</h2>
+              <button onClick={() => setShowAddModal(false)} style={styles.closeButton}>
+                닫기
+              </button>
+            </div>
+
+            <label style={styles.label}>이름</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="예: 홍길동"
+              style={styles.input}
+            />
+
+            <label style={styles.label}>전화번호</label>
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="예: 01012345678"
+              style={styles.input}
+            />
+
+            <label style={styles.label}>나이</label>
+            <input
+              value={age}
+              onChange={(e) => setAge(e.target.value)}
+              placeholder="예: 32"
+              type="number"
+              style={styles.input}
+            />
+
+            <div style={styles.editActions}>
+              <button onClick={addMember} style={styles.primaryButton}>
+                저장
+              </button>
+              <button onClick={() => setShowAddModal(false)} style={styles.cancelButton}>
+                취소
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {selectedMember && (
         <div style={styles.modalOverlay}>
           <section style={styles.modalBox}>
@@ -329,36 +378,9 @@ export default function Page() {
         </div>
       )}
 
-      <section style={styles.addBox}>
-        <h2 style={styles.sectionTitle}>회원 추가</h2>
-
-        <label style={styles.label}>이름</label>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="예: 홍길동"
-          style={styles.input}
-        />
-
-        <label style={styles.label}>전화번호</label>
-        <input
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="예: 01012345678"
-          style={styles.input}
-        />
-
-        <label style={styles.label}>나이</label>
-        <input
-          value={age}
-          onChange={(e) => setAge(e.target.value)}
-          placeholder="예: 32"
-          type="number"
-          style={styles.input}
-        />
-
-        <button onClick={addMember} style={styles.primaryButton}>
-          회원 추가
+      <section style={styles.topActionBox}>
+        <button onClick={() => setShowAddModal(true)} style={styles.addMemberButton}>
+          + 회원 추가
         </button>
       </section>
 
@@ -522,6 +544,19 @@ const styles = {
     fontWeight: 700,
     color: "#ddd",
   },
+  topActionBox: {
+    marginBottom: 22,
+  },
+  addMemberButton: {
+    width: "100%",
+    padding: 18,
+    borderRadius: 20,
+    border: "none",
+    background: "#ffffff",
+    color: "#111",
+    fontSize: 20,
+    fontWeight: 900,
+  },
   notice: {
     background: "#272111",
     border: "1px solid #facc15",
@@ -584,14 +619,6 @@ const styles = {
     padding: "16px 10px",
     fontSize: 18,
     fontWeight: 900,
-  },
-  addBox: {
-    background: "#1a1a1a",
-    border: "1px solid #272727",
-    borderRadius: 28,
-    padding: 24,
-    marginBottom: 22,
-    boxShadow: "0 12px 34px rgba(0,0,0,.28)",
   },
   searchBox: {
     background: "#151515",
