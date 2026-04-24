@@ -13,12 +13,16 @@ export default function Page() {
   const [search, setSearch] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+
   const [selectedMember, setSelectedMember] = useState(null);
   const [attendanceList, setAttendanceList] = useState([]);
   const [lastAction, setLastAction] = useState(null);
+
+  const isSearching = search.trim().length > 0;
 
   async function loadMembers() {
     const { data } = await supabase
@@ -73,6 +77,7 @@ export default function Page() {
 
     setName("");
     setPhone("");
+    setSearch("");
     loadMembers();
   }
 
@@ -312,19 +317,34 @@ export default function Page() {
 
       <section style={styles.searchBox}>
         <label style={styles.label}>회원 검색</label>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="이름 또는 전화번호 검색"
-          style={styles.input}
-        />
+
+        <div style={styles.searchRow}>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="이름 또는 전화번호 검색"
+            style={{ ...styles.input, marginBottom: 0 }}
+          />
+
+          {isSearching && (
+            <button onClick={() => setSearch("")} style={styles.resetButton}>
+              초기화
+            </button>
+          )}
+        </div>
+
+        {isSearching && (
+          <p style={styles.searchInfo}>“{search}” 검색 중</p>
+        )}
       </section>
 
       <section>
         <h2 style={styles.sectionTitle}>회원 목록</h2>
 
         {filteredMembers.length === 0 ? (
-          <p style={styles.muted}>검색 결과가 없습니다.</p>
+          <p style={styles.muted}>
+            {isSearching ? "검색 결과가 없습니다." : "회원이 없습니다."}
+          </p>
         ) : (
           filteredMembers.map((member) => {
             const visitWarning = needsVisitWarning(member);
@@ -480,6 +500,27 @@ const styles = {
     borderRadius: 24,
     padding: 20,
     marginBottom: 34,
+  },
+  searchRow: {
+    display: "flex",
+    gap: 10,
+    alignItems: "stretch",
+  },
+  resetButton: {
+    background: "#333",
+    color: "#fff",
+    border: "1px solid #555",
+    borderRadius: 14,
+    padding: "0 16px",
+    fontWeight: 900,
+    fontSize: 15,
+    whiteSpace: "nowrap",
+  },
+  searchInfo: {
+    marginTop: 10,
+    marginBottom: 0,
+    fontSize: 14,
+    color: "#888",
   },
   sectionTitle: {
     fontSize: 30,
