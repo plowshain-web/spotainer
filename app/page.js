@@ -20,10 +20,23 @@ export default function Page() {
   async function loadMembers() {
     const { data } = await supabase
       .from("members")
-      .select("*")
+      .select("*, attendance_logs(visited_at)")
       .order("created_at", { ascending: false });
 
-    setMembers(data || []);
+    const formatted = (data || []).map((m) => {
+      const logs = m.attendance_logs || [];
+      const latest = logs
+        .map((l) => l.visited_at)
+        .sort()
+        .reverse()[0];
+
+      return {
+        ...m,
+        latest_visit: latest || null,
+      };
+    });
+
+    setMembers(formatted);
   }
 
   useEffect(() => {
@@ -64,8 +77,24 @@ export default function Page() {
       .eq("id", member.id);
 
     setLastAction({
+      type: "pt",
       memberId: member.id,
       previousPt: before,
+      memberName: member.name,
+    });
+
+    loadMembers();
+  }
+
+  async function checkAttendance(member) {
+    const { error } = await supabase.from("attendance_logs").insert({
+      member_id: member.id,
+    });
+
+    if (error) return alert("출석 체크 실패: " + error.message);
+
+    setLastAction({
+      type: "attendance",
       memberName: member.name,
     });
 
@@ -75,10 +104,12 @@ export default function Page() {
   async function undo() {
     if (!lastAction) return;
 
-    await supabase
-      .from("members")
-      .update({ pt_remaining: lastAction.previousPt })
-      .eq("id", lastAction.memberId);
+    if (lastAction.type === "pt") {
+      await supabase
+        .from("members")
+        .update({ pt_remaining: lastAction.previousPt })
+        .eq("id", lastAction.memberId);
+    }
 
     setLastAction(null);
     loadMembers();
@@ -112,6 +143,11 @@ export default function Page() {
     loadMembers();
   }
 
+  function formatDate(date) {
+    if (!date) return "출석 기록 없음";
+    return new Date(date).toLocaleDateString("ko-KR");
+  }
+
   return (
     <main style={styles.page}>
       <div style={styles.header}>
@@ -126,9 +162,16 @@ export default function Page() {
         <div style={styles.undoBox}>
           <div>
             <strong>{lastAction.memberName}</strong>
-            <span style={styles.undoText}> PT 1회 차감됨</span>
+            <span style={styles.undoText}>
+              {lastAction.type === "pt" ? " PT 1회 차감됨" : " 출석 체크됨"}
+            </span>
           </div>
-          <button onClick={undo} style={styles.undoButton}>실행 취소</button>
+
+          {lastAction.type === "pt" && (
+            <button onClick={undo} style={styles.undoButton}>
+              실행 취소
+            </button>
+          )}
         </div>
       )}
 
@@ -182,6 +225,9 @@ export default function Page() {
                 <div>
                   <div style={styles.memberName}>{member.name}</div>
                   <div style={styles.phone}>{member.phone || "전화번호 없음"}</div>
+                  <div style={styles.visitText}>
+                    최근 출석: {formatDate(member.latest_visit)}
+                  </div>
                 </div>
 
                 <div style={styles.actions}>
@@ -200,6 +246,12 @@ export default function Page() {
                     </button>
                     <button onClick={() => addPt(member)} style={styles.whiteButton}>
                       10회 추가
+                    </button>
+                  </div>
+
+                  <div style={styles.row}>
+                    <button onClick={() => checkAttendance(member)} style={styles.blueButton}>
+                      오늘 운동 체크
                     </button>
                   </div>
 
@@ -302,9 +354,14 @@ const styles = {
     color: "#aaa",
     fontSize: 19,
   },
+  visitText: {
+    color: "#93c5fd",
+    fontSize: 16,
+    marginTop: 8,
+  },
   actions: {
     textAlign: "right",
-    minWidth: 170,
+    minWidth: 190,
   },
   pt: {
     fontSize: 28,
@@ -333,6 +390,15 @@ const styles = {
     border: "none",
     background: "#fff",
     color: "#111",
+    fontWeight: 800,
+    fontSize: 16,
+  },
+  blueButton: {
+    padding: "12px 15px",
+    borderRadius: 14,
+    border: "none",
+    background: "#2563eb",
+    color: "#fff",
     fontWeight: 800,
     fontSize: 16,
   },
