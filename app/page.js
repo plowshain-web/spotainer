@@ -636,7 +636,7 @@ export default function Page() {
                       <div style={styles.buttonGrid}>
                         <button onClick={() => minusPt(member)} style={styles.redButton}>1회 차감</button>
                         <button onClick={() => setPtModalMember(member)} style={styles.whiteButton}>이용권 추가</button>
-                        <button onClick={() => checkAttendance(member)} style={styles.blueButton}>오늘 운동 체크</button>
+                        <button onClick={() => checkAttendance(member)} style={styles.blueButton}>출석 체크</button>
                         <button onClick={() => startEdit(member)} style={styles.darkButton}>수정</button>
                         <button onClick={() => deleteMember(member)} style={styles.deleteButton}>삭제</button>
                       </div>
