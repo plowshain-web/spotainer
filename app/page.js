@@ -27,7 +27,6 @@ export default function Page() {
   const [selectedMember, setSelectedMember] = useState(null);
   const [attendanceList, setAttendanceList] = useState([]);
   const [ptLogList, setPtLogList] = useState([]);
-
   const [ptModalMember, setPtModalMember] = useState(null);
   const [lastAction, setLastAction] = useState(null);
 
@@ -48,20 +47,15 @@ export default function Page() {
       const latest = validLogs.map((l) => l.visited_at).sort().reverse()[0];
 
       const validPtLogs = (m.pt_logs || []).filter((l) => !l.is_cancelled);
-      const added = validPtLogs
-        .filter((l) => l.type === "add")
-        .reduce((sum, l) => sum + l.amount, 0);
       const used = validPtLogs
         .filter((l) => l.type === "use")
         .reduce((sum, l) => sum + l.amount, 0);
 
-      const total = added > 0 ? added : (m.pt_remaining || 0) + used;
-
       return {
         ...m,
         latest_visit: latest || null,
-        pt_total: total,
         pt_used: used,
+        pt_total: (m.pt_remaining || 0) + used,
       };
     });
 
@@ -80,15 +74,36 @@ export default function Page() {
 
   function daysSince(date) {
     if (!date) return null;
-    const now = new Date();
-    const target = new Date(date);
-    return Math.floor((now.getTime() - target.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.floor(
+      (new Date().getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24)
+    );
   }
 
-  function needsVisitWarning(member) {
-    const days = daysSince(member.latest_visit);
-    return days === null || days >= 7;
+  function getPtStatus(member) {
+    const pt = member.pt_remaining || 0;
+    if (pt <= 0) return { text: "즉시 상담", style: styles.dangerBadge };
+    if (pt <= 2) return { text: "강한 재등록 경고", style: styles.dangerBadge };
+    if (pt <= 5) return { text: "재등록 상담", style: styles.ptBadge };
+    return null;
   }
+
+  function getVisitStatus(member) {
+    const days = daysSince(member.latest_visit);
+    if (days === null) return { text: "출석 기록 없음", style: styles.visitBadge };
+    if (days >= 30) return { text: "휴면 위험", style: styles.dangerBadge };
+    if (days >= 14) return { text: "연락 필요", style: styles.visitBadge };
+    if (days >= 7) return { text: "미출석 주의", style: styles.visitBadge };
+    return null;
+  }
+
+  const summary = {
+    rejoin: members.filter((m) => (m.pt_remaining || 0) <= 5).length,
+    urgent: members.filter((m) => (m.pt_remaining || 0) <= 2).length,
+    dormant: members.filter((m) => {
+      const d = daysSince(m.latest_visit);
+      return d === null || d >= 14;
+    }).length,
+  };
 
   async function addMember() {
     if (!name.trim()) return alert("이름을 입력하세요.");
@@ -145,12 +160,12 @@ export default function Page() {
 
     const before = member.pt_remaining;
 
-    const { error: updateError } = await supabase
+    const { error } = await supabase
       .from("members")
       .update({ pt_remaining: before - 1 })
       .eq("id", member.id);
 
-    if (updateError) return alert("PT 차감 실패: " + updateError.message);
+    if (error) return alert("PT 차감 실패: " + error.message);
 
     await supabase.from("pt_logs").insert({
       member_id: member.id,
@@ -169,12 +184,12 @@ export default function Page() {
   }
 
   async function addPt(member, amount) {
-    const { error: updateError } = await supabase
+    const { error } = await supabase
       .from("members")
       .update({ pt_remaining: member.pt_remaining + amount })
       .eq("id", member.id);
 
-    if (updateError) return alert("이용권 추가 실패: " + updateError.message);
+    if (error) return alert("이용권 추가 실패: " + error.message);
 
     await supabase.from("pt_logs").insert({
       member_id: member.id,
@@ -302,17 +317,15 @@ export default function Page() {
 
   function getPtSummary(member, logs) {
     const validLogs = (logs || []).filter((l) => !l.is_cancelled);
-    const added = validLogs
-      .filter((l) => l.type === "add")
-      .reduce((sum, l) => sum + l.amount, 0);
+
     const used = validLogs
       .filter((l) => l.type === "use")
       .reduce((sum, l) => sum + l.amount, 0);
 
     const remain = member?.pt_remaining || 0;
-const total = remain + used;
+    const total = remain + used;
 
-return { total, used, remain };
+    return { total, used, remain };
   }
 
   return (
@@ -325,6 +338,21 @@ return { total, used, remain };
         <div style={styles.adminBadge}>관리자</div>
       </header>
 
+      <section style={styles.summaryBox}>
+        <div>
+          <strong>재등록 상담</strong>
+          <p>{summary.rejoin}명</p>
+        </div>
+        <div>
+          <strong>강한 경고</strong>
+          <p>{summary.urgent}명</p>
+        </div>
+        <div>
+          <strong>연락 필요</strong>
+          <p>{summary.dormant}명</p>
+        </div>
+      </section>
+
       {showAddModal && (
         <div style={styles.modalOverlay}>
           <section style={styles.modalBox}>
@@ -336,37 +364,17 @@ return { total, used, remain };
             </div>
 
             <label style={styles.label}>이름</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="예: 홍길동"
-              style={styles.input}
-            />
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="예: 홍길동" style={styles.input} />
 
             <label style={styles.label}>전화번호</label>
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="예: 01012345678"
-              style={styles.input}
-            />
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="예: 01012345678" style={styles.input} />
 
             <label style={styles.label}>나이</label>
-            <input
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
-              placeholder="예: 32"
-              type="number"
-              style={styles.input}
-            />
+            <input value={age} onChange={(e) => setAge(e.target.value)} placeholder="예: 32" type="number" style={styles.input} />
 
             <div style={styles.editActions}>
-              <button onClick={addMember} style={styles.primaryButton}>
-                저장
-              </button>
-              <button onClick={() => setShowAddModal(false)} style={styles.cancelButton}>
-                취소
-              </button>
+              <button onClick={addMember} style={styles.primaryButton}>저장</button>
+              <button onClick={() => setShowAddModal(false)} style={styles.cancelButton}>취소</button>
             </div>
           </section>
         </div>
@@ -393,9 +401,7 @@ return { total, used, remain };
                 })()}
               </div>
 
-              <button onClick={() => setSelectedMember(null)} style={styles.closeButton}>
-                닫기
-              </button>
+              <button onClick={() => setSelectedMember(null)} style={styles.closeButton}>닫기</button>
             </div>
 
             <h3 style={styles.subTitle}>PT 사용 기록</h3>
@@ -403,30 +409,18 @@ return { total, used, remain };
             {ptLogList.filter((log) => log.type === "use").length === 0 ? (
               <p style={styles.muted}>PT 사용 기록이 없습니다.</p>
             ) : (
-              ptLogList
-                .filter((log) => log.type === "use")
-                .map((log) => (
-                  <div
-                    key={log.id}
-                    style={{
-                      ...styles.logItem,
-                      opacity: log.is_cancelled ? 0.45 : 1,
-                    }}
-                  >
-                    <div>
-                      <div style={styles.logDate}>
-                        {formatDateTime(log.created_at)} · {log.amount}회 사용
-                      </div>
-                      {log.is_cancelled && <div style={styles.cancelText}>취소됨</div>}
-                    </div>
-
-                    {!log.is_cancelled && (
-                      <button onClick={() => cancelPtUse(log)} style={styles.smallDanger}>
-                        차감 취소
-                      </button>
-                    )}
+              ptLogList.filter((log) => log.type === "use").map((log) => (
+                <div key={log.id} style={{ ...styles.logItem, opacity: log.is_cancelled ? 0.45 : 1 }}>
+                  <div>
+                    <div style={styles.logDate}>{formatDateTime(log.created_at)} · {log.amount}회 사용</div>
+                    {log.is_cancelled && <div style={styles.cancelText}>취소됨</div>}
                   </div>
-                ))
+
+                  {!log.is_cancelled && (
+                    <button onClick={() => cancelPtUse(log)} style={styles.smallDanger}>차감 취소</button>
+                  )}
+                </div>
+              ))
             )}
 
             <h3 style={styles.subTitle}>출석 기록</h3>
@@ -435,22 +429,14 @@ return { total, used, remain };
               <p style={styles.muted}>출석 기록이 없습니다.</p>
             ) : (
               attendanceList.map((log) => (
-                <div
-                  key={log.id}
-                  style={{
-                    ...styles.logItem,
-                    opacity: log.is_cancelled ? 0.45 : 1,
-                  }}
-                >
+                <div key={log.id} style={{ ...styles.logItem, opacity: log.is_cancelled ? 0.45 : 1 }}>
                   <div>
                     <div style={styles.logDate}>{formatDateTime(log.visited_at)}</div>
                     {log.is_cancelled && <div style={styles.cancelText}>취소됨</div>}
                   </div>
 
                   {!log.is_cancelled && (
-                    <button onClick={() => cancelAttendance(log)} style={styles.smallDanger}>
-                      출석 취소
-                    </button>
+                    <button onClick={() => cancelAttendance(log)} style={styles.smallDanger}>출석 취소</button>
                   )}
                 </div>
               ))
@@ -467,19 +453,13 @@ return { total, used, remain };
 
             <div style={styles.ptOptionGrid}>
               {ptOptions.map((amount) => (
-                <button
-                  key={amount}
-                  onClick={() => addPt(ptModalMember, amount)}
-                  style={styles.ptOptionButton}
-                >
+                <button key={amount} onClick={() => addPt(ptModalMember, amount)} style={styles.ptOptionButton}>
                   {amount}회
                 </button>
               ))}
             </div>
 
-            <button onClick={() => setPtModalMember(null)} style={styles.cancelButton}>
-              취소
-            </button>
+            <button onClick={() => setPtModalMember(null)} style={styles.cancelButton}>취소</button>
           </div>
         </div>
       )}
@@ -492,9 +472,7 @@ return { total, used, remain };
           </span>
 
           {lastAction.type === "pt" && (
-            <button onClick={undo} style={styles.noticeButton}>
-              실행 취소
-            </button>
+            <button onClick={undo} style={styles.noticeButton}>실행 취소</button>
           )}
         </div>
       )}
@@ -517,9 +495,7 @@ return { total, used, remain };
           />
 
           {isSearching && (
-            <button onClick={() => setSearch("")} style={styles.resetButton}>
-              초기화
-            </button>
+            <button onClick={() => setSearch("")} style={styles.resetButton}>초기화</button>
           )}
         </div>
 
@@ -530,13 +506,11 @@ return { total, used, remain };
         <h2 style={styles.sectionTitle}>회원 목록</h2>
 
         {filteredMembers.length === 0 ? (
-          <p style={styles.muted}>
-            {isSearching ? "검색 결과가 없습니다." : "회원이 없습니다."}
-          </p>
+          <p style={styles.muted}>{isSearching ? "검색 결과가 없습니다." : "회원이 없습니다."}</p>
         ) : (
           filteredMembers.map((member) => {
-            const visitWarning = needsVisitWarning(member);
-            const ptWarning = member.pt_remaining <= 3;
+            const ptStatus = getPtStatus(member);
+            const visitStatus = getVisitStatus(member);
 
             return (
               <article key={member.id} style={styles.card}>
@@ -545,34 +519,17 @@ return { total, used, remain };
                     <h3 style={styles.editTitle}>회원 정보 수정</h3>
 
                     <label style={styles.label}>이름</label>
-                    <input
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      style={styles.input}
-                    />
+                    <input value={editName} onChange={(e) => setEditName(e.target.value)} style={styles.input} />
 
                     <label style={styles.label}>전화번호</label>
-                    <input
-                      value={editPhone}
-                      onChange={(e) => setEditPhone(e.target.value)}
-                      style={styles.input}
-                    />
+                    <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} style={styles.input} />
 
                     <label style={styles.label}>나이</label>
-                    <input
-                      value={editAge}
-                      onChange={(e) => setEditAge(e.target.value)}
-                      type="number"
-                      style={styles.input}
-                    />
+                    <input value={editAge} onChange={(e) => setEditAge(e.target.value)} type="number" style={styles.input} />
 
                     <div style={styles.editActions}>
-                      <button onClick={() => saveEdit(member.id)} style={styles.primaryButton}>
-                        저장
-                      </button>
-                      <button onClick={() => setEditingId(null)} style={styles.cancelButton}>
-                        취소
-                      </button>
+                      <button onClick={() => saveEdit(member.id)} style={styles.primaryButton}>저장</button>
+                      <button onClick={() => setEditingId(null)} style={styles.cancelButton}>취소</button>
                     </div>
                   </div>
                 ) : (
@@ -586,8 +543,8 @@ return { total, used, remain };
                       <p style={styles.visit}>최근 출석: {formatDate(member.latest_visit)}</p>
 
                       <div style={styles.warningRow}>
-                        {ptWarning && <span style={styles.ptBadge}>재등록 필요</span>}
-                        {visitWarning && <span style={styles.visitBadge}>미출석 주의</span>}
+                        {ptStatus && <span style={ptStatus.style}>{ptStatus.text}</span>}
+                        {visitStatus && <span style={visitStatus.style}>{visitStatus.text}</span>}
                       </div>
 
                       <p style={styles.hint}>눌러서 상세 출석기록 보기</p>
@@ -597,28 +554,18 @@ return { total, used, remain };
                       <div
                         style={{
                           ...styles.ptCount,
-                          color: ptWarning ? "#f87171" : "#ffffff",
+                          color: (member.pt_remaining || 0) <= 2 ? "#f87171" : "#ffffff",
                         }}
                       >
                         PT {member.pt_remaining}회
                       </div>
 
                       <div style={styles.buttonGrid}>
-                        <button onClick={() => minusPt(member)} style={styles.redButton}>
-                          1회 차감
-                        </button>
-                        <button onClick={() => setPtModalMember(member)} style={styles.whiteButton}>
-                          이용권 추가
-                        </button>
-                        <button onClick={() => checkAttendance(member)} style={styles.blueButton}>
-                          오늘 운동 체크
-                        </button>
-                        <button onClick={() => startEdit(member)} style={styles.darkButton}>
-                          수정
-                        </button>
-                        <button onClick={() => deleteMember(member)} style={styles.deleteButton}>
-                          삭제
-                        </button>
+                        <button onClick={() => minusPt(member)} style={styles.redButton}>1회 차감</button>
+                        <button onClick={() => setPtModalMember(member)} style={styles.whiteButton}>이용권 추가</button>
+                        <button onClick={() => checkAttendance(member)} style={styles.blueButton}>오늘 운동 체크</button>
+                        <button onClick={() => startEdit(member)} style={styles.darkButton}>수정</button>
+                        <button onClick={() => deleteMember(member)} style={styles.deleteButton}>삭제</button>
                       </div>
                     </div>
                   </>
@@ -664,6 +611,17 @@ const styles = {
     borderRadius: 999,
     fontWeight: 700,
     color: "#ddd",
+  },
+  summaryBox: {
+    background: "#151515",
+    border: "1px solid #272727",
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 22,
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1fr",
+    gap: 10,
+    textAlign: "center",
   },
   topActionBox: {
     marginBottom: 22,
@@ -857,6 +815,15 @@ const styles = {
     padding: "6px 10px",
     fontSize: 13,
     fontWeight: 800,
+  },
+  dangerBadge: {
+    background: "#450a0a",
+    color: "#fecaca",
+    border: "1px solid #991b1b",
+    borderRadius: 999,
+    padding: "6px 10px",
+    fontSize: 13,
+    fontWeight: 900,
   },
   hint: {
     color: "#666",
