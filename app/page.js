@@ -8,6 +8,8 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
+const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
+
 export default function Page() {
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");
@@ -21,6 +23,8 @@ export default function Page() {
   const [selectedMember, setSelectedMember] = useState(null);
   const [attendanceList, setAttendanceList] = useState([]);
   const [lastAction, setLastAction] = useState(null);
+
+  const [ptModalMember, setPtModalMember] = useState(null);
 
   const isSearching = search.trim().length > 0;
 
@@ -131,12 +135,13 @@ export default function Page() {
     loadMembers();
   }
 
-  async function plusPt(member) {
+  async function addPt(member, amount) {
     await supabase
       .from("members")
-      .update({ pt_remaining: member.pt_remaining + 10 })
+      .update({ pt_remaining: member.pt_remaining + amount })
       .eq("id", member.id);
 
+    setPtModalMember(null);
     loadMembers();
   }
 
@@ -232,6 +237,31 @@ export default function Page() {
         </div>
         <div style={styles.adminBadge}>관리자</div>
       </header>
+
+      {ptModalMember && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalBox}>
+            <h2 style={styles.modalTitle}>{ptModalMember.name} 이용권 추가</h2>
+            <p style={styles.muted}>추가할 PT 회차를 선택하세요.</p>
+
+            <div style={styles.ptOptionGrid}>
+              {ptOptions.map((amount) => (
+                <button
+                  key={amount}
+                  onClick={() => addPt(ptModalMember, amount)}
+                  style={styles.ptOptionButton}
+                >
+                  {amount}회
+                </button>
+              ))}
+            </div>
+
+            <button onClick={() => setPtModalMember(null)} style={styles.cancelButton}>
+              취소
+            </button>
+          </div>
+        </div>
+      )}
 
       {lastAction && (
         <div style={styles.notice}>
@@ -408,8 +438,8 @@ export default function Page() {
                         <button onClick={() => minusPt(member)} style={styles.redButton}>
                           1회 차감
                         </button>
-                        <button onClick={() => plusPt(member)} style={styles.whiteButton}>
-                          10회 추가
+                        <button onClick={() => setPtModalMember(member)} style={styles.whiteButton}>
+                          이용권 추가
                         </button>
                         <button onClick={() => checkAttendance(member)} style={styles.blueButton}>
                           오늘 운동 체크
@@ -485,6 +515,47 @@ const styles = {
     borderRadius: 12,
     padding: "10px 14px",
     fontWeight: 800,
+  },
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,.72)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 999,
+    padding: 20,
+  },
+  modalBox: {
+    width: "100%",
+    maxWidth: 460,
+    background: "#181818",
+    border: "1px solid #333",
+    borderRadius: 28,
+    padding: 24,
+    boxShadow: "0 20px 60px rgba(0,0,0,.45)",
+  },
+  modalTitle: {
+    fontSize: 28,
+    marginTop: 0,
+    marginBottom: 10,
+    fontWeight: 900,
+  },
+  ptOptionGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+    marginTop: 18,
+    marginBottom: 16,
+  },
+  ptOptionButton: {
+    background: "#fff",
+    color: "#111",
+    border: "none",
+    borderRadius: 16,
+    padding: "16px 10px",
+    fontSize: 18,
+    fontWeight: 900,
   },
   addBox: {
     background: "#1a1a1a",
