@@ -26,6 +26,8 @@ export default function Page() {
 
   const [selectedMember, setSelectedMember] = useState(null);
   const [attendanceList, setAttendanceList] = useState([]);
+  const [ptLogList, setPtLogList] = useState([]);
+
   const [ptModalMember, setPtModalMember] = useState(null);
   const [lastAction, setLastAction] = useState(null);
 
@@ -38,13 +40,29 @@ export default function Page() {
   async function loadMembers() {
     const { data } = await supabase
       .from("members")
-      .select("*, attendance_logs(visited_at,is_cancelled,cancelled_at)")
+      .select("*, attendance_logs(visited_at,is_cancelled,cancelled_at), pt_logs(type,amount,is_cancelled)")
       .order("created_at", { ascending: false });
 
     const formatted = (data || []).map((m) => {
       const validLogs = (m.attendance_logs || []).filter((l) => !l.is_cancelled);
       const latest = validLogs.map((l) => l.visited_at).sort().reverse()[0];
-      return { ...m, latest_visit: latest || null };
+
+      const validPtLogs = (m.pt_logs || []).filter((l) => !l.is_cancelled);
+      const added = validPtLogs
+        .filter((l) => l.type === "add")
+        .reduce((sum, l) => sum + l.amount, 0);
+      const used = validPtLogs
+        .filter((l) => l.type === "use")
+        .reduce((sum, l) => sum + l.amount, 0);
+
+      const total = added > 0 ? added : (m.pt_remaining || 0) + used;
+
+      return {
+        ...m,
+        latest_visit: latest || null,
+        pt_total: total,
+        pt_used: used,
+      };
     });
 
     setMembers(formatted);
@@ -127,10 +145,18 @@ export default function Page() {
 
     const before = member.pt_remaining;
 
-    await supabase
+    const { error: updateError } = await supabase
       .from("members")
       .update({ pt_remaining: before - 1 })
       .eq("id", member.id);
+
+    if (updateError) return alert("PT 차감 실패: " + updateError.message);
+
+    await supabase.from("pt_logs").insert({
+      member_id: member.id,
+      type: "use",
+      amount: 1,
+    });
 
     setLastAction({
       type: "pt",
@@ -143,12 +169,46 @@ export default function Page() {
   }
 
   async function addPt(member, amount) {
-    await supabase
+    const { error: updateError } = await supabase
       .from("members")
       .update({ pt_remaining: member.pt_remaining + amount })
       .eq("id", member.id);
 
+    if (updateError) return alert("이용권 추가 실패: " + updateError.message);
+
+    await supabase.from("pt_logs").insert({
+      member_id: member.id,
+      type: "add",
+      amount,
+    });
+
     setPtModalMember(null);
+    loadMembers();
+  }
+
+  async function cancelPtUse(log) {
+    if (!confirm("이 PT 차감 기록을 취소할까요?")) return;
+
+    const { data: member } = await supabase
+      .from("members")
+      .select("pt_remaining")
+      .eq("id", log.member_id)
+      .single();
+
+    await supabase
+      .from("members")
+      .update({ pt_remaining: (member?.pt_remaining || 0) + log.amount })
+      .eq("id", log.member_id);
+
+    await supabase
+      .from("pt_logs")
+      .update({
+        is_cancelled: true,
+        cancelled_at: new Date().toISOString(),
+      })
+      .eq("id", log.id);
+
+    openDetail(selectedMember);
     loadMembers();
   }
 
@@ -200,13 +260,20 @@ export default function Page() {
   async function openDetail(member) {
     setSelectedMember(member);
 
-    const { data } = await supabase
+    const { data: attendanceData } = await supabase
       .from("attendance_logs")
       .select("*")
       .eq("member_id", member.id)
       .order("visited_at", { ascending: false });
 
-    setAttendanceList(data || []);
+    const { data: ptData } = await supabase
+      .from("pt_logs")
+      .select("*")
+      .eq("member_id", member.id)
+      .order("created_at", { ascending: false });
+
+    setAttendanceList(attendanceData || []);
+    setPtLogList(ptData || []);
   }
 
   async function cancelAttendance(log) {
@@ -231,6 +298,20 @@ export default function Page() {
 
   function formatDateTime(date) {
     return new Date(date).toLocaleString("ko-KR");
+  }
+
+  function getPtSummary(member, logs) {
+    const validLogs = (logs || []).filter((l) => !l.is_cancelled);
+    const added = validLogs
+      .filter((l) => l.type === "add")
+      .reduce((sum, l) => sum + l.amount, 0);
+    const used = validLogs
+      .filter((l) => l.type === "use")
+      .reduce((sum, l) => sum + l.amount, 0);
+
+    const total = added > 0 ? added : (member?.pt_remaining || 0) + used;
+
+    return { total, used, remain: member?.pt_remaining || 0 };
   }
 
   return (
@@ -300,13 +381,52 @@ export default function Page() {
                   {selectedMember.age ? `${selectedMember.age}세 · ` : ""}
                   {selectedMember.phone || "전화번호 없음"}
                 </p>
-                <p style={styles.detailPt}>PT {selectedMember.pt_remaining}회</p>
+
+                {(() => {
+                  const pt = getPtSummary(selectedMember, ptLogList);
+                  return (
+                    <p style={styles.detailPt}>
+                      총 {pt.total}회 중 {pt.used}회 사용 / {pt.remain}회 남음
+                    </p>
+                  );
+                })()}
               </div>
 
               <button onClick={() => setSelectedMember(null)} style={styles.closeButton}>
                 닫기
               </button>
             </div>
+
+            <h3 style={styles.subTitle}>PT 사용 기록</h3>
+
+            {ptLogList.filter((log) => log.type === "use").length === 0 ? (
+              <p style={styles.muted}>PT 사용 기록이 없습니다.</p>
+            ) : (
+              ptLogList
+                .filter((log) => log.type === "use")
+                .map((log) => (
+                  <div
+                    key={log.id}
+                    style={{
+                      ...styles.logItem,
+                      opacity: log.is_cancelled ? 0.45 : 1,
+                    }}
+                  >
+                    <div>
+                      <div style={styles.logDate}>
+                        {formatDateTime(log.created_at)} · {log.amount}회 사용
+                      </div>
+                      {log.is_cancelled && <div style={styles.cancelText}>취소됨</div>}
+                    </div>
+
+                    {!log.is_cancelled && (
+                      <button onClick={() => cancelPtUse(log)} style={styles.smallDanger}>
+                        차감 취소
+                      </button>
+                    )}
+                  </div>
+                ))
+            )}
 
             <h3 style={styles.subTitle}>출석 기록</h3>
 
