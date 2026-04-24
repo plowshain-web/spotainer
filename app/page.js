@@ -13,6 +13,7 @@ const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 export default function Page() {
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");
+  const [summaryModal, setSummaryModal] = useState(null);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [name, setName] = useState("");
@@ -81,9 +82,8 @@ export default function Page() {
 
   function getPtStatus(member) {
     const pt = member.pt_remaining || 0;
-    if (pt <= 0) return { text: "즉시 상담", style: styles.dangerBadge };
-    if (pt <= 2) return { text: "강한 재등록 경고", style: styles.dangerBadge };
-    if (pt <= 5) return { text: "재등록 상담", style: styles.ptBadge };
+    if (pt <= 2) return { text: "강한 경고", style: styles.dangerBadge };
+    if (pt >= 3 && pt <= 5) return { text: "재등록 상담", style: styles.ptBadge };
     return null;
   }
 
@@ -96,13 +96,37 @@ export default function Page() {
     return null;
   }
 
-  const summary = {
-    rejoin: members.filter((m) => (m.pt_remaining || 0) <= 5).length,
-    urgent: members.filter((m) => (m.pt_remaining || 0) <= 2).length,
+  const summaryGroups = {
+    rejoin: members.filter((m) => {
+      const pt = m.pt_remaining || 0;
+      return pt >= 3 && pt <= 5;
+    }),
+    urgent: members.filter((m) => {
+      const pt = m.pt_remaining || 0;
+      return pt <= 2;
+    }),
     dormant: members.filter((m) => {
       const d = daysSince(m.latest_visit);
       return d === null || d >= 14;
-    }).length,
+    }),
+  };
+
+  const summaryConfig = {
+    rejoin: {
+      title: "재등록 상담",
+      desc: "PT 3~5회 남은 회원",
+      list: summaryGroups.rejoin,
+    },
+    urgent: {
+      title: "강한 경고",
+      desc: "PT 0~2회 남은 회원",
+      list: summaryGroups.urgent,
+    },
+    dormant: {
+      title: "연락 필요",
+      desc: "출석 기록 없음 또는 14일 이상 미출석 회원",
+      list: summaryGroups.dormant,
+    },
   };
 
   async function addMember() {
@@ -328,6 +352,33 @@ export default function Page() {
     return { total, used, remain };
   }
 
+  function renderSummaryMember(member) {
+    const d = daysSince(member.latest_visit);
+
+    return (
+      <div key={member.id} style={styles.summaryMemberRow}>
+        <div>
+          <strong>{member.name}</strong>
+          <p style={styles.summaryMemberInfo}>
+            PT {member.pt_remaining || 0}회 남음 · 최근 출석:{" "}
+            {member.latest_visit ? `${formatDate(member.latest_visit)} (${d}일 전)` : "없음"}
+          </p>
+          <p style={styles.summaryMemberInfo}>{member.phone || "전화번호 없음"}</p>
+        </div>
+
+        <button
+          onClick={() => {
+            setSummaryModal(null);
+            openDetail(member);
+          }}
+          style={styles.smallDark}
+        >
+          상세
+        </button>
+      </div>
+    );
+  }
+
   return (
     <main style={styles.page}>
       <header style={styles.header}>
@@ -339,19 +390,41 @@ export default function Page() {
       </header>
 
       <section style={styles.summaryBox}>
-        <div>
+        <button onClick={() => setSummaryModal("rejoin")} style={styles.summaryCard}>
           <strong>재등록 상담</strong>
-          <p>{summary.rejoin}명</p>
-        </div>
-        <div>
+          <p>{summaryGroups.rejoin.length}명</p>
+        </button>
+        <button onClick={() => setSummaryModal("urgent")} style={styles.summaryCard}>
           <strong>강한 경고</strong>
-          <p>{summary.urgent}명</p>
-        </div>
-        <div>
+          <p>{summaryGroups.urgent.length}명</p>
+        </button>
+        <button onClick={() => setSummaryModal("dormant")} style={styles.summaryCard}>
           <strong>연락 필요</strong>
-          <p>{summary.dormant}명</p>
-        </div>
+          <p>{summaryGroups.dormant.length}명</p>
+        </button>
       </section>
+
+      {summaryModal && (
+        <div style={styles.modalOverlay}>
+          <section style={styles.modalBox}>
+            <div style={styles.detailTop}>
+              <div>
+                <h2 style={styles.modalTitle}>{summaryConfig[summaryModal].title}</h2>
+                <p style={styles.muted}>{summaryConfig[summaryModal].desc}</p>
+              </div>
+              <button onClick={() => setSummaryModal(null)} style={styles.closeButton}>
+                닫기
+              </button>
+            </div>
+
+            {summaryConfig[summaryModal].list.length === 0 ? (
+              <p style={styles.muted}>해당 회원이 없습니다.</p>
+            ) : (
+              summaryConfig[summaryModal].list.map(renderSummaryMember)
+            )}
+          </section>
+        </div>
+      )}
 
       {showAddModal && (
         <div style={styles.modalOverlay}>
@@ -622,6 +695,37 @@ const styles = {
     gridTemplateColumns: "1fr 1fr 1fr",
     gap: 10,
     textAlign: "center",
+  },
+  summaryCard: {
+    background: "transparent",
+    border: "none",
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: 900,
+    padding: 8,
+  },
+  summaryMemberRow: {
+    background: "#222",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  summaryMemberInfo: {
+    color: "#aaa",
+    margin: "6px 0 0",
+    fontSize: 14,
+  },
+  smallDark: {
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #444",
+    borderRadius: 12,
+    padding: "9px 12px",
+    fontWeight: 800,
   },
   topActionBox: {
     marginBottom: 22,
