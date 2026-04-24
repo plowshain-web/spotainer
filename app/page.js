@@ -10,6 +10,8 @@ const supabase = createClient(
 
 export default function Page() {
   const [members, setMembers] = useState([]);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [attendanceList, setAttendanceList] = useState([]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [editingId, setEditingId] = useState(null);
@@ -25,10 +27,7 @@ export default function Page() {
 
     const formatted = (data || []).map((m) => {
       const logs = m.attendance_logs || [];
-      const latest = logs
-        .map((l) => l.visited_at)
-        .sort()
-        .reverse()[0];
+      const latest = logs.map((l) => l.visited_at).sort().reverse()[0];
 
       return {
         ...m,
@@ -99,6 +98,22 @@ export default function Page() {
     });
 
     loadMembers();
+
+    if (selectedMember?.id === member.id) {
+      openDetail(member);
+    }
+  }
+
+  async function openDetail(member) {
+    setSelectedMember(member);
+
+    const { data } = await supabase
+      .from("attendance_logs")
+      .select("*")
+      .eq("member_id", member.id)
+      .order("visited_at", { ascending: false });
+
+    setAttendanceList(data || []);
   }
 
   async function undo() {
@@ -140,12 +155,17 @@ export default function Page() {
     if (!confirm(`${member.name} 회원을 삭제할까요?`)) return;
 
     await supabase.from("members").delete().eq("id", member.id);
+    setSelectedMember(null);
     loadMembers();
   }
 
   function formatDate(date) {
     if (!date) return "출석 기록 없음";
     return new Date(date).toLocaleDateString("ko-KR");
+  }
+
+  function formatDateTime(date) {
+    return new Date(date).toLocaleString("ko-KR");
   }
 
   return (
@@ -173,6 +193,33 @@ export default function Page() {
             </button>
           )}
         </div>
+      )}
+
+      {selectedMember && (
+        <section style={styles.detailBox}>
+          <div style={styles.detailHeader}>
+            <div>
+              <h2 style={styles.detailName}>{selectedMember.name}</h2>
+              <p style={styles.phone}>{selectedMember.phone || "전화번호 없음"}</p>
+              <p style={styles.pt}>PT {selectedMember.pt_remaining}회</p>
+            </div>
+            <button onClick={() => setSelectedMember(null)} style={styles.darkButton}>
+              닫기
+            </button>
+          </div>
+
+          <h3 style={styles.detailTitle}>출석 기록</h3>
+
+          {attendanceList.length === 0 ? (
+            <p style={styles.emptyText}>출석 기록이 없습니다.</p>
+          ) : (
+            attendanceList.map((log) => (
+              <div key={log.id} style={styles.logItem}>
+                {formatDateTime(log.visited_at)}
+              </div>
+            ))
+          )}
+        </section>
       )}
 
       <section style={styles.panel}>
@@ -222,12 +269,13 @@ export default function Page() {
               </div>
             ) : (
               <>
-                <div>
+                <div onClick={() => openDetail(member)} style={styles.memberInfo}>
                   <div style={styles.memberName}>{member.name}</div>
                   <div style={styles.phone}>{member.phone || "전화번호 없음"}</div>
                   <div style={styles.visitText}>
                     최근 출석: {formatDate(member.latest_visit)}
                   </div>
+                  <div style={styles.tapHint}>상세보기</div>
                 </div>
 
                 <div style={styles.actions}>
@@ -308,7 +356,6 @@ const styles = {
     padding: 22,
     borderRadius: 24,
     marginBottom: 32,
-    boxShadow: "0 10px 30px rgba(0,0,0,.25)",
   },
   sectionTitle: {
     fontSize: 30,
@@ -343,7 +390,10 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     gap: 18,
-    boxShadow: "0 8px 24px rgba(0,0,0,.25)",
+  },
+  memberInfo: {
+    flex: 1,
+    cursor: "pointer",
   },
   memberName: {
     fontSize: 30,
@@ -357,6 +407,11 @@ const styles = {
   visitText: {
     color: "#93c5fd",
     fontSize: 16,
+    marginTop: 8,
+  },
+  tapHint: {
+    color: "#666",
+    fontSize: 14,
     marginTop: 8,
   },
   actions: {
@@ -444,5 +499,37 @@ const styles = {
   },
   editBox: {
     width: "100%",
+  },
+  detailBox: {
+    background: "#181818",
+    border: "1px solid #333",
+    borderRadius: 24,
+    padding: 22,
+    marginBottom: 28,
+  },
+  detailHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 16,
+    alignItems: "flex-start",
+  },
+  detailName: {
+    fontSize: 34,
+    margin: 0,
+  },
+  detailTitle: {
+    fontSize: 24,
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  logItem: {
+    background: "#222",
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 10,
+    color: "#ddd",
+  },
+  emptyText: {
+    color: "#aaa",
   },
 };
