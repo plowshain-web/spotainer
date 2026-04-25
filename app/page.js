@@ -37,8 +37,9 @@ export default function Page() {
   const [detailMode, setDetailMode] = useState(null);
   const [attendanceList, setAttendanceList] = useState([]);
   const [ptLogList, setPtLogList] = useState([]);
-  const [showAllPtLogs, setShowAllPtLogs] = useState(false);
-  const [showAllAttendanceLogs, setShowAllAttendanceLogs] = useState(false);
+
+  const [showAllPtModal, setShowAllPtModal] = useState(false);
+  const [showAllAttendanceModal, setShowAllAttendanceModal] = useState(false);
 
   const [workoutMember, setWorkoutMember] = useState(null);
   const [workoutSessions, setWorkoutSessions] = useState([]);
@@ -48,6 +49,7 @@ export default function Page() {
     { name: "", sets: [{ weight: "", reps: "" }] },
   ]);
   const [showAllWorkoutModal, setShowAllWorkoutModal] = useState(false);
+
   const [editingWorkoutSetId, setEditingWorkoutSetId] = useState(null);
   const [editWorkoutName, setEditWorkoutName] = useState("");
   const [editWorkoutWeight, setEditWorkoutWeight] = useState("");
@@ -65,7 +67,9 @@ export default function Page() {
   async function loadMembers() {
     const { data } = await supabase
       .from("members")
-      .select("*, attendance_logs(visited_at,is_cancelled,cancelled_at), pt_logs(type,amount,is_cancelled)")
+      .select(
+        "*, attendance_logs(visited_at,is_cancelled,cancelled_at), pt_logs(type,amount,is_cancelled)"
+      )
       .order("created_at", { ascending: false });
 
     const formatted = (data || []).map((m) => {
@@ -105,18 +109,6 @@ export default function Page() {
     );
   }
 
-  function isTodayOrYesterday(date) {
-    if (!date) return false;
-
-    const target = new Date(date);
-    const now = new Date();
-
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-
-    return target >= yesterdayStart && target <= now;
-  }
-
   function isToday(date) {
     if (!date) return false;
 
@@ -128,6 +120,22 @@ export default function Page() {
       target.getMonth() === now.getMonth() &&
       target.getDate() === now.getDate()
     );
+  }
+
+  function isTodayOrYesterday(date) {
+    if (!date) return false;
+
+    const target = new Date(date);
+    const now = new Date();
+
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - 1
+    );
+
+    return target >= yesterdayStart && target <= now;
   }
 
   function getPtStatus(member) {
@@ -317,7 +325,7 @@ export default function Page() {
       })
       .eq("id", log.id);
 
-    openDetail(selectedMember, "pt");
+    if (selectedMember) await openDetail(selectedMember, "pt");
     loadMembers();
   }
 
@@ -336,7 +344,11 @@ export default function Page() {
   async function checkAttendance(member) {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const tomorrowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const tomorrowStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1
+    );
 
     const { data: todayLogs } = await supabase
       .from("attendance_logs")
@@ -370,8 +382,8 @@ export default function Page() {
   async function openDetail(member, mode = "menu") {
     setSelectedMember(member);
     setDetailMode(mode);
-    setShowAllPtLogs(false);
-    setShowAllAttendanceLogs(false);
+    setShowAllPtModal(false);
+    setShowAllAttendanceModal(false);
 
     const { data: attendanceData } = await supabase
       .from("attendance_logs")
@@ -392,8 +404,8 @@ export default function Page() {
   function closeDetail() {
     setSelectedMember(null);
     setDetailMode(null);
-    setShowAllPtLogs(false);
-    setShowAllAttendanceLogs(false);
+    setShowAllPtModal(false);
+    setShowAllAttendanceModal(false);
   }
 
   async function cancelAttendance(log) {
@@ -407,7 +419,7 @@ export default function Page() {
       })
       .eq("id", log.id);
 
-    openDetail(selectedMember, "attendance");
+    if (selectedMember) await openDetail(selectedMember, "attendance");
     loadMembers();
   }
 
@@ -648,10 +660,7 @@ export default function Page() {
   async function deleteWorkoutSet(set) {
     if (!confirm("이 세트를 삭제할까요?")) return;
 
-    const { error } = await supabase
-      .from("workout_sets")
-      .delete()
-      .eq("id", set.id);
+    const { error } = await supabase.from("workout_sets").delete().eq("id", set.id);
 
     if (error) {
       alert("세트 삭제 실패: " + error.message);
@@ -689,6 +698,24 @@ export default function Page() {
     await loadWorkoutSessions(workoutMember.id);
   }
 
+  function getRecentPtLogs() {
+    return ptLogList
+      .filter((log) => log.type === "use" && !log.is_cancelled)
+      .slice(0, 3);
+  }
+
+  function getAllPtLogs() {
+    return ptLogList.filter((log) => log.type === "use" && !log.is_cancelled);
+  }
+
+  function getRecentAttendanceLogs() {
+    return attendanceList.filter((log) => !log.is_cancelled).slice(0, 3);
+  }
+
+  function getAllAttendanceLogs() {
+    return attendanceList.filter((log) => !log.is_cancelled);
+  }
+
   function formatDate(date) {
     if (!date) return "없음";
     return new Date(date).toLocaleDateString("ko-KR");
@@ -711,24 +738,6 @@ export default function Page() {
     return { total, used, remain };
   }
 
-  function getVisiblePtLogs() {
-    const validUseLogs = ptLogList.filter(
-      (log) => log.type === "use" && !log.is_cancelled
-    );
-
-    if (showAllPtLogs) return validUseLogs;
-
-    return validUseLogs.filter((log) => isTodayOrYesterday(log.created_at));
-  }
-
-  function getVisibleAttendanceLogs() {
-    const validLogs = attendanceList.filter((log) => !log.is_cancelled);
-
-    if (showAllAttendanceLogs) return validLogs;
-
-    return validLogs.filter((log) => isTodayOrYesterday(log.visited_at));
-  }
-
   function renderInfoBlock(title, content) {
     return (
       <div style={styles.infoBlock}>
@@ -747,7 +756,9 @@ export default function Page() {
           <strong>{member.name}</strong>
           <p style={styles.summaryMemberInfo}>
             PT {member.pt_remaining || 0}회 남음 · 최근 출석:{" "}
-            {member.latest_visit ? `${formatDate(member.latest_visit)} (${d}일 전)` : "없음"}
+            {member.latest_visit
+              ? `${formatDate(member.latest_visit)} (${d}일 전)`
+              : "없음"}
           </p>
           <p style={styles.summaryMemberInfo}>{member.phone || "전화번호 없음"}</p>
         </div>
@@ -791,14 +802,13 @@ export default function Page() {
             ))
           )}
 
-          {session.memo && (
-            <p style={styles.summaryMemberInfo}>메모: {session.memo}</p>
-          )}
+          {session.memo && <p style={styles.summaryMemberInfo}>메모: {session.memo}</p>}
         </div>
       </div>
     );
   }
-return (
+
+  return (
     <main style={styles.page}>
       <header style={styles.header}>
         <div>
@@ -856,29 +866,70 @@ return (
             </div>
 
             <label style={styles.label}>이름</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="예: 홍길동" style={styles.input} />
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="예: 홍길동"
+              style={styles.input}
+            />
 
             <label style={styles.label}>전화번호</label>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="예: 01012345678" style={styles.input} />
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="예: 01012345678"
+              style={styles.input}
+            />
 
             <label style={styles.label}>나이</label>
-            <input value={age} onChange={(e) => setAge(e.target.value)} placeholder="예: 32" type="number" style={styles.input} />
+            <input
+              value={age}
+              onChange={(e) => setAge(e.target.value)}
+              placeholder="예: 32"
+              type="number"
+              style={styles.input}
+            />
 
             <label style={styles.label}>키(cm)</label>
-            <input value={height} onChange={(e) => setHeight(e.target.value)} placeholder="예: 165" type="number" style={styles.input} />
+            <input
+              value={height}
+              onChange={(e) => setHeight(e.target.value)}
+              placeholder="예: 165"
+              type="number"
+              style={styles.input}
+            />
 
             <label style={styles.label}>목표</label>
-            <input value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="예: 체지방 감량, 근력 증가" style={styles.input} />
+            <input
+              value={goal}
+              onChange={(e) => setGoal(e.target.value)}
+              placeholder="예: 체지방 감량, 근력 증가"
+              style={styles.input}
+            />
 
             <label style={styles.label}>특이사항</label>
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="예: 허리 통증, 무릎 주의, 식단 어려움" style={styles.textarea} />
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="예: 허리 통증, 무릎 주의, 식단 어려움"
+              style={styles.textarea}
+            />
 
             <label style={styles.label}>트레이너 메모</label>
-            <textarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="상담 내용, 성향, 관리 포인트" style={styles.textarea} />
+            <textarea
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              placeholder="상담 내용, 성향, 관리 포인트"
+              style={styles.textarea}
+            />
 
             <div style={styles.editActions}>
-              <button onClick={addMember} style={styles.primaryButton}>저장</button>
-              <button onClick={() => setShowAddModal(false)} style={styles.cancelButton}>취소</button>
+              <button onClick={addMember} style={styles.primaryButton}>
+                저장
+              </button>
+              <button onClick={() => setShowAddModal(false)} style={styles.cancelButton}>
+                취소
+              </button>
             </div>
           </section>
         </div>
@@ -897,7 +948,9 @@ return (
                 </p>
               </div>
 
-              <button onClick={closeDetail} style={styles.closeButton}>닫기</button>
+              <button onClick={closeDetail} style={styles.closeButton}>
+                닫기
+              </button>
             </div>
 
             {detailMode === "menu" && (
@@ -911,7 +964,10 @@ return (
                   <button onClick={() => setDetailMode("pt")} style={styles.menuButton}>
                     PT 사용 기록
                   </button>
-                  <button onClick={() => setDetailMode("attendance")} style={styles.menuButton}>
+                  <button
+                    onClick={() => setDetailMode("attendance")}
+                    style={styles.menuButton}
+                  >
                     출석 기록
                   </button>
                   <button
@@ -939,7 +995,10 @@ return (
                 })()}
 
                 <h3 style={styles.subTitle}>회원 관리 정보</h3>
-                {renderInfoBlock("키", selectedMember.height ? `${selectedMember.height}cm` : "")}
+                {renderInfoBlock(
+                  "키",
+                  selectedMember.height ? `${selectedMember.height}cm` : ""
+                )}
                 {renderInfoBlock("목표", selectedMember.goal)}
                 {renderInfoBlock("특이사항", selectedMember.note)}
                 {renderInfoBlock("트레이너 메모", selectedMember.memo)}
@@ -962,32 +1021,27 @@ return (
                 })()}
 
                 <div style={styles.recordHeader}>
-                  <h3 style={styles.subTitle}>
-                    {showAllPtLogs ? "전체 PT 사용내역" : "최근 PT 사용기록"}
-                  </h3>
+                  <h3 style={styles.subTitle}>최근 PT 사용기록</h3>
 
-                  <button
-                    onClick={() => setShowAllPtLogs(!showAllPtLogs)}
-                    style={styles.smallDark}
-                  >
-                    {showAllPtLogs ? "최근 기록 보기" : "전체 사용내역 보기"}
+                  <button onClick={() => setShowAllPtModal(true)} style={styles.smallDark}>
+                    전체 사용내역 보기
                   </button>
                 </div>
 
-                {getVisiblePtLogs().length === 0 ? (
-                  <p style={styles.muted}>
-                    {showAllPtLogs ? "PT 사용내역이 없습니다." : "오늘/어제 PT 사용기록이 없습니다."}
-                  </p>
+                {getRecentPtLogs().length === 0 ? (
+                  <p style={styles.muted}>최근 PT 사용기록이 없습니다.</p>
                 ) : (
-                  getVisiblePtLogs().map((log) => (
+                  getRecentPtLogs().map((log) => (
                     <div key={log.id} style={styles.logItem}>
                       <div>
-                        <div style={styles.logDate}>{formatDateTime(log.created_at)} · {log.amount}회 사용</div>
+                        <div style={styles.logDate}>
+                          {formatDateTime(log.created_at)} · {log.amount}회 사용
+                        </div>
                       </div>
 
-                      {!showAllPtLogs && (
-                        <button onClick={() => cancelPtUse(log)} style={styles.smallDanger}>차감 취소</button>
-                      )}
+                      <button onClick={() => cancelPtUse(log)} style={styles.smallDanger}>
+                        차감 취소
+                      </button>
                     </div>
                   ))
                 )}
@@ -1001,32 +1055,31 @@ return (
             {detailMode === "attendance" && (
               <>
                 <div style={styles.recordHeader}>
-                  <h3 style={styles.subTitle}>
-                    {showAllAttendanceLogs ? "전체 출석기록" : "최근 출석기록"}
-                  </h3>
+                  <h3 style={styles.subTitle}>최근 출석기록</h3>
 
                   <button
-                    onClick={() => setShowAllAttendanceLogs(!showAllAttendanceLogs)}
+                    onClick={() => setShowAllAttendanceModal(true)}
                     style={styles.smallDark}
                   >
-                    {showAllAttendanceLogs ? "최근 기록 보기" : "전체 출석기록 보기"}
+                    전체 출석기록 보기
                   </button>
                 </div>
 
-                {getVisibleAttendanceLogs().length === 0 ? (
-                  <p style={styles.muted}>
-                    {showAllAttendanceLogs ? "출석기록이 없습니다." : "오늘/어제 출석기록이 없습니다."}
-                  </p>
+                {getRecentAttendanceLogs().length === 0 ? (
+                  <p style={styles.muted}>최근 출석기록이 없습니다.</p>
                 ) : (
-                  getVisibleAttendanceLogs().map((log) => (
+                  getRecentAttendanceLogs().map((log) => (
                     <div key={log.id} style={styles.logItem}>
                       <div>
                         <div style={styles.logDate}>{formatDateTime(log.visited_at)}</div>
                       </div>
 
-                      {!showAllAttendanceLogs && (
-                        <button onClick={() => cancelAttendance(log)} style={styles.smallDanger}>출석 취소</button>
-                      )}
+                      <button
+                        onClick={() => cancelAttendance(log)}
+                        style={styles.smallDanger}
+                      >
+                        출석 취소
+                      </button>
                     </div>
                   ))
                 )}
@@ -1040,6 +1093,84 @@ return (
         </div>
       )}
 
+      {showAllPtModal && selectedMember && (
+        <div style={styles.whiteModalOverlay}>
+          <section style={styles.whiteModalBox}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>
+                  {selectedMember.name} 전체 PT 사용내역
+                </h2>
+                <p style={styles.whiteMuted}>저장된 모든 PT 사용기록입니다.</p>
+              </div>
+
+              <button onClick={() => setShowAllPtModal(false)} style={styles.whiteCloseButton}>
+                닫기
+              </button>
+            </div>
+
+            {getAllPtLogs().length === 0 ? (
+              <p style={styles.whiteMuted}>PT 사용내역이 없습니다.</p>
+            ) : (
+              getAllPtLogs().map((log) => (
+                <div key={log.id} style={styles.whiteWorkoutCard}>
+                  <div style={styles.whiteSessionTop}>
+                    <p style={styles.whiteSetText}>
+                      {formatDateTime(log.created_at)} · {log.amount}회 사용
+                    </p>
+
+                    <button onClick={() => cancelPtUse(log)} style={styles.whiteDeleteButton}>
+                      차감 취소
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </section>
+        </div>
+      )}
+
+      {showAllAttendanceModal && selectedMember && (
+        <div style={styles.whiteModalOverlay}>
+          <section style={styles.whiteModalBox}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>
+                  {selectedMember.name} 전체 출석기록
+                </h2>
+                <p style={styles.whiteMuted}>저장된 모든 출석기록입니다.</p>
+              </div>
+
+              <button
+                onClick={() => setShowAllAttendanceModal(false)}
+                style={styles.whiteCloseButton}
+              >
+                닫기
+              </button>
+            </div>
+
+            {getAllAttendanceLogs().length === 0 ? (
+              <p style={styles.whiteMuted}>출석기록이 없습니다.</p>
+            ) : (
+              getAllAttendanceLogs().map((log) => (
+                <div key={log.id} style={styles.whiteWorkoutCard}>
+                  <div style={styles.whiteSessionTop}>
+                    <p style={styles.whiteSetText}>{formatDateTime(log.visited_at)}</p>
+
+                    <button
+                      onClick={() => cancelAttendance(log)}
+                      style={styles.whiteDeleteButton}
+                    >
+                      출석 취소
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </section>
+        </div>
+      )}
+
       {workoutMember && (
         <div style={styles.modalOverlay}>
           <section style={styles.modalBox}>
@@ -1048,7 +1179,9 @@ return (
                 <h2 style={styles.detailName}>{workoutMember.name} 운동 기록</h2>
                 <p style={styles.muted}>운동별로 세트를 나눠 기록하세요.</p>
               </div>
-              <button onClick={closeWorkout} style={styles.closeButton}>닫기</button>
+              <button onClick={closeWorkout} style={styles.closeButton}>
+                닫기
+              </button>
             </div>
 
             {workoutMode === "list" && (
@@ -1109,9 +1242,7 @@ return (
 
                     {exercise.sets.map((set, setIndex) => (
                       <div key={setIndex} style={styles.setRow}>
-                        <div style={styles.setNumber}>
-                          {setIndex + 1}세트
-                        </div>
+                        <div style={styles.setNumber}>{setIndex + 1}세트</div>
 
                         <input
                           value={set.weight}
@@ -1144,10 +1275,7 @@ return (
                       </div>
                     ))}
 
-                    <button
-                      onClick={() => addSet(exerciseIndex)}
-                      style={styles.smallDark}
-                    >
+                    <button onClick={() => addSet(exerciseIndex)} style={styles.smallDark}>
                       + 세트 추가
                     </button>
                   </div>
@@ -1166,8 +1294,12 @@ return (
                 />
 
                 <div style={styles.editActions}>
-                  <button onClick={saveWorkout} style={styles.primaryButton}>저장</button>
-                  <button onClick={() => setWorkoutMode("list")} style={styles.cancelButton}>취소</button>
+                  <button onClick={saveWorkout} style={styles.primaryButton}>
+                    저장
+                  </button>
+                  <button onClick={() => setWorkoutMode("list")} style={styles.cancelButton}>
+                    취소
+                  </button>
                 </div>
               </>
             )}
@@ -1180,8 +1312,12 @@ return (
           <section style={styles.whiteModalBox}>
             <div style={styles.whiteModalTop}>
               <div>
-                <h2 style={styles.whiteModalTitle}>{workoutMember.name} 전체 운동기록</h2>
-                <p style={styles.whiteMuted}>중량이나 횟수를 잘못 입력했을 때 여기서 수정할 수 있습니다.</p>
+                <h2 style={styles.whiteModalTitle}>
+                  {workoutMember.name} 전체 운동기록
+                </h2>
+                <p style={styles.whiteMuted}>
+                  중량이나 횟수를 잘못 입력했을 때 여기서 수정할 수 있습니다.
+                </p>
               </div>
 
               <button
@@ -1240,7 +1376,9 @@ return (
                                   />
                                   <input
                                     value={editWorkoutWeight}
-                                    onChange={(e) => setEditWorkoutWeight(e.target.value)}
+                                    onChange={(e) =>
+                                      setEditWorkoutWeight(e.target.value)
+                                    }
                                     placeholder="중량"
                                     type="number"
                                     style={styles.whiteInput}
@@ -1298,9 +1436,7 @@ return (
                       ))
                     )}
 
-                    {session.memo && (
-                      <p style={styles.whiteMemo}>메모: {session.memo}</p>
-                    )}
+                    {session.memo && <p style={styles.whiteMemo}>메모: {session.memo}</p>}
                   </div>
                 );
               })
@@ -1317,13 +1453,19 @@ return (
 
             <div style={styles.ptOptionGrid}>
               {ptOptions.map((amount) => (
-                <button key={amount} onClick={() => addPt(ptModalMember, amount)} style={styles.ptOptionButton}>
+                <button
+                  key={amount}
+                  onClick={() => addPt(ptModalMember, amount)}
+                  style={styles.ptOptionButton}
+                >
                   {amount}회
                 </button>
               ))}
             </div>
 
-            <button onClick={() => setPtModalMember(null)} style={styles.cancelButton}>취소</button>
+            <button onClick={() => setPtModalMember(null)} style={styles.cancelButton}>
+              취소
+            </button>
           </div>
         </div>
       )}
@@ -1336,7 +1478,9 @@ return (
           </span>
 
           {lastAction.type === "pt" && (
-            <button onClick={undo} style={styles.noticeButton}>실행 취소</button>
+            <button onClick={undo} style={styles.noticeButton}>
+              실행 취소
+            </button>
           )}
         </div>
       )}
@@ -1359,7 +1503,9 @@ return (
           />
 
           {isSearching && (
-            <button onClick={() => setSearch("")} style={styles.resetButton}>초기화</button>
+            <button onClick={() => setSearch("")} style={styles.resetButton}>
+              초기화
+            </button>
           )}
         </div>
 
@@ -1370,7 +1516,9 @@ return (
         <h2 style={styles.sectionTitle}>회원 목록</h2>
 
         {filteredMembers.length === 0 ? (
-          <p style={styles.muted}>{isSearching ? "검색 결과가 없습니다." : "회원이 없습니다."}</p>
+          <p style={styles.muted}>
+            {isSearching ? "검색 결과가 없습니다." : "회원이 없습니다."}
+          </p>
         ) : (
           filteredMembers.map((member) => {
             const ptStatus = getPtStatus(member);
@@ -1383,29 +1531,63 @@ return (
                     <h3 style={styles.editTitle}>회원 정보 수정</h3>
 
                     <label style={styles.label}>이름</label>
-                    <input value={editName} onChange={(e) => setEditName(e.target.value)} style={styles.input} />
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      style={styles.input}
+                    />
 
                     <label style={styles.label}>전화번호</label>
-                    <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} style={styles.input} />
+                    <input
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      style={styles.input}
+                    />
 
                     <label style={styles.label}>나이</label>
-                    <input value={editAge} onChange={(e) => setEditAge(e.target.value)} type="number" style={styles.input} />
+                    <input
+                      value={editAge}
+                      onChange={(e) => setEditAge(e.target.value)}
+                      type="number"
+                      style={styles.input}
+                    />
 
                     <label style={styles.label}>키(cm)</label>
-                    <input value={editHeight} onChange={(e) => setEditHeight(e.target.value)} type="number" style={styles.input} />
+                    <input
+                      value={editHeight}
+                      onChange={(e) => setEditHeight(e.target.value)}
+                      type="number"
+                      style={styles.input}
+                    />
 
                     <label style={styles.label}>목표</label>
-                    <input value={editGoal} onChange={(e) => setEditGoal(e.target.value)} style={styles.input} />
+                    <input
+                      value={editGoal}
+                      onChange={(e) => setEditGoal(e.target.value)}
+                      style={styles.input}
+                    />
 
                     <label style={styles.label}>특이사항</label>
-                    <textarea value={editNote} onChange={(e) => setEditNote(e.target.value)} style={styles.textarea} />
+                    <textarea
+                      value={editNote}
+                      onChange={(e) => setEditNote(e.target.value)}
+                      style={styles.textarea}
+                    />
 
                     <label style={styles.label}>트레이너 메모</label>
-                    <textarea value={editMemo} onChange={(e) => setEditMemo(e.target.value)} style={styles.textarea} />
+                    <textarea
+                      value={editMemo}
+                      onChange={(e) => setEditMemo(e.target.value)}
+                      style={styles.textarea}
+                    />
 
                     <div style={styles.editActions}>
-                      <button onClick={() => saveEdit(member.id)} style={styles.primaryButton}>저장</button>
-                      <button onClick={() => setEditingId(null)} style={styles.cancelButton}>취소</button>
+                      <button onClick={() => saveEdit(member.id)} style={styles.primaryButton}>
+                        저장
+                      </button>
+                      <button onClick={() => setEditingId(null)} style={styles.cancelButton}>
+                        취소
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -1438,12 +1620,24 @@ return (
                       </div>
 
                       <div style={styles.buttonGrid}>
-                        <button onClick={() => minusPt(member)} style={styles.redButton}>1회 차감</button>
-                        <button onClick={() => setPtModalMember(member)} style={styles.whiteButton}>이용권 추가</button>
-                        <button onClick={() => checkAttendance(member)} style={styles.blueButton}>출석 체크</button>
-                        <button onClick={() => openWorkout(member)} style={styles.greenButton}>운동 기록</button>
-                        <button onClick={() => startEdit(member)} style={styles.darkButton}>수정</button>
-                        <button onClick={() => deleteMember(member)} style={styles.deleteButton}>삭제</button>
+                        <button onClick={() => minusPt(member)} style={styles.redButton}>
+                          1회 차감
+                        </button>
+                        <button onClick={() => setPtModalMember(member)} style={styles.whiteButton}>
+                          이용권 추가
+                        </button>
+                        <button onClick={() => checkAttendance(member)} style={styles.blueButton}>
+                          출석 체크
+                        </button>
+                        <button onClick={() => openWorkout(member)} style={styles.greenButton}>
+                          운동 기록
+                        </button>
+                        <button onClick={() => startEdit(member)} style={styles.darkButton}>
+                          수정
+                        </button>
+                        <button onClick={() => deleteMember(member)} style={styles.deleteButton}>
+                          삭제
+                        </button>
                       </div>
                     </div>
                   </>
@@ -2000,7 +2194,7 @@ const styles = {
     justifyContent: "space-between",
     gap: 12,
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   whiteWorkoutDate: {
     fontSize: 20,
