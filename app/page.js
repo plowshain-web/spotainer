@@ -244,6 +244,11 @@ export default function Page() {
       return;
     }
 
+    if (schedule.status === "cancelled") {
+      alert("취소 처리된 스케줄입니다. 스케줄을 새로 등록하세요.");
+      return;
+    }
+
     const attendedToday = member.latest_visit && isToday(member.latest_visit);
     const ptUsedToday = member.latest_pt && isToday(member.latest_pt);
 
@@ -316,6 +321,41 @@ export default function Page() {
     }
 
     await loadMembers();
+    await loadSchedules(getTodayDateString());
+  }
+
+  async function markScheduleCancelled(schedule) {
+    const member = getScheduleMember(schedule);
+    const memberName = member?.name || "해당 회원";
+
+    if (schedule.status === "completed") {
+      alert("이미 수업 완료 처리된 스케줄입니다.");
+      return;
+    }
+
+    if (schedule.status === "noshow") {
+      alert("이미 노쇼 처리된 스케줄입니다.");
+      return;
+    }
+
+    if (
+      !confirm(
+        `${memberName} 스케줄을 취소 처리할까요?\n출석 기록과 PT 차감은 하지 않습니다.`
+      )
+    ) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from("schedules")
+      .update({ status: "cancelled" })
+      .eq("id", schedule.id);
+
+    if (error) {
+      alert("취소 처리 실패: " + error.message);
+      return;
+    }
+
     await loadSchedules(getTodayDateString());
   }
 
@@ -1130,7 +1170,11 @@ export default function Page() {
   }
 
   const incompleteSchedules = schedules.filter((schedule) => {
-    if (schedule.status === "noshow" || schedule.status === "completed") return false;
+    if (
+      schedule.status === "noshow" ||
+      schedule.status === "completed" ||
+      schedule.status === "cancelled"
+    ) return false;
 
     const member = getScheduleMember(schedule);
     if (!member) return false;
@@ -1185,6 +1229,7 @@ export default function Page() {
               const attendedToday = member?.latest_visit && isToday(member.latest_visit);
               const ptUsedToday = member?.latest_pt && isToday(member.latest_pt);
               const isNoShow = schedule.status === "noshow";
+              const isCancelled = schedule.status === "cancelled";
               const isCompleted = schedule.status === "completed" || (attendedToday && ptUsedToday);
 
               return (
@@ -1227,6 +1272,13 @@ export default function Page() {
                       style={styles.incompleteNoShowButton}
                     >
                       노쇼
+                    </button>
+
+                    <button
+                      onClick={() => markScheduleCancelled(schedule)}
+                      style={styles.incompleteCancelScheduleButton}
+                    >
+                      취소
                     </button>
                   </div>
                 </div>
@@ -1273,7 +1325,13 @@ export default function Page() {
                       </p>
 
                       <div style={styles.scheduleStatusRow}>
-                        {isNoShow ? (
+                        {isCancelled ? (
+                          <>
+                            <span style={styles.scheduleCancelText}>취소</span>
+                            <span style={styles.scheduleWarningText}>출석 없음</span>
+                            <span style={styles.scheduleWarningText}>차감 없음</span>
+                          </>
+                        ) : isNoShow ? (
                           <>
                             <span style={styles.scheduleNoShowText}>노쇼</span>
                             <span style={styles.scheduleWarningText}>출석 없음</span>
@@ -1302,24 +1360,24 @@ export default function Page() {
                     <button
                       onClick={() => completeScheduleClass(schedule)}
                       style={
-                        isNoShow || isCompleted
+                        isNoShow || isCancelled || isCompleted
                           ? styles.scheduleDisabledButton
                           : styles.scheduleCompleteButton
                       }
-                      disabled={!!(isNoShow || isCompleted)}
+                      disabled={!!(isNoShow || isCancelled || isCompleted)}
                     >
-                      {isNoShow ? "노쇼" : isCompleted ? "완료됨" : "수업 완료"}
+                      {isCancelled ? "취소됨" : isNoShow ? "노쇼" : isCompleted ? "완료됨" : "수업 완료"}
                     </button>
 
                     <div style={styles.scheduleSubActionRow}>
                       <button
                         onClick={() => scheduleCheckAttendance(schedule)}
                         style={
-                          isNoShow || attendedToday
+                          isNoShow || isCancelled || attendedToday
                             ? styles.scheduleDisabledSmallButton
                             : styles.scheduleMiniButton
                         }
-                        disabled={!!(isNoShow || attendedToday)}
+                        disabled={!!(isNoShow || isCancelled || attendedToday)}
                       >
                         {attendedToday ? "출석완료" : "출석만"}
                       </button>
@@ -1327,23 +1385,33 @@ export default function Page() {
                       <button
                         onClick={() => scheduleMinusPt(schedule)}
                         style={
-                          isNoShow || ptUsedToday
+                          isNoShow || isCancelled || ptUsedToday
                             ? styles.scheduleDisabledSmallButton
                             : styles.scheduleMiniDanger
                         }
-                        disabled={!!(isNoShow || ptUsedToday)}
+                        disabled={!!(isNoShow || isCancelled || ptUsedToday)}
                       >
                         {ptUsedToday ? "차감완료" : "차감만"}
                       </button>
                     </div>
 
-                    <button
-                      onClick={() => markScheduleNoShow(schedule)}
-                      style={isNoShow || isCompleted ? styles.scheduleDisabledButton : styles.scheduleNoShowButton}
-                      disabled={!!(isNoShow || isCompleted)}
-                    >
-                      노쇼
-                    </button>
+                    <div style={styles.scheduleSubActionRow}>
+                      <button
+                        onClick={() => markScheduleNoShow(schedule)}
+                        style={isNoShow || isCancelled || isCompleted ? styles.scheduleDisabledSmallButton : styles.scheduleNoShowButton}
+                        disabled={!!(isNoShow || isCancelled || isCompleted)}
+                      >
+                        노쇼
+                      </button>
+
+                      <button
+                        onClick={() => markScheduleCancelled(schedule)}
+                        style={isNoShow || isCancelled || isCompleted ? styles.scheduleDisabledSmallButton : styles.scheduleCancelButton}
+                        disabled={!!(isNoShow || isCancelled || isCompleted)}
+                      >
+                        취소
+                      </button>
+                    </div>
 
                     <button onClick={() => deleteSchedule(schedule)} style={styles.scheduleDeleteButton}>
                       삭제
@@ -2261,16 +2329,16 @@ const styles = {
   },
   scheduleList: {
     display: "grid",
-    gap: 10,
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: 12,
   },
   scheduleItem: {
     background: "#202020",
     border: "1px solid #333",
     borderRadius: 18,
     padding: 14,
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
+    display: "grid",
+    gridTemplateColumns: "1fr",
     gap: 12,
   },
   scheduleMain: {
@@ -2328,11 +2396,19 @@ const styles = {
     fontSize: 12,
     fontWeight: 900,
   },
+  scheduleCancelText: {
+    color: "#ddd",
+    background: "#262626",
+    border: "1px solid #555",
+    borderRadius: 999,
+    padding: "4px 8px",
+    fontSize: 12,
+    fontWeight: 900,
+  },
   scheduleActionRow: {
     display: "grid",
     gridTemplateColumns: "1fr",
     gap: 8,
-    minWidth: 76,
   },
   scheduleCompleteButton: {
     background: "#f5f5f5",
@@ -2373,6 +2449,16 @@ const styles = {
     background: "#3f1111",
     color: "#fca5a5",
     border: "1px solid #7f1d1d",
+    borderRadius: 12,
+    padding: "8px 10px",
+    fontWeight: 900,
+    fontSize: 13,
+    whiteSpace: "nowrap",
+  },
+  scheduleCancelButton: {
+    background: "#181818",
+    color: "#ddd",
+    border: "1px solid #555",
     borderRadius: 12,
     padding: "8px 10px",
     fontWeight: 900,
@@ -2481,6 +2567,16 @@ const styles = {
     background: "#3f1111",
     color: "#fca5a5",
     border: "1px solid #7f1d1d",
+    borderRadius: 12,
+    padding: "10px 12px",
+    fontWeight: 900,
+    fontSize: 14,
+    whiteSpace: "nowrap",
+  },
+  incompleteCancelScheduleButton: {
+    background: "#181818",
+    color: "#ddd",
+    border: "1px solid #555",
     borderRadius: 12,
     padding: "10px 12px",
     fontWeight: 900,
