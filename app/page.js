@@ -239,10 +239,17 @@ export default function Page() {
     const member = getScheduleMember(schedule);
     if (!member) return alert("연결된 회원 정보를 찾을 수 없습니다.");
 
+    if (schedule.status === "noshow") {
+      alert("노쇼 처리된 스케줄입니다. 먼저 노쇼를 취소하거나 스케줄을 새로 등록하세요.");
+      return;
+    }
+
     const attendedToday = member.latest_visit && isToday(member.latest_visit);
     const ptUsedToday = member.latest_pt && isToday(member.latest_pt);
 
     if (attendedToday && ptUsedToday) {
+      await supabase.from("schedules").update({ status: "completed" }).eq("id", schedule.id);
+      await loadSchedules(getTodayDateString());
       alert("이미 출석과 PT 차감이 완료되었습니다.");
       return;
     }
@@ -269,7 +276,34 @@ export default function Page() {
       await minusPt(refreshedMember);
     }
 
+    await supabase.from("schedules").update({ status: "completed" }).eq("id", schedule.id);
+
     await loadMembers();
+    await loadSchedules(getTodayDateString());
+  }
+
+  async function markScheduleNoShow(schedule) {
+    const member = getScheduleMember(schedule);
+    const memberName = member?.name || "해당 회원";
+
+    if (
+      !confirm(
+        `${memberName} 스케줄을 노쇼 처리할까요?\n출석 체크와 PT 차감은 하지 않습니다.`
+      )
+    ) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from("schedules")
+      .update({ status: "noshow" })
+      .eq("id", schedule.id);
+
+    if (error) {
+      alert("노쇼 처리 실패: " + error.message);
+      return;
+    }
+
     await loadSchedules(getTodayDateString());
   }
 
@@ -1084,6 +1118,8 @@ export default function Page() {
   }
 
   const incompleteSchedules = schedules.filter((schedule) => {
+    if (schedule.status === "noshow" || schedule.status === "completed") return false;
+
     const member = getScheduleMember(schedule);
     if (!member) return false;
 
@@ -1136,6 +1172,8 @@ export default function Page() {
               const member = getScheduleMember(schedule);
               const attendedToday = member?.latest_visit && isToday(member.latest_visit);
               const ptUsedToday = member?.latest_pt && isToday(member.latest_pt);
+              const isNoShow = schedule.status === "noshow";
+              const isCompleted = schedule.status === "completed" || (attendedToday && ptUsedToday);
 
               return (
                 <div key={schedule.id} style={styles.incompleteItem}>
@@ -1164,12 +1202,21 @@ export default function Page() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => completeScheduleClass(schedule)}
-                    style={styles.incompleteCompleteButton}
-                  >
-                    수업 완료
-                  </button>
+                  <div style={styles.incompleteButtonGroup}>
+                    <button
+                      onClick={() => completeScheduleClass(schedule)}
+                      style={styles.incompleteCompleteButton}
+                    >
+                      수업 완료
+                    </button>
+
+                    <button
+                      onClick={() => markScheduleNoShow(schedule)}
+                      style={styles.incompleteNoShowButton}
+                    >
+                      노쇼
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -1212,16 +1259,22 @@ export default function Page() {
                       </p>
 
                       <div style={styles.scheduleStatusRow}>
-                        {attendedToday ? (
-                          <span style={styles.scheduleDoneText}>출석 완료</span>
+                        {isNoShow ? (
+                          <span style={styles.scheduleNoShowText}>노쇼</span>
                         ) : (
-                          <span style={styles.scheduleWarningText}>출석 전</span>
-                        )}
+                          <>
+                            {attendedToday ? (
+                              <span style={styles.scheduleDoneText}>출석 완료</span>
+                            ) : (
+                              <span style={styles.scheduleWarningText}>출석 전</span>
+                            )}
 
-                        {ptUsedToday ? (
-                          <span style={styles.scheduleDoneText}>차감 완료</span>
-                        ) : (
-                          <span style={styles.scheduleWarningText}>차감 전</span>
+                            {ptUsedToday ? (
+                              <span style={styles.scheduleDoneText}>차감 완료</span>
+                            ) : (
+                              <span style={styles.scheduleWarningText}>차감 전</span>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
@@ -1231,24 +1284,24 @@ export default function Page() {
                     <button
                       onClick={() => completeScheduleClass(schedule)}
                       style={
-                        attendedToday && ptUsedToday
+                        isNoShow || isCompleted
                           ? styles.scheduleDisabledButton
                           : styles.scheduleCompleteButton
                       }
-                      disabled={!!(attendedToday && ptUsedToday)}
+                      disabled={!!(isNoShow || isCompleted)}
                     >
-                      {attendedToday && ptUsedToday ? "완료됨" : "수업 완료"}
+                      {isNoShow ? "노쇼" : isCompleted ? "완료됨" : "수업 완료"}
                     </button>
 
                     <div style={styles.scheduleSubActionRow}>
                       <button
                         onClick={() => scheduleCheckAttendance(schedule)}
                         style={
-                          attendedToday
+                          isNoShow || attendedToday
                             ? styles.scheduleDisabledSmallButton
                             : styles.scheduleMiniButton
                         }
-                        disabled={!!attendedToday}
+                        disabled={!!(isNoShow || attendedToday)}
                       >
                         {attendedToday ? "출석완료" : "출석만"}
                       </button>
@@ -1256,15 +1309,23 @@ export default function Page() {
                       <button
                         onClick={() => scheduleMinusPt(schedule)}
                         style={
-                          ptUsedToday
+                          isNoShow || ptUsedToday
                             ? styles.scheduleDisabledSmallButton
                             : styles.scheduleMiniDanger
                         }
-                        disabled={!!ptUsedToday}
+                        disabled={!!(isNoShow || ptUsedToday)}
                       >
                         {ptUsedToday ? "차감완료" : "차감만"}
                       </button>
                     </div>
+
+                    <button
+                      onClick={() => markScheduleNoShow(schedule)}
+                      style={isNoShow || isCompleted ? styles.scheduleDisabledButton : styles.scheduleNoShowButton}
+                      disabled={!!(isNoShow || isCompleted)}
+                    >
+                      노쇼
+                    </button>
 
                     <button onClick={() => deleteSchedule(schedule)} style={styles.scheduleDeleteButton}>
                       삭제
@@ -2240,6 +2301,15 @@ const styles = {
     fontSize: 12,
     fontWeight: 900,
   },
+  scheduleNoShowText: {
+    color: "#fecaca",
+    background: "#3f1111",
+    border: "1px solid #7f1d1d",
+    borderRadius: 999,
+    padding: "4px 8px",
+    fontSize: 12,
+    fontWeight: 900,
+  },
   scheduleActionRow: {
     display: "grid",
     gridTemplateColumns: "1fr",
@@ -2279,6 +2349,16 @@ const styles = {
     padding: "7px 8px",
     fontWeight: 900,
     fontSize: 12,
+    whiteSpace: "nowrap",
+  },
+  scheduleNoShowButton: {
+    background: "#3f1111",
+    color: "#fca5a5",
+    border: "1px solid #7f1d1d",
+    borderRadius: 12,
+    padding: "8px 10px",
+    fontWeight: 900,
+    fontSize: 13,
     whiteSpace: "nowrap",
   },
   scheduleDisabledButton: {
@@ -2367,6 +2447,22 @@ const styles = {
     background: "#f5f5f5",
     color: "#111",
     border: "1px solid #ffffff",
+    borderRadius: 12,
+    padding: "10px 12px",
+    fontWeight: 900,
+    fontSize: 14,
+    whiteSpace: "nowrap",
+  },
+  incompleteButtonGroup: {
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: 8,
+    minWidth: 92,
+  },
+  incompleteNoShowButton: {
+    background: "#3f1111",
+    color: "#fca5a5",
+    border: "1px solid #7f1d1d",
     borderRadius: 12,
     padding: "10px 12px",
     fontWeight: 900,
