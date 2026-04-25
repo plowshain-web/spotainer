@@ -2410,15 +2410,19 @@ const styles = {
     gap: 8,
   },
   scheduleCompleteButton: {
-    background: "#f5f5f5",
-    color: "#111",
-    border: "1px solid #ffffff",
-    borderRadius: 12,
-    padding: "12px 12px",
-    fontWeight: 900,
-    fontSize: 15,
-    whiteSpace: "nowrap",
-  },
+  background: "#ffffff",
+  color: "#000",
+  border: "1px solid #ffffff",
+  borderRadius: 14,
+  padding: "14px 12px",
+  fontWeight: 900,
+  fontSize: 16,
+  whiteSpace: "nowrap",
+
+  // 👇 핵심: 살짝 튀게 (고급스럽게)
+  boxShadow: "0 4px 12px rgba(255,255,255,0.08)",
+  transform: "scale(1.02)",
+},
   scheduleSubActionRow: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
