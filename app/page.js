@@ -100,7 +100,8 @@ export default function Page() {
     setMembers(formatted);
   }
 
-  const filteredMembers = members.filter((member) => {
+  const filteredMembers = members
+  .filter((member) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
 
@@ -108,8 +109,20 @@ export default function Page() {
       member.name?.toLowerCase().includes(q) ||
       member.phone?.toLowerCase().includes(q)
     );
-  });
+  })
+  .sort((a, b) => {
+    const ptA = a.pt_remaining || 0;
+    const ptB = b.pt_remaining || 0;
 
+    if (ptA !== ptB) return ptA - ptB;
+
+    const daysA = daysSince(a.latest_visit) ?? 999;
+    const daysB = daysSince(b.latest_visit) ?? 999;
+
+    if (daysA !== daysB) return daysB - daysA;
+
+    return new Date(b.created_at) - new Date(a.created_at);
+  });
   function daysSince(date) {
     if (!date) return null;
     return Math.floor(
