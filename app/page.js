@@ -284,14 +284,25 @@ export default function Page() {
 
   async function markScheduleNoShow(schedule) {
     const member = getScheduleMember(schedule);
-    const memberName = member?.name || "해당 회원";
+    if (!member) return alert("연결된 회원 정보를 찾을 수 없습니다.");
+
+    if (schedule.status === "completed") {
+      alert("이미 수업 완료 처리된 스케줄입니다.");
+      return;
+    }
+
+    const ptUsedToday = member.latest_pt && isToday(member.latest_pt);
 
     if (
       !confirm(
-        `${memberName} 스케줄을 노쇼 처리할까요?\n출석 체크와 PT 차감은 하지 않습니다.`
+        `${member.name} 노쇼 처리할까요?\n출석은 기록하지 않고 PT 1회만 차감됩니다.`
       )
     ) {
       return;
+    }
+
+    if (!ptUsedToday) {
+      await minusPt(member);
     }
 
     const { error } = await supabase
@@ -304,6 +315,7 @@ export default function Page() {
       return;
     }
 
+    await loadMembers();
     await loadSchedules(getTodayDateString());
   }
 
@@ -1262,7 +1274,11 @@ export default function Page() {
 
                       <div style={styles.scheduleStatusRow}>
                         {isNoShow ? (
-                          <span style={styles.scheduleNoShowText}>노쇼</span>
+                          <>
+                            <span style={styles.scheduleNoShowText}>노쇼</span>
+                            <span style={styles.scheduleWarningText}>출석 없음</span>
+                            <span style={styles.scheduleDoneText}>차감 완료</span>
+                          </>
                         ) : (
                           <>
                             {attendedToday ? (
