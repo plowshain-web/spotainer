@@ -206,8 +206,33 @@ export default function Page() {
   }
 
   function openScheduleMember(schedule) {
-    if (!schedule.members) return alert("연결된 회원 정보를 찾을 수 없습니다.");
-    openDetail(schedule.members, "menu");
+    const member = getFreshMember(schedule.member_id) || schedule.members;
+    if (!member) return alert("연결된 회원 정보를 찾을 수 없습니다.");
+    openDetail(member, "menu");
+  }
+
+  function getFreshMember(memberId) {
+    return members.find((member) => member.id === memberId);
+  }
+
+  function getScheduleMember(schedule) {
+    return getFreshMember(schedule.member_id) || schedule.members;
+  }
+
+  async function scheduleCheckAttendance(schedule) {
+    const member = getScheduleMember(schedule);
+    if (!member) return alert("연결된 회원 정보를 찾을 수 없습니다.");
+
+    await checkAttendance(member, true);
+    await loadSchedules(getTodayDateString());
+  }
+
+  async function scheduleMinusPt(schedule) {
+    const member = getScheduleMember(schedule);
+    if (!member) return alert("연결된 회원 정보를 찾을 수 없습니다.");
+
+    await minusPt(member);
+    await loadSchedules(getTodayDateString());
   }
 
   const filteredMembers = members
@@ -417,6 +442,7 @@ export default function Page() {
     });
 
     await loadMembers();
+    await loadSchedules(getTodayDateString());
   }
 
   async function addPt(member, amount) {
@@ -453,6 +479,7 @@ export default function Page() {
     }
 
     await loadMembers();
+    await loadSchedules(getTodayDateString());
   }
 
   async function cancelPtUse(log) {
@@ -508,7 +535,7 @@ export default function Page() {
     loadMembers();
   }
 
-  async function checkAttendance(member) {
+  async function checkAttendance(member, askPtAfter = false) {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tomorrowStart = new Date(
@@ -542,7 +569,16 @@ export default function Page() {
     });
 
     alert(`${member.name} 출석 체크되었습니다.`);
-    loadMembers();
+
+    await loadMembers();
+    await loadSchedules(getTodayDateString());
+
+    if (askPtAfter && confirm(`${member.name} PT도 1회 차감할까요?`)) {
+      await minusPt({
+        ...member,
+        pt_remaining: member.pt_remaining || 0,
+      });
+    }
   }
 
   async function markContacted(member) {
@@ -1050,25 +1086,55 @@ export default function Page() {
           <p style={styles.muted}>오늘 등록된 스케줄이 없습니다.</p>
         ) : (
           <div style={styles.scheduleList}>
-            {schedules.map((schedule) => (
-              <div key={schedule.id} style={styles.scheduleItem}>
-                <div onClick={() => openScheduleMember(schedule)} style={styles.scheduleMain}>
-                  <div style={styles.scheduleTime}>{formatTime(schedule.start_time)}</div>
-                  <div>
-                    <strong style={styles.scheduleMemberName}>
-                      {getScheduleTypeText(schedule.type)} · {schedule.members?.name || "회원 정보 없음"}
-                    </strong>
-                    <p style={styles.scheduleMemo}>
-                      {schedule.memo ? schedule.memo : "메모 없음"}
-                    </p>
+            {schedules.map((schedule) => {
+              const member = getScheduleMember(schedule);
+              const attendedToday = member?.latest_visit && isToday(member.latest_visit);
+              const ptUsedToday = member?.latest_pt && isToday(member.latest_pt);
+
+              return (
+                <div key={schedule.id} style={styles.scheduleItem}>
+                  <div onClick={() => openScheduleMember(schedule)} style={styles.scheduleMain}>
+                    <div style={styles.scheduleTime}>{formatTime(schedule.start_time)}</div>
+                    <div>
+                      <strong style={styles.scheduleMemberName}>
+                        {getScheduleTypeText(schedule.type)} · {member?.name || "회원 정보 없음"}
+                        {member ? ` (${member.pt_remaining || 0}회)` : ""}
+                      </strong>
+                      <p style={styles.scheduleMemo}>
+                        {schedule.memo ? schedule.memo : "메모 없음"}
+                      </p>
+
+                      <div style={styles.scheduleStatusRow}>
+                        {attendedToday && <span style={styles.scheduleDoneText}>출석 완료</span>}
+                        {ptUsedToday && <span style={styles.scheduleDoneText}>차감 완료</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={styles.scheduleActionRow}>
+                    <button
+                      onClick={() => scheduleCheckAttendance(schedule)}
+                      style={attendedToday ? styles.scheduleDisabledButton : styles.scheduleMiniButton}
+                      disabled={!!attendedToday}
+                    >
+                      {attendedToday ? "출석완료" : "출석"}
+                    </button>
+
+                    <button
+                      onClick={() => scheduleMinusPt(schedule)}
+                      style={ptUsedToday ? styles.scheduleDisabledButton : styles.scheduleMiniDanger}
+                      disabled={!!ptUsedToday}
+                    >
+                      {ptUsedToday ? "차감완료" : "차감"}
+                    </button>
+
+                    <button onClick={() => deleteSchedule(schedule)} style={styles.scheduleDeleteButton}>
+                      삭제
+                    </button>
                   </div>
                 </div>
-
-                <button onClick={() => deleteSchedule(schedule)} style={styles.scheduleDeleteButton}>
-                  삭제
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
@@ -2011,6 +2077,54 @@ const styles = {
     color: "#aaa",
     fontSize: 13,
     margin: "5px 0 0",
+  },
+  scheduleStatusRow: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 8,
+  },
+  scheduleDoneText: {
+    color: "#d7fff3",
+    background: "#263a36",
+    border: "1px solid #3f5f58",
+    borderRadius: 999,
+    padding: "4px 8px",
+    fontSize: 12,
+    fontWeight: 900,
+  },
+  scheduleActionRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: 8,
+    minWidth: 76,
+  },
+  scheduleMiniButton: {
+    background: "#1d4ed8",
+    color: "#fff",
+    border: "1px solid #2563eb",
+    borderRadius: 12,
+    padding: "8px 10px",
+    fontWeight: 900,
+    fontSize: 13,
+  },
+  scheduleMiniDanger: {
+    background: "#7f1d1d",
+    color: "#fee2e2",
+    border: "1px solid #991b1b",
+    borderRadius: 12,
+    padding: "8px 10px",
+    fontWeight: 900,
+    fontSize: 13,
+  },
+  scheduleDisabledButton: {
+    background: "#2a2a2a",
+    color: "#777",
+    border: "1px solid #3a3a3a",
+    borderRadius: 12,
+    padding: "8px 10px",
+    fontWeight: 900,
+    fontSize: 13,
   },
   scheduleDeleteButton: {
     background: "#3f1111",
