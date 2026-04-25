@@ -2431,13 +2431,16 @@ export default function Page() {
                         PT {member.pt_remaining}회
                       </div>
 
-                      <button
-                        onClick={() => openPtModal(member)}
-                        style={styles.cardPtAddButton}
-                      >
-                        + 이용권
-                      </button>
-                    </div>
+                        <button
+  onClick={(e) => {
+    e.stopPropagation();
+    openPtModal(member);
+  }}
+  style={styles.cardPtAddButton}
+>
+  + 이용권
+</button>
+                          </div>
 
                     <p style={styles.phoneSmall}>
                       {member.age ? `${member.age}세 · ` : ""}
