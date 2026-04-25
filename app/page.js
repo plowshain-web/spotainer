@@ -1313,7 +1313,14 @@ export default function Page() {
               const isCompleted = schedule.status === "completed" || (attendedToday && ptUsedToday);
 
               return (
-                <div key={schedule.id} style={styles.scheduleItem}>
+                <div
+                  key={schedule.id}
+                  style={{
+                    ...styles.scheduleItem,
+                    ...(isNoShow ? styles.scheduleItemNoShow : {}),
+                    ...(isCancelled ? styles.scheduleItemCancelled : {}),
+                  }}
+                >
                   <div onClick={() => openScheduleMember(schedule)} style={styles.scheduleMain}>
                     <div style={styles.scheduleTime}>{formatTime(schedule.start_time)}</div>
                     <div>
@@ -2324,6 +2331,15 @@ const styles = {
     gridTemplateColumns: "1fr",
     gap: 10,
   },
+  scheduleItemNoShow: {
+    background: "linear-gradient(180deg, #211b1b 0%, #1c1414 100%)",
+    border: "1px solid #5a1f1f",
+  },
+  scheduleItemCancelled: {
+    background: "#1a1a1a",
+    border: "1px solid #2f2f2f",
+    opacity: 0.62,
+  },
   scheduleMain: {
     display: "flex",
     alignItems: "center",
@@ -2371,18 +2387,18 @@ const styles = {
     fontWeight: 900,
   },
   scheduleNoShowText: {
-    color: "#fecaca",
-    background: "#3f1111",
-    border: "1px solid #7f1d1d",
+    color: "#fca5a5",
+    background: "#351414",
+    border: "1px solid #6b2424",
     borderRadius: 999,
     padding: "4px 8px",
     fontSize: 12,
     fontWeight: 900,
   },
   scheduleCancelText: {
-    color: "#ddd",
-    background: "#262626",
-    border: "1px solid #555",
+    color: "#bdbdbd",
+    background: "#242424",
+    border: "1px solid #444",
     borderRadius: 999,
     padding: "4px 8px",
     fontSize: 12,
@@ -2429,9 +2445,9 @@ const styles = {
     whiteSpace: "nowrap",
   },
   scheduleNoShowButton: {
-    background: "#3f1111",
+    background: "#2a1818",
     color: "#fca5a5",
-    border: "1px solid #7f1d1d",
+    border: "1px solid #5a1f1f",
     borderRadius: 12,
     padding: "8px 10px",
     fontWeight: 900,
