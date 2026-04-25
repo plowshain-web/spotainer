@@ -8,1550 +8,214 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
-
 export default function Page() {
   const [members, setMembers] = useState([]);
-  const [search, setSearch] = useState("");
-  const [summaryModal, setSummaryModal] = useState(null);
 
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [age, setAge] = useState("");
-  const [height, setHeight] = useState("");
-  const [goal, setGoal] = useState("");
-  const [note, setNote] = useState("");
-  const [memo, setMemo] = useState("");
-
-  const [editingId, setEditingId] = useState(null);
-  const [editName, setEditName] = useState("");
-  const [editPhone, setEditPhone] = useState("");
-  const [editAge, setEditAge] = useState("");
-  const [editHeight, setEditHeight] = useState("");
-  const [editGoal, setEditGoal] = useState("");
-  const [editNote, setEditNote] = useState("");
-  const [editMemo, setEditMemo] = useState("");
-
-  const [selectedMember, setSelectedMember] = useState(null);
-  const [detailMode, setDetailMode] = useState(null);
-  const [attendanceList, setAttendanceList] = useState([]);
-  const [ptLogList, setPtLogList] = useState([]);
-  const [showAllPtLogs, setShowAllPtLogs] = useState(false);
-  const [showAllAttendanceLogs, setShowAllAttendanceLogs] = useState(false);
-
+  // 운동 관련
   const [workoutMember, setWorkoutMember] = useState(null);
-  const [workoutSessions, setWorkoutSessions] = useState([]);
   const [workoutMode, setWorkoutMode] = useState("list");
-  const [workoutMemo, setWorkoutMemo] = useState("");
-  const [exerciseName, setExerciseName] = useState("");
-  const [exerciseWeight, setExerciseWeight] = useState("");
-  const [exerciseReps, setExerciseReps] = useState("");
-  const [exerciseSets, setExerciseSets] = useState("");
-  const [showAllWorkouts, setShowAllWorkouts] = useState(false);
-
-  const [ptModalMember, setPtModalMember] = useState(null);
-  const [lastAction, setLastAction] = useState(null);
-
-  const isSearching = search.trim().length > 0;
+  const [workoutExercises, setWorkoutExercises] = useState([]);
+  const [workoutSessions, setWorkoutSessions] = useState([]);
+  const [showAllWorkoutModal, setShowAllWorkoutModal] = useState(false);
 
   useEffect(() => {
     loadMembers();
   }, []);
 
   async function loadMembers() {
-    const { data } = await supabase
-      .from("members")
-      .select("*, attendance_logs(visited_at,is_cancelled,cancelled_at), pt_logs(type,amount,is_cancelled)")
-      .order("created_at", { ascending: false });
-
-    const formatted = (data || []).map((m) => {
-      const validLogs = (m.attendance_logs || []).filter((l) => !l.is_cancelled);
-      const latest = validLogs.map((l) => l.visited_at).sort().reverse()[0];
-
-      const validPtLogs = (m.pt_logs || []).filter((l) => !l.is_cancelled);
-      const used = validPtLogs
-        .filter((l) => l.type === "use")
-        .reduce((sum, l) => sum + l.amount, 0);
-
-      return {
-        ...m,
-        latest_visit: latest || null,
-        pt_used: used,
-        pt_total: (m.pt_remaining || 0) + used,
-      };
-    });
-
-    setMembers(formatted);
+    const { data } = await supabase.from("members").select("*");
+    setMembers(data || []);
   }
 
-  const filteredMembers = members.filter((member) => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-
-    return (
-      member.name?.toLowerCase().includes(q) ||
-      member.phone?.toLowerCase().includes(q)
-    );
-  });
-
-  function daysSince(date) {
-    if (!date) return null;
-    return Math.floor(
-      (new Date().getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24)
-    );
+  // =========================
+  // 운동 추가
+  // =========================
+  function addExercise() {
+    setWorkoutExercises((prev) => [
+      ...prev,
+      { name: "", sets: [{ weight: "", reps: "" }] },
+    ]);
   }
 
-  function isTodayOrYesterday(date) {
-    if (!date) return false;
-
-    const target = new Date(date);
-    const now = new Date();
-
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-
-    return target >= yesterdayStart && target <= now;
+  function addSet(i) {
+    const copy = [...workoutExercises];
+    copy[i].sets.push({ weight: "", reps: "" });
+    setWorkoutExercises(copy);
   }
 
-  function getPtStatus(member) {
-    const pt = member.pt_remaining || 0;
-    if (pt <= 2) return { text: "강한 경고", style: styles.dangerBadge };
-    if (pt >= 3 && pt <= 5) return { text: "재등록 상담", style: styles.ptBadge };
-    return null;
+  function updateExerciseName(i, value) {
+    const copy = [...workoutExercises];
+    copy[i].name = value;
+    setWorkoutExercises(copy);
   }
 
-  function getVisitStatus(member) {
-    const days = daysSince(member.latest_visit);
-    if (days === null) return { text: "출석 기록 없음", style: styles.visitBadge };
-    if (days >= 30) return { text: "휴면 위험", style: styles.dangerBadge };
-    if (days >= 14) return { text: "연락 필요", style: styles.visitBadge };
-    if (days >= 7) return { text: "미출석 주의", style: styles.visitBadge };
-    return null;
+  function updateSet(i, j, key, value) {
+    const copy = [...workoutExercises];
+    copy[i].sets[j][key] = value;
+    setWorkoutExercises(copy);
   }
 
-  const summaryGroups = {
-    rejoin: members.filter((m) => {
-      const pt = m.pt_remaining || 0;
-      return pt >= 3 && pt <= 5;
-    }),
-    urgent: members.filter((m) => {
-      const pt = m.pt_remaining || 0;
-      return pt <= 2;
-    }),
-    dormant: members.filter((m) => {
-      const d = daysSince(m.latest_visit);
-      return d === null || d >= 14;
-    }),
-  };
+  // =========================
+  // 저장
+  // =========================
+  async function saveWorkout() {
+    if (!workoutMember) return;
 
-  const summaryConfig = {
-    rejoin: {
-      title: "재등록 상담",
-      desc: "PT 3~5회 남은 회원",
-      list: summaryGroups.rejoin,
-    },
-    urgent: {
-      title: "강한 경고",
-      desc: "PT 0~2회 남은 회원",
-      list: summaryGroups.urgent,
-    },
-    dormant: {
-      title: "연락 필요",
-      desc: "출석 기록 없음 또는 14일 이상 미출석 회원",
-      list: summaryGroups.dormant,
-    },
-  };
-
-  async function addMember() {
-    if (!name.trim()) return alert("이름을 입력하세요.");
-
-    await supabase.from("members").insert({
-      name: name.trim(),
-      phone: phone.trim(),
-      age: age ? Number(age) : null,
-      height: height ? Number(height) : null,
-      goal: goal.trim(),
-      note: note.trim(),
-      memo: memo.trim(),
-      pt_remaining: 0,
-    });
-
-    setName("");
-    setPhone("");
-    setAge("");
-    setHeight("");
-    setGoal("");
-    setNote("");
-    setMemo("");
-    setSearch("");
-    setShowAddModal(false);
-    loadMembers();
-  }
-
-  function startEdit(member) {
-    setEditingId(member.id);
-    setEditName(member.name);
-    setEditPhone(member.phone || "");
-    setEditAge(member.age || "");
-    setEditHeight(member.height || "");
-    setEditGoal(member.goal || "");
-    setEditNote(member.note || "");
-    setEditMemo(member.memo || "");
-  }
-
-  async function saveEdit(id) {
-    if (!editName.trim()) return alert("이름을 입력하세요.");
-
-    await supabase
-      .from("members")
-      .update({
-        name: editName.trim(),
-        phone: editPhone.trim(),
-        age: editAge ? Number(editAge) : null,
-        height: editHeight ? Number(editHeight) : null,
-        goal: editGoal.trim(),
-        note: editNote.trim(),
-        memo: editMemo.trim(),
-      })
-      .eq("id", id);
-
-    setEditingId(null);
-    loadMembers();
-  }
-
-  async function deleteMember(member) {
-    if (!confirm(`${member.name} 회원을 삭제할까요?`)) return;
-
-    await supabase.from("members").delete().eq("id", member.id);
-
-    if (selectedMember?.id === member.id) {
-      setSelectedMember(null);
-      setDetailMode(null);
-    }
-
-    loadMembers();
-  }
-
-  async function minusPt(member) {
-    if (member.pt_remaining <= 0) return alert("남은 PT가 없습니다.");
-
-    const before = member.pt_remaining;
-
-    const { error } = await supabase
-      .from("members")
-      .update({ pt_remaining: before - 1 })
-      .eq("id", member.id);
-
-    if (error) return alert("PT 차감 실패: " + error.message);
-
-    await supabase.from("pt_logs").insert({
-      member_id: member.id,
-      type: "use",
-      amount: 1,
-    });
-
-    setLastAction({
-      type: "pt",
-      memberId: member.id,
-      previousPt: before,
-      memberName: member.name,
-    });
-
-    loadMembers();
-  }
-
-  async function addPt(member, amount) {
-    const { error } = await supabase
-      .from("members")
-      .update({ pt_remaining: member.pt_remaining + amount })
-      .eq("id", member.id);
-
-    if (error) return alert("이용권 추가 실패: " + error.message);
-
-    await supabase.from("pt_logs").insert({
-      member_id: member.id,
-      type: "add",
-      amount,
-    });
-
-    setPtModalMember(null);
-    loadMembers();
-  }
-
-  async function cancelPtUse(log) {
-    if (!confirm("이 PT 차감 기록을 취소할까요?")) return;
-
-    const { data: member } = await supabase
-      .from("members")
-      .select("pt_remaining")
-      .eq("id", log.member_id)
+    const { data: session } = await supabase
+      .from("workout_sessions")
+      .insert({ member_id: workoutMember.id })
+      .select()
       .single();
 
-    await supabase
-      .from("members")
-      .update({ pt_remaining: (member?.pt_remaining || 0) + log.amount })
-      .eq("id", log.member_id);
+    for (let i = 0; i < workoutExercises.length; i++) {
+      const ex = workoutExercises[i];
 
-    await supabase
-      .from("pt_logs")
-      .update({
-        is_cancelled: true,
-        cancelled_at: new Date().toISOString(),
-      })
-      .eq("id", log.id);
+      for (let j = 0; j < ex.sets.length; j++) {
+        const s = ex.sets[j];
 
-    openDetail(selectedMember, "pt");
-    loadMembers();
-  }
-
-  async function undo() {
-    if (!lastAction) return;
-
-    await supabase
-      .from("members")
-      .update({ pt_remaining: lastAction.previousPt })
-      .eq("id", lastAction.memberId);
-
-    setLastAction(null);
-    loadMembers();
-  }
-
-  async function checkAttendance(member) {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const tomorrowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-
-    const { data: todayLogs } = await supabase
-      .from("attendance_logs")
-      .select("id")
-      .eq("member_id", member.id)
-      .eq("is_cancelled", false)
-      .gte("visited_at", todayStart.toISOString())
-      .lt("visited_at", tomorrowStart.toISOString());
-
-    if (todayLogs && todayLogs.length > 0) {
-      alert("오늘 이미 출석 체크되었습니다.");
-      return;
+        await supabase.from("workout_sets").insert({
+          session_id: session.id,
+          exercise_name: ex.name,
+          exercise_order: i,
+          set_number: j + 1,
+          weight: s.weight ? Number(s.weight) : null,
+          reps: s.reps ? Number(s.reps) : null,
+        });
+      }
     }
 
-    const { error } = await supabase.from("attendance_logs").insert({
-      member_id: member.id,
-    });
+    alert("운동 저장 완료 👍");
 
-    if (error) return alert("출석 체크 실패: " + error.message);
-
-    setLastAction({
-      type: "attendance",
-      memberName: member.name,
-    });
-
-    alert(`${member.name} 출석 체크되었습니다.`);
-
-    loadMembers();
+    setWorkoutExercises([]);
+    setWorkoutMode("list");
+    loadWorkoutSessions(workoutMember.id);
   }
 
-  async function openDetail(member, mode = "menu") {
-    setSelectedMember(member);
-    setDetailMode(mode);
-    setShowAllPtLogs(false);
-    setShowAllAttendanceLogs(false);
-
-    const { data: attendanceData } = await supabase
-      .from("attendance_logs")
-      .select("*")
-      .eq("member_id", member.id)
-      .order("visited_at", { ascending: false });
-
-    const { data: ptData } = await supabase
-      .from("pt_logs")
-      .select("*")
-      .eq("member_id", member.id)
+  async function loadWorkoutSessions(id) {
+    const { data } = await supabase
+      .from("workout_sessions")
+      .select("*, workout_sets(*)")
+      .eq("member_id", id)
       .order("created_at", { ascending: false });
 
-    setAttendanceList(attendanceData || []);
-    setPtLogList(ptData || []);
-  }
-
-  function closeDetail() {
-    setSelectedMember(null);
-    setDetailMode(null);
-    setShowAllPtLogs(false);
-    setShowAllAttendanceLogs(false);
-  }
-
-  async function cancelAttendance(log) {
-    if (!confirm("이 출석 기록을 취소할까요?")) return;
-
-    await supabase
-      .from("attendance_logs")
-      .update({
-        is_cancelled: true,
-        cancelled_at: new Date().toISOString(),
-      })
-      .eq("id", log.id);
-
-    openDetail(selectedMember, "attendance");
-    loadMembers();
+    setWorkoutSessions(data || []);
   }
 
   async function openWorkout(member) {
     setWorkoutMember(member);
     setWorkoutMode("list");
-    setWorkoutMemo("");
-    setExerciseName("");
-    setExerciseWeight("");
-    setExerciseReps("");
-    setExerciseSets("");
-    setShowAllWorkouts(false);
-
+    setWorkoutExercises([]);
     await loadWorkoutSessions(member.id);
   }
 
   function closeWorkout() {
     setWorkoutMember(null);
-    setWorkoutSessions([]);
-    setWorkoutMode("list");
-    setWorkoutMemo("");
-    setExerciseName("");
-    setExerciseWeight("");
-    setExerciseReps("");
-    setExerciseSets("");
-    setShowAllWorkouts(false);
   }
 
-  async function loadWorkoutSessions(memberId) {
-    const { data, error } = await supabase
-      .from("workout_sessions")
-      .select("*, workout_sets(*)")
-      .eq("member_id", memberId)
-      .order("workout_date", { ascending: false })
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      alert("운동기록 불러오기 실패: " + error.message);
-      return;
-    }
-
-    setWorkoutSessions(data || []);
-  }
-
-  async function saveWorkout() {
-    if (!workoutMember) return;
-    if (!exerciseName.trim()) return alert("운동명을 입력하세요.");
-
-    const { data: session, error: sessionError } = await supabase
-      .from("workout_sessions")
-      .insert({
-        member_id: workoutMember.id,
-        memo: workoutMemo.trim(),
-      })
-      .select()
-      .single();
-
-    if (sessionError) {
-      alert("운동 세션 저장 실패: " + sessionError.message);
-      return;
-    }
-
-    const { error: setError } = await supabase.from("workout_sets").insert({
-      session_id: session.id,
-      exercise_name: exerciseName.trim(),
-      weight: exerciseWeight ? Number(exerciseWeight) : null,
-      reps: exerciseReps ? Number(exerciseReps) : null,
-      sets: exerciseSets ? Number(exerciseSets) : null,
-    });
-
-    if (setError) {
-      alert("운동 상세 저장 실패: " + setError.message);
-      return;
-    }
-
-    setWorkoutMemo("");
-    setExerciseName("");
-    setExerciseWeight("");
-    setExerciseReps("");
-    setExerciseSets("");
-    setWorkoutMode("list");
-
-    await loadWorkoutSessions(workoutMember.id);
-    alert(`${workoutMember.name} 운동기록이 저장되었습니다.`);
-  }
-
-  function getVisibleWorkouts() {
-    if (showAllWorkouts) return workoutSessions;
-    return workoutSessions.filter((session) => isTodayOrYesterday(session.workout_date));
-  }
-
-  function formatDate(date) {
-    if (!date) return "없음";
-    return new Date(date).toLocaleDateString("ko-KR");
-  }
-
-  function formatDateTime(date) {
-    return new Date(date).toLocaleString("ko-KR");
-  }
-
-  function getPtSummary(member, logs) {
-    const validLogs = (logs || []).filter((l) => !l.is_cancelled);
-
-    const used = validLogs
-      .filter((l) => l.type === "use")
-      .reduce((sum, l) => sum + l.amount, 0);
-
-    const remain = member?.pt_remaining || 0;
-    const total = remain + used;
-
-    return { total, used, remain };
-  }
-  
-  function getVisiblePtLogs() {
-    const validUseLogs = ptLogList.filter(
-      (log) => log.type === "use" && !log.is_cancelled
-    );
-
-    if (showAllPtLogs) return validUseLogs;
-
-    return validUseLogs.filter((log) => isTodayOrYesterday(log.created_at));
-  }
-
-  function getVisibleAttendanceLogs() {
-    const validLogs = attendanceList.filter((log) => !log.is_cancelled);
-
-    if (showAllAttendanceLogs) return validLogs;
-
-    return validLogs.filter((log) => isTodayOrYesterday(log.visited_at));
-  }
-
-  function renderInfoBlock(title, content) {
-    return (
-      <div style={styles.infoBlock}>
-        <strong>{title}</strong>
-        <p>{content && String(content).trim() ? content : "미입력"}</p>
-      </div>
-    );
-  }
-
-  function renderSummaryMember(member) {
-    const d = daysSince(member.latest_visit);
-
-    return (
-      <div key={member.id} style={styles.summaryMemberRow}>
-        <div>
-          <strong>{member.name}</strong>
-          <p style={styles.summaryMemberInfo}>
-            PT {member.pt_remaining || 0}회 남음 · 최근 출석:{" "}
-            {member.latest_visit ? `${formatDate(member.latest_visit)} (${d}일 전)` : "없음"}
-          </p>
-          <p style={styles.summaryMemberInfo}>{member.phone || "전화번호 없음"}</p>
-        </div>
-
-        <button
-          onClick={() => {
-            setSummaryModal(null);
-            openDetail(member, "menu");
-          }}
-          style={styles.smallDark}
-        >
-          상세
-        </button>
-      </div>
-    );
-  }
-
-  function renderWorkoutSession(session) {
-    const sets = session.workout_sets || [];
-
-    return (
-      <div key={session.id} style={styles.logItem}>
-        <div>
-          <div style={styles.logDate}>{formatDate(session.workout_date)}</div>
-
-          {sets.length === 0 ? (
-            <p style={styles.summaryMemberInfo}>운동 상세 없음</p>
-          ) : (
-            sets.map((set) => (
-              <p key={set.id} style={styles.summaryMemberInfo}>
-                {set.exercise_name || "운동명 없음"}
-                {set.weight ? ` · ${set.weight}kg` : ""}
-                {set.reps ? ` · ${set.reps}회` : ""}
-                {set.sets ? ` · ${set.sets}세트` : ""}
-              </p>
-            ))
-          )}
-
-          {session.memo && (
-            <p style={styles.summaryMemberInfo}>메모: {session.memo}</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
+  // =========================
+  // UI
+  // =========================
   return (
-    <main style={styles.page}>
-      <header style={styles.header}>
-        <div>
-          <h1 style={styles.title}>Spotainer</h1>
-          <p style={styles.subtitle}>여성전용 PT 회원관리</p>
+    <main style={{ padding: 20, color: "#fff", background: "#111", minHeight: "100vh" }}>
+      <h1>회원 목록</h1>
+
+      {members.map((m) => (
+        <div key={m.id} style={{ marginBottom: 20 }}>
+          <strong>{m.name}</strong>
+          <button onClick={() => openWorkout(m)}>운동 기록</button>
         </div>
-        <div style={styles.adminBadge}>관리자</div>
-      </header>
+      ))}
 
-      <section style={styles.summaryBox}>
-        <button onClick={() => setSummaryModal("rejoin")} style={styles.summaryCard}>
-          <strong>재등록 상담</strong>
-          <p>{summaryGroups.rejoin.length}명</p>
-        </button>
-        <button onClick={() => setSummaryModal("urgent")} style={styles.summaryCard}>
-          <strong>강한 경고</strong>
-          <p>{summaryGroups.urgent.length}명</p>
-        </button>
-        <button onClick={() => setSummaryModal("dormant")} style={styles.summaryCard}>
-          <strong>연락 필요</strong>
-          <p>{summaryGroups.dormant.length}명</p>
-        </button>
-      </section>
-
-      {summaryModal && (
-        <div style={styles.modalOverlay}>
-          <section style={styles.modalBox}>
-            <div style={styles.detailTop}>
-              <div>
-                <h2 style={styles.modalTitle}>{summaryConfig[summaryModal].title}</h2>
-                <p style={styles.muted}>{summaryConfig[summaryModal].desc}</p>
-              </div>
-              <button onClick={() => setSummaryModal(null)} style={styles.closeButton}>
-                닫기
-              </button>
-            </div>
-
-            {summaryConfig[summaryModal].list.length === 0 ? (
-              <p style={styles.muted}>해당 회원이 없습니다.</p>
-            ) : (
-              summaryConfig[summaryModal].list.map(renderSummaryMember)
-            )}
-          </section>
-        </div>
-      )}
-
-      {showAddModal && (
-        <div style={styles.modalOverlay}>
-          <section style={styles.modalBox}>
-            <div style={styles.detailTop}>
-              <h2 style={styles.modalTitle}>회원 추가</h2>
-              <button onClick={() => setShowAddModal(false)} style={styles.closeButton}>
-                닫기
-              </button>
-            </div>
-
-            <label style={styles.label}>이름</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="예: 홍길동" style={styles.input} />
-
-            <label style={styles.label}>전화번호</label>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="예: 01012345678" style={styles.input} />
-
-            <label style={styles.label}>나이</label>
-            <input value={age} onChange={(e) => setAge(e.target.value)} placeholder="예: 32" type="number" style={styles.input} />
-
-            <label style={styles.label}>키(cm)</label>
-            <input value={height} onChange={(e) => setHeight(e.target.value)} placeholder="예: 165" type="number" style={styles.input} />
-
-            <label style={styles.label}>목표</label>
-            <input value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="예: 체지방 감량, 근력 증가" style={styles.input} />
-
-            <label style={styles.label}>특이사항</label>
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="예: 허리 통증, 무릎 주의, 식단 어려움" style={styles.textarea} />
-
-            <label style={styles.label}>트레이너 메모</label>
-            <textarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="상담 내용, 성향, 관리 포인트" style={styles.textarea} />
-
-            <div style={styles.editActions}>
-              <button onClick={addMember} style={styles.primaryButton}>저장</button>
-              <button onClick={() => setShowAddModal(false)} style={styles.cancelButton}>취소</button>
-            </div>
-          </section>
-        </div>
-      )}
-
-      {selectedMember && detailMode && (
-        <div style={styles.modalOverlay}>
-          <section style={styles.modalBox}>
-            <div style={styles.detailTop}>
-              <div>
-                <h2 style={styles.detailName}>{selectedMember.name}</h2>
-                <p style={styles.muted}>
-                  {selectedMember.age ? `${selectedMember.age}세 · ` : ""}
-                  {selectedMember.height ? `${selectedMember.height}cm · ` : ""}
-                  {selectedMember.phone || "전화번호 없음"}
-                </p>
-              </div>
-
-              <button onClick={closeDetail} style={styles.closeButton}>닫기</button>
-            </div>
-
-            {detailMode === "menu" && (
-              <>
-                <h3 style={styles.subTitle}>상세 보기</h3>
-
-                <div style={styles.menuGrid}>
-                  <button onClick={() => setDetailMode("info")} style={styles.menuButton}>
-                    회원 정보
-                  </button>
-                  <button onClick={() => setDetailMode("pt")} style={styles.menuButton}>
-                    PT 사용 기록
-                  </button>
-                  <button onClick={() => setDetailMode("attendance")} style={styles.menuButton}>
-                    출석 기록
-                  </button>
-                  <button
-                    onClick={() => {
-                      closeDetail();
-                      openWorkout(selectedMember);
-                    }}
-                    style={styles.menuButton}
-                  >
-                    운동 기록
-                  </button>
-                </div>
-              </>
-            )}
-
-            {detailMode === "info" && (
-              <>
-                {(() => {
-                  const pt = getPtSummary(selectedMember, ptLogList);
-                  return (
-                    <p style={styles.detailPt}>
-                      총 {pt.total}회 중 {pt.used}회 사용 / {pt.remain}회 남음
-                    </p>
-                  );
-                })()}
-
-                <h3 style={styles.subTitle}>회원 관리 정보</h3>
-                {renderInfoBlock("키", selectedMember.height ? `${selectedMember.height}cm` : "")}
-                {renderInfoBlock("목표", selectedMember.goal)}
-                {renderInfoBlock("특이사항", selectedMember.note)}
-                {renderInfoBlock("트레이너 메모", selectedMember.memo)}
-
-                <button onClick={() => setDetailMode("menu")} style={styles.cancelButton}>
-                  뒤로
-                </button>
-              </>
-            )}
-
-            {detailMode === "pt" && (
-              <>
-                {(() => {
-                  const pt = getPtSummary(selectedMember, ptLogList);
-                  return (
-                    <p style={styles.detailPt}>
-                      총 {pt.total}회 중 {pt.used}회 사용 / {pt.remain}회 남음
-                    </p>
-                  );
-                })()}
-
-                <div style={styles.recordHeader}>
-                  <h3 style={styles.subTitle}>
-                    {showAllPtLogs ? "전체 PT 사용내역" : "최근 PT 사용기록"}
-                  </h3>
-
-                  <button
-                    onClick={() => setShowAllPtLogs(!showAllPtLogs)}
-                    style={styles.smallDark}
-                  >
-                    {showAllPtLogs ? "최근 기록 보기" : "전체 사용내역 보기"}
-                  </button>
-                </div>
-
-                {getVisiblePtLogs().length === 0 ? (
-                  <p style={styles.muted}>
-                    {showAllPtLogs ? "PT 사용내역이 없습니다." : "오늘/어제 PT 사용기록이 없습니다."}
-                  </p>
-                ) : (
-                  getVisiblePtLogs().map((log) => (
-                    <div key={log.id} style={styles.logItem}>
-                      <div>
-                        <div style={styles.logDate}>{formatDateTime(log.created_at)} · {log.amount}회 사용</div>
-                      </div>
-
-                      {!showAllPtLogs && (
-                        <button onClick={() => cancelPtUse(log)} style={styles.smallDanger}>차감 취소</button>
-                      )}
-                    </div>
-                  ))
-                )}
-
-                <button onClick={() => setDetailMode("menu")} style={styles.cancelButton}>
-                  뒤로
-                </button>
-              </>
-            )}
-
-            {detailMode === "attendance" && (
-              <>
-                <div style={styles.recordHeader}>
-                  <h3 style={styles.subTitle}>
-                    {showAllAttendanceLogs ? "전체 출석기록" : "최근 출석기록"}
-                  </h3>
-
-                  <button
-                    onClick={() => setShowAllAttendanceLogs(!showAllAttendanceLogs)}
-                    style={styles.smallDark}
-                  >
-                    {showAllAttendanceLogs ? "최근 기록 보기" : "전체 출석기록 보기"}
-                  </button>
-                </div>
-
-                {getVisibleAttendanceLogs().length === 0 ? (
-                  <p style={styles.muted}>
-                    {showAllAttendanceLogs ? "출석기록이 없습니다." : "오늘/어제 출석기록이 없습니다."}
-                  </p>
-                ) : (
-                  getVisibleAttendanceLogs().map((log) => (
-                    <div key={log.id} style={styles.logItem}>
-                      <div>
-                        <div style={styles.logDate}>{formatDateTime(log.visited_at)}</div>
-                      </div>
-
-                      {!showAllAttendanceLogs && (
-                        <button onClick={() => cancelAttendance(log)} style={styles.smallDanger}>출석 취소</button>
-                      )}
-                    </div>
-                  ))
-                )}
-
-                <button onClick={() => setDetailMode("menu")} style={styles.cancelButton}>
-                  뒤로
-                </button>
-              </>
-            )}
-          </section>
-        </div>
-      )}
-
+      {/* 운동 모달 */}
       {workoutMember && (
-        <div style={styles.modalOverlay}>
-          <section style={styles.modalBox}>
-            <div style={styles.detailTop}>
-              <div>
-                <h2 style={styles.detailName}>{workoutMember.name} 운동 기록</h2>
-                <p style={styles.muted}>운동명, 중량, 횟수, 세트를 기록하세요.</p>
-              </div>
-              <button onClick={closeWorkout} style={styles.closeButton}>닫기</button>
-            </div>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)" }}>
+          <div style={{ background: "#181818", padding: 20 }}>
+            <h2>{workoutMember.name} 운동기록</h2>
 
             {workoutMode === "list" && (
               <>
-                <div style={styles.menuGrid}>
-                  <button onClick={() => setWorkoutMode("add")} style={styles.menuButton}>
-                    + 오늘 운동 기록하기
-                  </button>
-                </div>
+                <button onClick={() => setWorkoutMode("add")}>
+                  + 오늘 운동 기록하기
+                </button>
 
-                <div style={styles.recordHeader}>
-                  <h3 style={styles.subTitle}>
-                    {showAllWorkouts ? "전체 운동기록" : "최근 운동기록"}
-                  </h3>
+                <button onClick={() => setShowAllWorkoutModal(true)}>
+                  전체 운동기록 보기
+                </button>
 
-                  <button
-                    onClick={() => setShowAllWorkouts(!showAllWorkouts)}
-                    style={styles.smallDark}
-                  >
-                    {showAllWorkouts ? "최근 기록 보기" : "전체 운동기록 보기"}
-                  </button>
-                </div>
-
-                {getVisibleWorkouts().length === 0 ? (
-                  <p style={styles.muted}>
-                    {showAllWorkouts ? "운동기록이 없습니다." : "오늘/어제 운동기록이 없습니다."}
-                  </p>
-                ) : (
-                  getVisibleWorkouts().map(renderWorkoutSession)
-                )}
+                {workoutSessions.map((s) => (
+                  <div key={s.id}>
+                    {s.workout_sets.map((set) => (
+                      <p key={set.id}>
+                        {set.exercise_name} / {set.weight}kg / {set.reps}회
+                      </p>
+                    ))}
+                  </div>
+                ))}
               </>
             )}
 
             {workoutMode === "add" && (
               <>
-                <h3 style={styles.subTitle}>오늘 운동 입력</h3>
+                {workoutExercises.map((ex, i) => (
+                  <div key={i}>
+                    <input
+                      placeholder="운동명"
+                      value={ex.name}
+                      onChange={(e) => updateExerciseName(i, e.target.value)}
+                    />
 
-                <label style={styles.label}>운동명</label>
-                <input
-                  value={exerciseName}
-                  onChange={(e) => setExerciseName(e.target.value)}
-                  placeholder="예: 스쿼트"
-                  style={styles.input}
-                />
+                    {ex.sets.map((s, j) => (
+                      <div key={j}>
+                        <input
+                          placeholder="kg"
+                          value={s.weight}
+                          onChange={(e) =>
+                            updateSet(i, j, "weight", e.target.value)
+                          }
+                        />
+                        <input
+                          placeholder="횟수"
+                          value={s.reps}
+                          onChange={(e) =>
+                            updateSet(i, j, "reps", e.target.value)
+                          }
+                        />
+                      </div>
+                    ))}
 
-                <label style={styles.label}>중량(kg)</label>
-                <input
-                  value={exerciseWeight}
-                  onChange={(e) => setExerciseWeight(e.target.value)}
-                  placeholder="예: 40"
-                  type="number"
-                  style={styles.input}
-                />
+                    <button onClick={() => addSet(i)}>+ 세트</button>
+                  </div>
+                ))}
 
-                <label style={styles.label}>횟수</label>
-                <input
-                  value={exerciseReps}
-                  onChange={(e) => setExerciseReps(e.target.value)}
-                  placeholder="예: 10"
-                  type="number"
-                  style={styles.input}
-                />
+                <button onClick={addExercise}>+ 운동 추가</button>
 
-                <label style={styles.label}>세트</label>
-                <input
-                  value={exerciseSets}
-                  onChange={(e) => setExerciseSets(e.target.value)}
-                  placeholder="예: 3"
-                  type="number"
-                  style={styles.input}
-                />
-
-                <label style={styles.label}>메모</label>
-                <textarea
-                  value={workoutMemo}
-                  onChange={(e) => setWorkoutMemo(e.target.value)}
-                  placeholder="컨디션, 자세 피드백, 다음 운동 참고사항"
-                  style={styles.textarea}
-                />
-
-                <div style={styles.editActions}>
-                  <button onClick={saveWorkout} style={styles.primaryButton}>저장</button>
-                  <button onClick={() => setWorkoutMode("list")} style={styles.cancelButton}>취소</button>
-                </div>
+                <button onClick={saveWorkout}>저장</button>
               </>
             )}
-          </section>
-        </div>
-      )}
 
-      {ptModalMember && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalBox}>
-            <h2 style={styles.modalTitle}>{ptModalMember.name} 이용권 추가</h2>
-            <p style={styles.muted}>추가할 PT 회차를 선택하세요.</p>
-
-            <div style={styles.ptOptionGrid}>
-              {ptOptions.map((amount) => (
-                <button key={amount} onClick={() => addPt(ptModalMember, amount)} style={styles.ptOptionButton}>
-                  {amount}회
-                </button>
-              ))}
-            </div>
-
-            <button onClick={() => setPtModalMember(null)} style={styles.cancelButton}>취소</button>
+            <button onClick={closeWorkout}>닫기</button>
           </div>
         </div>
       )}
 
-      {lastAction && (
-        <div style={styles.notice}>
-          <span>
-            <strong>{lastAction.memberName}</strong>
-            {lastAction.type === "pt" ? " PT 1회 차감됨" : " 출석 체크됨"}
-          </span>
+      {/* 흰색 팝업 */}
+      {showAllWorkoutModal && (
+        <div style={{ position: "fixed", inset: 0, background: "#fff", color: "#000" }}>
+          <h2>전체 운동기록</h2>
 
-          {lastAction.type === "pt" && (
-            <button onClick={undo} style={styles.noticeButton}>실행 취소</button>
-          )}
+          {workoutSessions.map((s) => (
+            <div key={s.id}>
+              {s.workout_sets.map((set) => (
+                <p key={set.id}>
+                  {set.exercise_name} / {set.weight}kg / {set.reps}회
+                </p>
+              ))}
+            </div>
+          ))}
+
+          <button onClick={() => setShowAllWorkoutModal(false)}>닫기</button>
         </div>
       )}
-
-      <section style={styles.topActionBox}>
-        <button onClick={() => setShowAddModal(true)} style={styles.addMemberButton}>
-          + 회원 추가
-        </button>
-      </section>
-
-      <section style={styles.searchBox}>
-        <label style={styles.label}>회원 검색</label>
-
-        <div style={styles.searchRow}>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="이름 또는 전화번호 검색"
-            style={{ ...styles.input, marginBottom: 0 }}
-          />
-
-          {isSearching && (
-            <button onClick={() => setSearch("")} style={styles.resetButton}>초기화</button>
-          )}
-        </div>
-
-        {isSearching && <p style={styles.searchInfo}>“{search}” 검색 중</p>}
-      </section>
-
-      <section>
-        <h2 style={styles.sectionTitle}>회원 목록</h2>
-
-        {filteredMembers.length === 0 ? (
-          <p style={styles.muted}>{isSearching ? "검색 결과가 없습니다." : "회원이 없습니다."}</p>
-        ) : (
-          filteredMembers.map((member) => {
-            const ptStatus = getPtStatus(member);
-            const visitStatus = getVisitStatus(member);
-
-            return (
-              <article key={member.id} style={styles.card}>
-                {editingId === member.id ? (
-                  <div style={styles.editBox}>
-                    <h3 style={styles.editTitle}>회원 정보 수정</h3>
-
-                    <label style={styles.label}>이름</label>
-                    <input value={editName} onChange={(e) => setEditName(e.target.value)} style={styles.input} />
-
-                    <label style={styles.label}>전화번호</label>
-                    <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} style={styles.input} />
-
-                    <label style={styles.label}>나이</label>
-                    <input value={editAge} onChange={(e) => setEditAge(e.target.value)} type="number" style={styles.input} />
-
-                    <label style={styles.label}>키(cm)</label>
-                    <input value={editHeight} onChange={(e) => setEditHeight(e.target.value)} type="number" style={styles.input} />
-
-                    <label style={styles.label}>목표</label>
-                    <input value={editGoal} onChange={(e) => setEditGoal(e.target.value)} style={styles.input} />
-
-                    <label style={styles.label}>특이사항</label>
-                    <textarea value={editNote} onChange={(e) => setEditNote(e.target.value)} style={styles.textarea} />
-
-                    <label style={styles.label}>트레이너 메모</label>
-                    <textarea value={editMemo} onChange={(e) => setEditMemo(e.target.value)} style={styles.textarea} />
-
-                    <div style={styles.editActions}>
-                      <button onClick={() => saveEdit(member.id)} style={styles.primaryButton}>저장</button>
-                      <button onClick={() => setEditingId(null)} style={styles.cancelButton}>취소</button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div onClick={() => openDetail(member, "menu")} style={styles.memberMain}>
-                      <h3 style={styles.memberName}>{member.name}</h3>
-                      <p style={styles.phone}>
-                        {member.age ? `${member.age}세 · ` : ""}
-                        {member.height ? `${member.height}cm · ` : ""}
-                        {member.phone || "전화번호 없음"}
-                      </p>
-                      <p style={styles.visit}>최근 출석: {formatDate(member.latest_visit)}</p>
-
-                      <div style={styles.warningRow}>
-                        {ptStatus && <span style={ptStatus.style}>{ptStatus.text}</span>}
-                        {visitStatus && <span style={visitStatus.style}>{visitStatus.text}</span>}
-                      </div>
-
-                      <p style={styles.hint}>눌러서 상세 보기</p>
-                    </div>
-
-                    <div style={styles.memberSide}>
-                      <div
-                        style={{
-                          ...styles.ptCount,
-                          color: (member.pt_remaining || 0) <= 2 ? "#f87171" : "#ffffff",
-                        }}
-                      >
-                        PT {member.pt_remaining}회
-                      </div>
-
-                      <div style={styles.buttonGrid}>
-                        <button onClick={() => minusPt(member)} style={styles.redButton}>1회 차감</button>
-                        <button onClick={() => setPtModalMember(member)} style={styles.whiteButton}>이용권 추가</button>
-                        <button onClick={() => checkAttendance(member)} style={styles.blueButton}>출석 체크</button>
-                        <button onClick={() => openWorkout(member)} style={styles.greenButton}>운동 기록</button>
-                        <button onClick={() => startEdit(member)} style={styles.darkButton}>수정</button>
-                        <button onClick={() => deleteMember(member)} style={styles.deleteButton}>삭제</button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </article>
-            );
-          })
-        )}
-      </section>
     </main>
   );
 }
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "linear-gradient(180deg, #090909 0%, #111 100%)",
-    color: "#fff",
-    padding: 24,
-    fontFamily: "Arial, sans-serif",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 28,
-  },
-  title: {
-    fontSize: 44,
-    margin: 0,
-    fontWeight: 900,
-    letterSpacing: -1,
-  },
-  subtitle: {
-    color: "#a3a3a3",
-    marginTop: 8,
-    fontSize: 16,
-  },
-  adminBadge: {
-    background: "#1f1f1f",
-    border: "1px solid #333",
-    padding: "10px 16px",
-    borderRadius: 999,
-    fontWeight: 700,
-    color: "#ddd",
-  },
-  summaryBox: {
-    background: "#151515",
-    border: "1px solid #272727",
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 22,
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr 1fr",
-    gap: 10,
-    textAlign: "center",
-  },
-  summaryCard: {
-    background: "transparent",
-    border: "none",
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: 900,
-    padding: 8,
-  },
-  summaryMemberRow: {
-    background: "#222",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-  },
-  summaryMemberInfo: {
-    color: "#aaa",
-    margin: "6px 0 0",
-    fontSize: 14,
-  },
-  smallDark: {
-    background: "#111",
-    color: "#fff",
-    border: "1px solid #444",
-    borderRadius: 12,
-    padding: "9px 12px",
-    fontWeight: 800,
-  },
-  topActionBox: {
-    marginBottom: 22,
-  },
-  addMemberButton: {
-    width: "100%",
-    padding: 18,
-    borderRadius: 20,
-    border: "none",
-    background: "#ffffff",
-    color: "#111",
-    fontSize: 20,
-    fontWeight: 900,
-  },
-  notice: {
-    background: "#272111",
-    border: "1px solid #facc15",
-    color: "#fde68a",
-    padding: 16,
-    borderRadius: 18,
-    marginBottom: 22,
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 12,
-    alignItems: "center",
-  },
-  noticeButton: {
-    background: "#facc15",
-    color: "#111",
-    border: "none",
-    borderRadius: 12,
-    padding: "10px 14px",
-    fontWeight: 800,
-  },
-  modalOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,.72)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 999,
-    padding: 20,
-  },
-  modalBox: {
-    width: "100%",
-    maxWidth: 520,
-    maxHeight: "82vh",
-    overflowY: "auto",
-    background: "#181818",
-    border: "1px solid #333",
-    borderRadius: 28,
-    padding: 24,
-    boxShadow: "0 20px 60px rgba(0,0,0,.45)",
-  },
-  modalTitle: {
-    fontSize: 28,
-    marginTop: 0,
-    marginBottom: 10,
-    fontWeight: 900,
-  },
-  ptOptionGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-    marginTop: 18,
-    marginBottom: 16,
-  },
-  ptOptionButton: {
-    background: "#fff",
-    color: "#111",
-    border: "none",
-    borderRadius: 16,
-    padding: "16px 10px",
-    fontSize: 18,
-    fontWeight: 900,
-  },
-  menuGrid: {
-    display: "grid",
-    gap: 12,
-  },
-  menuButton: {
-    background: "#222",
-    color: "#fff",
-    border: "1px solid #333",
-    borderRadius: 18,
-    padding: 18,
-    fontSize: 18,
-    fontWeight: 900,
-  },
-  recordHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 12,
-    alignItems: "center",
-    marginTop: 22,
-    marginBottom: 14,
-  },
-  searchBox: {
-    background: "#151515",
-    border: "1px solid #272727",
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 34,
-  },
-  searchRow: {
-    display: "flex",
-    gap: 10,
-    alignItems: "stretch",
-  },
-  resetButton: {
-    background: "#333",
-    color: "#fff",
-    border: "1px solid #555",
-    borderRadius: 14,
-    padding: "0 16px",
-    fontWeight: 900,
-    fontSize: 15,
-    whiteSpace: "nowrap",
-  },
-  searchInfo: {
-    marginTop: 10,
-    marginBottom: 0,
-    fontSize: 14,
-    color: "#888",
-  },
-  sectionTitle: {
-    fontSize: 30,
-    marginBottom: 18,
-    fontWeight: 900,
-  },
-  label: {
-    display: "block",
-    color: "#cfcfcf",
-    fontSize: 15,
-    marginBottom: 8,
-    fontWeight: 700,
-  },
-  input: {
-    width: "100%",
-    padding: 17,
-    borderRadius: 17,
-    border: "1px solid #333",
-    background: "#f7f7f7",
-    color: "#111",
-    fontSize: 18,
-    boxSizing: "border-box",
-    marginBottom: 16,
-  },
-  textarea: {
-    width: "100%",
-    minHeight: 90,
-    padding: 17,
-    borderRadius: 17,
-    border: "1px solid #333",
-    background: "#f7f7f7",
-    color: "#111",
-    fontSize: 17,
-    boxSizing: "border-box",
-    marginBottom: 16,
-    resize: "vertical",
-    fontFamily: "Arial, sans-serif",
-  },
-  primaryButton: {
-    width: "100%",
-    padding: 17,
-    borderRadius: 17,
-    border: "none",
-    background: "#ffffff",
-    color: "#111",
-    fontSize: 18,
-    fontWeight: 900,
-  },
-  card: {
-    background: "#1c1c1c",
-    border: "1px solid #292929",
-    borderRadius: 28,
-    padding: 24,
-    marginBottom: 20,
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 20,
-    boxShadow: "0 10px 28px rgba(0,0,0,.25)",
-  },
-  memberMain: {
-    flex: 1,
-    cursor: "pointer",
-  },
-  memberName: {
-    fontSize: 32,
-    margin: 0,
-    marginBottom: 10,
-    fontWeight: 900,
-  },
-  phone: {
-    color: "#b3b3b3",
-    fontSize: 19,
-    margin: 0,
-    marginBottom: 8,
-  },
-  visit: {
-    color: "#93c5fd",
-    fontSize: 16,
-    margin: 0,
-  },
-  warningRow: {
-    display: "flex",
-    gap: 8,
-    marginTop: 10,
-    flexWrap: "wrap",
-  },
-  ptBadge: {
-    background: "#3f1111",
-    color: "#fca5a5",
-    border: "1px solid #7f1d1d",
-    borderRadius: 999,
-    padding: "6px 10px",
-    fontSize: 13,
-    fontWeight: 800,
-  },
-  visitBadge: {
-    background: "#33270a",
-    color: "#fde68a",
-    border: "1px solid #854d0e",
-    borderRadius: 999,
-    padding: "6px 10px",
-    fontSize: 13,
-    fontWeight: 800,
-  },
-  dangerBadge: {
-    background: "#450a0a",
-    color: "#fecaca",
-    border: "1px solid #991b1b",
-    borderRadius: 999,
-    padding: "6px 10px",
-    fontSize: 13,
-    fontWeight: 900,
-  },
-  hint: {
-    color: "#666",
-    fontSize: 13,
-    marginTop: 8,
-  },
-  memberSide: {
-    minWidth: 210,
-    textAlign: "right",
-  },
-  ptCount: {
-    fontSize: 34,
-    fontWeight: 900,
-    marginBottom: 16,
-  },
-  buttonGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-  },
-  redButton: {
-    background: "#ef4444",
-    color: "#fff",
-    border: "none",
-    borderRadius: 14,
-    padding: "13px 14px",
-    fontSize: 16,
-    fontWeight: 900,
-  },
-  whiteButton: {
-    background: "#fff",
-    color: "#111",
-    border: "none",
-    borderRadius: 14,
-    padding: "13px 14px",
-    fontSize: 16,
-    fontWeight: 900,
-  },
-  blueButton: {
-    gridColumn: "1 / 3",
-    background: "#2563eb",
-    color: "#fff",
-    border: "none",
-    borderRadius: 14,
-    padding: "14px",
-    fontSize: 16,
-    fontWeight: 900,
-  },
-  greenButton: {
-    gridColumn: "1 / 3",
-    background: "#16a34a",
-    color: "#fff",
-    border: "none",
-    borderRadius: 14,
-    padding: "14px",
-    fontSize: 16,
-    fontWeight: 900,
-  },
-  darkButton: {
-    background: "#111",
-    color: "#fff",
-    border: "1px solid #444",
-    borderRadius: 14,
-    padding: "13px 14px",
-    fontSize: 16,
-    fontWeight: 900,
-  },
-  deleteButton: {
-    background: "#3f1111",
-    color: "#fca5a5",
-    border: "1px solid #7f1d1d",
-    borderRadius: 14,
-    padding: "13px 14px",
-    fontSize: 16,
-    fontWeight: 900,
-  },
-  editBox: {
-    width: "100%",
-  },
-  editTitle: {
-    fontSize: 26,
-    marginTop: 0,
-    marginBottom: 18,
-  },
-  editActions: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-  },
-  cancelButton: {
-    padding: 17,
-    borderRadius: 17,
-    border: "1px solid #444",
-    background: "#111",
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: 900,
-    marginTop: 12,
-  },
-  detailTop: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 16,
-    alignItems: "flex-start",
-  },
-  detailName: {
-    fontSize: 34,
-    margin: 0,
-    marginBottom: 8,
-  },
-  muted: {
-    color: "#aaa",
-    margin: 0,
-    marginBottom: 8,
-  },
-  detailPt: {
-    fontSize: 22,
-    fontWeight: 900,
-  },
-  closeButton: {
-    background: "#111",
-    color: "#fff",
-    border: "1px solid #444",
-    borderRadius: 14,
-    padding: "12px 16px",
-    fontWeight: 900,
-  },
-  subTitle: {
-    fontSize: 24,
-    marginTop: 22,
-    marginBottom: 14,
-  },
-  infoBlock: {
-    background: "#222",
-    borderRadius: 16,
-    padding: 15,
-    marginBottom: 10,
-    color: "#eee",
-  },
-  logItem: {
-    background: "#222",
-    padding: 15,
-    borderRadius: 16,
-    marginBottom: 10,
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-  },
-  logDate: {
-    fontSize: 16,
-    color: "#eee",
-  },
-  cancelText: {
-    color: "#fca5a5",
-    fontSize: 13,
-    marginTop: 4,
-  },
-  smallDanger: {
-    background: "#3f1111",
-    color: "#fca5a5",
-    border: "1px solid #7f1d1d",
-    borderRadius: 12,
-    padding: "9px 12px",
-    fontWeight: 800,
-  },
-};
