@@ -57,6 +57,8 @@ export default function Page() {
   const [editWorkoutReps, setEditWorkoutReps] = useState("");
 
   const [ptModalMember, setPtModalMember] = useState(null);
+  const [selectedPtAmount, setSelectedPtAmount] = useState("");
+  const [ptTotalPrice, setPtTotalPrice] = useState("");
   const [lastAction, setLastAction] = useState(null);
 
   const [schedules, setSchedules] = useState([]);
@@ -598,8 +600,41 @@ export default function Page() {
     await loadSchedules(getTodayDateString());
   }
 
-  async function addPt(member, amount) {
+  function openPtModal(member) {
+    setPtModalMember(member);
+    setSelectedPtAmount("");
+    setPtTotalPrice("");
+  }
+
+  function closePtModal() {
+    closePtModal();
+    setSelectedPtAmount("");
+    setPtTotalPrice("");
+  }
+
+  function onlyNumber(value) {
+    return String(value || "").replace(/[^0-9]/g, "");
+  }
+
+  function formatWon(value) {
+    const number = Number(onlyNumber(value));
+    if (!number) return "";
+    return number.toLocaleString("ko-KR");
+  }
+
+  function getPricePerSession() {
+    const amount = Number(selectedPtAmount || 0);
+    const total = Number(onlyNumber(ptTotalPrice));
+
+    if (!amount || !total) return 0;
+
+    return Math.round(total / amount);
+  }
+
+  async function addPt(member, amount, totalPriceValue = "") {
     const after = (member.pt_remaining || 0) + amount;
+    const totalPrice = Number(onlyNumber(totalPriceValue));
+    const pricePerSession = amount && totalPrice ? Math.round(totalPrice / amount) : null;
 
     const { error } = await supabase
       .from("members")
@@ -612,6 +647,8 @@ export default function Page() {
       member_id: member.id,
       type: "add",
       amount,
+      total_price: totalPrice || null,
+      price_per_session: pricePerSession,
     });
 
     if (logError) return alert("이용권 추가 기록 저장 실패: " + logError.message);
@@ -621,7 +658,7 @@ export default function Page() {
       pt_remaining: after,
     };
 
-    setPtModalMember(null);
+    closePtModal();
 
     if (selectedMember?.id === member.id) {
       await openDetail(updatedMember, detailMode || "menu");
@@ -633,6 +670,25 @@ export default function Page() {
 
     await loadMembers();
     await loadSchedules(getTodayDateString());
+  }
+
+  async function submitPtAdd() {
+    if (!ptModalMember) return;
+
+    const amount = Number(selectedPtAmount);
+    const totalPrice = Number(onlyNumber(ptTotalPrice));
+
+    if (!amount) {
+      alert("추가할 PT 회차를 선택하세요.");
+      return;
+    }
+
+    if (!totalPrice) {
+      alert("결제금액을 입력하세요.");
+      return;
+    }
+
+    await addPt(ptModalMember, amount, ptTotalPrice);
   }
 
   async function cancelPtUse(log) {
@@ -2201,27 +2257,78 @@ export default function Page() {
       )}
 
       {ptModalMember && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalBox}>
-            <h2 style={styles.modalTitle}>{ptModalMember.name} 이용권 추가</h2>
-            <p style={styles.muted}>추가할 PT 회차를 선택하세요.</p>
+        <div style={styles.whiteModalOverlay}>
+          <section style={styles.whiteModalBox}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>
+                  {ptModalMember.name} 이용권 추가
+                </h2>
+                <p style={styles.whiteMuted}>
+                  회차와 결제금액을 입력하면 1회당 금액이 자동 계산됩니다.
+                </p>
+              </div>
 
-            <div style={styles.ptOptionGrid}>
+              <button onClick={closePtModal} style={styles.whiteCloseButton}>
+                닫기
+              </button>
+            </div>
+
+            <label style={styles.whiteLabel}>추가 회차</label>
+            <div style={styles.ptOptionGridWhite}>
               {ptOptions.map((amount) => (
                 <button
                   key={amount}
-                  onClick={() => addPt(ptModalMember, amount)}
-                  style={styles.ptOptionButton}
+                  onClick={() => setSelectedPtAmount(amount)}
+                  style={
+                    Number(selectedPtAmount) === amount
+                      ? styles.ptOptionButtonSelected
+                      : styles.ptOptionButtonWhite
+                  }
                 >
                   {amount}회
                 </button>
               ))}
             </div>
 
-            <button onClick={() => setPtModalMember(null)} style={styles.cancelButton}>
-              취소
-            </button>
-          </div>
+            <label style={styles.whiteLabel}>결제금액</label>
+            <div style={styles.priceInputWrap}>
+              <input
+                value={ptTotalPrice ? formatWon(ptTotalPrice) : ""}
+                onChange={(e) => setPtTotalPrice(onlyNumber(e.target.value))}
+                placeholder="예: 500000"
+                inputMode="numeric"
+                style={styles.whiteInput}
+              />
+              <span style={styles.priceUnit}>원</span>
+            </div>
+
+            <div style={styles.priceSummaryBox}>
+              <p style={styles.priceSummaryTitle}>자동 계산</p>
+              <p style={styles.priceSummaryText}>
+                {selectedPtAmount && Number(onlyNumber(ptTotalPrice)) ? (
+                  <>
+                    총 {Number(selectedPtAmount).toLocaleString("ko-KR")}회 ·{" "}
+                    {Number(onlyNumber(ptTotalPrice)).toLocaleString("ko-KR")}원
+                    <br />
+                    1회당 {getPricePerSession().toLocaleString("ko-KR")}원
+                  </>
+                ) : (
+                  "회차와 금액을 입력하면 1회당 금액이 표시됩니다."
+                )}
+              </p>
+            </div>
+
+            <div style={styles.whiteActionRowFull}>
+              <button onClick={submitPtAdd} style={styles.whiteSaveLargeButton}>
+                저장
+              </button>
+
+              <button onClick={closePtModal} style={styles.whiteCancelLargeButton}>
+                취소
+              </button>
+            </div>
+          </section>
         </div>
       )}
 
@@ -2329,6 +2436,13 @@ export default function Page() {
                       >
                         PT {member.pt_remaining}회
                       </div>
+
+                      <button
+                        onClick={() => openPtModal(member)}
+                        style={styles.cardPtAddButton}
+                      >
+                        + 이용권
+                      </button>
                     </div>
 
                     <p style={styles.phoneSmall}>
@@ -2833,6 +2947,61 @@ const styles = {
     fontSize: 18,
     fontWeight: 900,
   },
+  ptOptionGridWhite: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 8,
+    marginBottom: 16,
+  },
+  ptOptionButtonWhite: {
+    background: "#f3f3f3",
+    color: "#111",
+    border: "1px solid #e5e5e5",
+    borderRadius: 12,
+    padding: "12px 8px",
+    fontSize: 15,
+    fontWeight: 900,
+  },
+  ptOptionButtonSelected: {
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #111",
+    borderRadius: 12,
+    padding: "12px 8px",
+    fontSize: 15,
+    fontWeight: 900,
+  },
+  priceInputWrap: {
+    position: "relative",
+  },
+  priceUnit: {
+    position: "absolute",
+    right: 14,
+    top: 13,
+    color: "#555",
+    fontWeight: 900,
+  },
+  priceSummaryBox: {
+    background: "#f3f3f3",
+    border: "1px solid #e5e5e5",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+  },
+  priceSummaryTitle: {
+    margin: 0,
+    marginBottom: 6,
+    color: "#111",
+    fontSize: 14,
+    fontWeight: 900,
+  },
+  priceSummaryText: {
+    margin: 0,
+    color: "#333",
+    fontSize: 15,
+    lineHeight: 1.5,
+    fontWeight: 700,
+  },
   menuGrid: {
     display: "grid",
     gap: 12,
@@ -3064,6 +3233,17 @@ const styles = {
     fontSize: 34,
     fontWeight: 900,
     marginBottom: 16,
+  },
+  cardPtAddButton: {
+    background: "#f5f5f5",
+    color: "#111",
+    border: "1px solid #ffffff",
+    borderRadius: 12,
+    padding: "10px 12px",
+    fontSize: 14,
+    fontWeight: 900,
+    marginBottom: 10,
+    width: "100%",
   },
   buttonGrid: {
     display: "grid",
