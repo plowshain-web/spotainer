@@ -235,6 +235,44 @@ export default function Page() {
     await loadSchedules(getTodayDateString());
   }
 
+  async function completeScheduleClass(schedule) {
+    const member = getScheduleMember(schedule);
+    if (!member) return alert("연결된 회원 정보를 찾을 수 없습니다.");
+
+    const attendedToday = member.latest_visit && isToday(member.latest_visit);
+    const ptUsedToday = member.latest_pt && isToday(member.latest_pt);
+
+    if (attendedToday && ptUsedToday) {
+      alert("이미 출석과 PT 차감이 완료되었습니다.");
+      return;
+    }
+
+    if (
+      !confirm(
+        `${member.name} 수업을 완료 처리할까요?\n출석 체크와 PT 1회 차감이 함께 진행됩니다.`
+      )
+    ) {
+      return;
+    }
+
+    if (!attendedToday) {
+      await checkAttendance(member, false);
+    }
+
+    const refreshedMember =
+      members.find((m) => m.id === member.id) || {
+        ...member,
+        latest_visit: new Date().toISOString(),
+      };
+
+    if (!ptUsedToday) {
+      await minusPt(refreshedMember);
+    }
+
+    await loadMembers();
+    await loadSchedules(getTodayDateString());
+  }
+
   const filteredMembers = members
     .filter((member) => {
       const q = search.trim().toLowerCase();
@@ -1105,28 +1143,59 @@ export default function Page() {
                       </p>
 
                       <div style={styles.scheduleStatusRow}>
-                        {attendedToday && <span style={styles.scheduleDoneText}>출석 완료</span>}
-                        {ptUsedToday && <span style={styles.scheduleDoneText}>차감 완료</span>}
+                        {attendedToday ? (
+                          <span style={styles.scheduleDoneText}>출석 완료</span>
+                        ) : (
+                          <span style={styles.scheduleWarningText}>출석 전</span>
+                        )}
+
+                        {ptUsedToday ? (
+                          <span style={styles.scheduleDoneText}>차감 완료</span>
+                        ) : (
+                          <span style={styles.scheduleWarningText}>차감 전</span>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   <div style={styles.scheduleActionRow}>
                     <button
-                      onClick={() => scheduleCheckAttendance(schedule)}
-                      style={attendedToday ? styles.scheduleDisabledButton : styles.scheduleMiniButton}
-                      disabled={!!attendedToday}
+                      onClick={() => completeScheduleClass(schedule)}
+                      style={
+                        attendedToday && ptUsedToday
+                          ? styles.scheduleDisabledButton
+                          : styles.scheduleCompleteButton
+                      }
+                      disabled={!!(attendedToday && ptUsedToday)}
                     >
-                      {attendedToday ? "출석완료" : "출석"}
+                      {attendedToday && ptUsedToday ? "완료됨" : "수업 완료"}
                     </button>
 
-                    <button
-                      onClick={() => scheduleMinusPt(schedule)}
-                      style={ptUsedToday ? styles.scheduleDisabledButton : styles.scheduleMiniDanger}
-                      disabled={!!ptUsedToday}
-                    >
-                      {ptUsedToday ? "차감완료" : "차감"}
-                    </button>
+                    <div style={styles.scheduleSubActionRow}>
+                      <button
+                        onClick={() => scheduleCheckAttendance(schedule)}
+                        style={
+                          attendedToday
+                            ? styles.scheduleDisabledSmallButton
+                            : styles.scheduleMiniButton
+                        }
+                        disabled={!!attendedToday}
+                      >
+                        {attendedToday ? "출석완료" : "출석만"}
+                      </button>
+
+                      <button
+                        onClick={() => scheduleMinusPt(schedule)}
+                        style={
+                          ptUsedToday
+                            ? styles.scheduleDisabledSmallButton
+                            : styles.scheduleMiniDanger
+                        }
+                        disabled={!!ptUsedToday}
+                      >
+                        {ptUsedToday ? "차감완료" : "차감만"}
+                      </button>
+                    </div>
 
                     <button onClick={() => deleteSchedule(schedule)} style={styles.scheduleDeleteButton}>
                       삭제
@@ -2093,38 +2162,75 @@ const styles = {
     fontSize: 12,
     fontWeight: 900,
   },
+  scheduleWarningText: {
+    color: "#fde68a",
+    background: "#33270a",
+    border: "1px solid #854d0e",
+    borderRadius: 999,
+    padding: "4px 8px",
+    fontSize: 12,
+    fontWeight: 900,
+  },
   scheduleActionRow: {
     display: "grid",
     gridTemplateColumns: "1fr",
     gap: 8,
     minWidth: 76,
   },
+  scheduleCompleteButton: {
+    background: "#f5f5f5",
+    color: "#111",
+    border: "1px solid #ffffff",
+    borderRadius: 12,
+    padding: "10px 12px",
+    fontWeight: 900,
+    fontSize: 14,
+    whiteSpace: "nowrap",
+  },
+  scheduleSubActionRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 6,
+  },
   scheduleMiniButton: {
     background: "#1d4ed8",
     color: "#fff",
     border: "1px solid #2563eb",
-    borderRadius: 12,
-    padding: "8px 10px",
+    borderRadius: 10,
+    padding: "7px 8px",
     fontWeight: 900,
-    fontSize: 13,
+    fontSize: 12,
+    whiteSpace: "nowrap",
   },
   scheduleMiniDanger: {
     background: "#7f1d1d",
     color: "#fee2e2",
     border: "1px solid #991b1b",
-    borderRadius: 12,
-    padding: "8px 10px",
+    borderRadius: 10,
+    padding: "7px 8px",
     fontWeight: 900,
-    fontSize: 13,
+    fontSize: 12,
+    whiteSpace: "nowrap",
   },
   scheduleDisabledButton: {
     background: "#2a2a2a",
     color: "#777",
     border: "1px solid #3a3a3a",
     borderRadius: 12,
-    padding: "8px 10px",
+    padding: "10px 12px",
     fontWeight: 900,
-    fontSize: 13,
+    fontSize: 14,
+    whiteSpace: "nowrap",
+  },
+  scheduleDisabledSmallButton: {
+    background: "#2a2a2a",
+    color: "#777",
+    border: "1px solid #3a3a3a",
+    borderRadius: 10,
+    padding: "7px 8px",
+    fontWeight: 900,
+    fontSize: 12,
+    whiteSpace: "nowrap",
   },
   scheduleDeleteButton: {
     background: "#3f1111",
