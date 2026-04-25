@@ -975,6 +975,46 @@ export default function Page() {
                     운동 기록
                   </button>
                 </div>
+
+                <div style={styles.detailActionBox}>
+                  <p style={styles.detailPtMini}>PT {selectedMember.pt_remaining || 0}회 남음</p>
+
+                  <div style={styles.detailButtonGrid}>
+                    <button onClick={() => minusPt(selectedMember)} style={styles.redButton}>
+                      1회 차감
+                    </button>
+
+                    <button onClick={() => setPtModalMember(selectedMember)} style={styles.whiteButton}>
+                      이용권 추가
+                    </button>
+
+                    <button onClick={() => checkAttendance(selectedMember)} style={styles.blueButton}>
+                      출석 체크
+                    </button>
+
+                    {normalizePhone(selectedMember.phone) ? (
+                      <a href={`tel:${normalizePhone(selectedMember.phone)}`} style={styles.phoneButton}>
+                        전화하기
+                      </a>
+                    ) : (
+                      <button onClick={() => alert("전화번호가 없습니다.")} style={styles.phoneButton}>
+                        전화하기
+                      </button>
+                    )}
+
+                    <button onClick={() => markContacted(selectedMember)} style={styles.contactButton}>
+                      연락 완료
+                    </button>
+
+                    <button onClick={() => startEdit(selectedMember)} style={styles.darkButton}>
+                      수정
+                    </button>
+
+                    <button onClick={() => deleteMember(selectedMember)} style={styles.deleteButton}>
+                      삭제
+                    </button>
+                  </div>
+                </div>
               </>
             )}
 
@@ -1501,10 +1541,11 @@ export default function Page() {
           filteredMembers.map((member) => {
             const ptStatus = getPtStatus(member);
             const visitStatus = getVisitStatus(member);
-            const phoneNumber = normalizePhone(member.phone);
-
             return (
-              <article key={member.id} style={styles.card}>
+              <article
+                key={member.id}
+                style={editingId === member.id ? styles.card : styles.cardCompact}
+              >
                 {editingId === member.id ? (
                   <div style={styles.editBox}>
                     <h3 style={styles.editTitle}>회원 정보 수정</h3>
@@ -1540,54 +1581,35 @@ export default function Page() {
                     </div>
                   </div>
                 ) : (
-                  <>
-                    <div onClick={() => openDetail(member, "menu")} style={styles.memberMain}>
-                      <h3 style={styles.memberName}>{member.name}</h3>
-                      <p style={styles.phone}>
-                        {member.age ? `${member.age}세 · ` : ""}
-                        {member.height ? `${member.height}cm · ` : ""}
-                        {member.phone || "전화번호 없음"}
-                      </p>
-                      <p style={styles.visit}>최근 출석: {formatDate(member.latest_visit)}</p>
-                      <p style={styles.visit}>최근 PT: {formatDate(member.latest_pt)}</p>
-
-                      <div style={styles.warningRow}>
-                        {ptStatus && <span style={ptStatus.style}>{ptStatus.text}</span>}
-                        {visitStatus && <span style={visitStatus.style}>{visitStatus.text}</span>}
-                      </div>
-
-                      <p style={styles.hint}>눌러서 상세 보기</p>
-                    </div>
-
-                    <div style={styles.memberSide}>
+                  <div onClick={() => openDetail(member, "menu")} style={styles.memberMain}>
+                    <div style={styles.compactTop}>
+                      <h3 style={styles.memberNameSmall}>{member.name}</h3>
                       <div
                         style={{
-                          ...styles.ptCount,
+                          ...styles.ptCountSmall,
                           color: (member.pt_remaining || 0) <= 2 ? "#f87171" : "#ffffff",
                         }}
                       >
                         PT {member.pt_remaining}회
                       </div>
-
-                      <div style={styles.buttonGrid}>
-                        <button onClick={() => minusPt(member)} style={styles.redButton}>1회 차감</button>
-                        <button onClick={() => setPtModalMember(member)} style={styles.whiteButton}>이용권 추가</button>
-                        <button onClick={() => checkAttendance(member)} style={styles.blueButton}>출석 체크</button>
-                        <button onClick={() => openWorkout(member)} style={styles.greenButton}>운동 기록</button>
-
-                        {phoneNumber ? (
-                          <a href={`tel:${phoneNumber}`} style={styles.phoneButton}>전화하기</a>
-                        ) : (
-                          <button onClick={() => alert("전화번호가 없습니다.")} style={styles.phoneButton}>전화하기</button>
-                        )}
-
-                        <button onClick={() => markContacted(member)} style={styles.contactButton}>연락 완료</button>
-
-                        <button onClick={() => startEdit(member)} style={styles.darkButton}>수정</button>
-                        <button onClick={() => deleteMember(member)} style={styles.deleteButton}>삭제</button>
-                      </div>
                     </div>
-                  </>
+
+                    <p style={styles.phoneSmall}>
+                      {member.age ? `${member.age}세 · ` : ""}
+                      {member.height ? `${member.height}cm · ` : ""}
+                      {member.phone || "전화번호 없음"}
+                    </p>
+
+                    <div style={styles.compactInfoRow}>
+                      <span>출석 {formatDate(member.latest_visit)}</span>
+                      <span>PT {formatDate(member.latest_pt)}</span>
+                    </div>
+
+                    <div style={styles.warningRow}>
+                      {ptStatus && <span style={ptStatus.style}>{ptStatus.text}</span>}
+                      {visitStatus && <span style={visitStatus.style}>{visitStatus.text}</span>}
+                    </div>
+                  </div>
                 )}
               </article>
             );
@@ -1882,6 +1904,62 @@ const styles = {
     justifyContent: "space-between",
     gap: 20,
     boxShadow: "0 10px 28px rgba(0,0,0,.25)",
+  },
+  cardCompact: {
+    background: "#1c1c1c",
+    border: "1px solid #292929",
+    borderRadius: 22,
+    padding: 18,
+    marginBottom: 12,
+    boxShadow: "0 8px 22px rgba(0,0,0,.2)",
+  },
+  compactTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  memberNameSmall: {
+    fontSize: 24,
+    margin: 0,
+    marginBottom: 8,
+    fontWeight: 900,
+  },
+  ptCountSmall: {
+    fontSize: 24,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  phoneSmall: {
+    color: "#b3b3b3",
+    fontSize: 16,
+    margin: 0,
+    marginBottom: 8,
+  },
+  compactInfoRow: {
+    display: "flex",
+    gap: 12,
+    flexWrap: "wrap",
+    color: "#93c5fd",
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  detailActionBox: {
+    background: "#202020",
+    border: "1px solid #333",
+    borderRadius: 22,
+    padding: 16,
+    marginTop: 18,
+  },
+  detailPtMini: {
+    fontSize: 22,
+    fontWeight: 900,
+    margin: "0 0 14px",
+  },
+  detailButtonGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
   },
   memberMain: {
     flex: 1,
