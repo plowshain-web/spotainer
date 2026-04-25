@@ -607,7 +607,7 @@ export default function Page() {
   }
 
   function closePtModal() {
-    closePtModal();
+    setPtModalMember(null);
     setSelectedPtAmount("");
     setPtTotalPrice("");
   }
@@ -658,7 +658,9 @@ export default function Page() {
       pt_remaining: after,
     };
 
-    closePtModal();
+    setPtModalMember(null);
+    setSelectedPtAmount("");
+    setPtTotalPrice("");
 
     if (selectedMember?.id === member.id) {
       await openDetail(updatedMember, detailMode || "menu");
@@ -2269,7 +2271,11 @@ export default function Page() {
                 </p>
               </div>
 
-              <button onClick={closePtModal} style={styles.whiteCloseButton}>
+              <button
+                type="button"
+                onClick={() => closePtModal()}
+                style={styles.whiteCloseButton}
+              >
                 닫기
               </button>
             </div>
@@ -2320,11 +2326,19 @@ export default function Page() {
             </div>
 
             <div style={styles.whiteActionRowFull}>
-              <button onClick={submitPtAdd} style={styles.whiteSaveLargeButton}>
+              <button
+                type="button"
+                onClick={() => submitPtAdd()}
+                style={styles.whiteSaveLargeButton}
+              >
                 저장
               </button>
 
-              <button onClick={closePtModal} style={styles.whiteCancelLargeButton}>
+              <button
+                type="button"
+                onClick={() => closePtModal()}
+                style={styles.whiteCancelLargeButton}
+              >
                 취소
               </button>
             </div>
@@ -3431,7 +3445,7 @@ const styles = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 1200,
+    zIndex: 5000,
     padding: 20,
   },
   whiteModalBox: {
