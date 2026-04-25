@@ -378,19 +378,36 @@ export default function Page() {
     if (member.pt_remaining <= 0) return alert("남은 PT가 없습니다.");
 
     const before = member.pt_remaining;
+    const after = before - 1;
 
     const { error } = await supabase
       .from("members")
-      .update({ pt_remaining: before - 1 })
+      .update({ pt_remaining: after })
       .eq("id", member.id);
 
     if (error) return alert("PT 차감 실패: " + error.message);
 
-    await supabase.from("pt_logs").insert({
+    const { error: logError } = await supabase.from("pt_logs").insert({
       member_id: member.id,
       type: "use",
       amount: 1,
     });
+
+    if (logError) return alert("PT 사용 기록 저장 실패: " + logError.message);
+
+    const updatedMember = {
+      ...member,
+      pt_remaining: after,
+      latest_pt: new Date().toISOString(),
+    };
+
+    if (selectedMember?.id === member.id) {
+      await openDetail(updatedMember, detailMode || "menu");
+    }
+
+    if (workoutMember?.id === member.id) {
+      setWorkoutMember(updatedMember);
+    }
 
     setLastAction({
       type: "pt",
@@ -399,25 +416,43 @@ export default function Page() {
       memberName: member.name,
     });
 
-    loadMembers();
+    await loadMembers();
   }
 
   async function addPt(member, amount) {
+    const after = (member.pt_remaining || 0) + amount;
+
     const { error } = await supabase
       .from("members")
-      .update({ pt_remaining: member.pt_remaining + amount })
+      .update({ pt_remaining: after })
       .eq("id", member.id);
 
     if (error) return alert("이용권 추가 실패: " + error.message);
 
-    await supabase.from("pt_logs").insert({
+    const { error: logError } = await supabase.from("pt_logs").insert({
       member_id: member.id,
       type: "add",
       amount,
     });
 
+    if (logError) return alert("이용권 추가 기록 저장 실패: " + logError.message);
+
+    const updatedMember = {
+      ...member,
+      pt_remaining: after,
+    };
+
     setPtModalMember(null);
-    loadMembers();
+
+    if (selectedMember?.id === member.id) {
+      await openDetail(updatedMember, detailMode || "menu");
+    }
+
+    if (workoutMember?.id === member.id) {
+      setWorkoutMember(updatedMember);
+    }
+
+    await loadMembers();
   }
 
   async function cancelPtUse(log) {
@@ -429,12 +464,16 @@ export default function Page() {
       .eq("id", log.member_id)
       .single();
 
-    await supabase
+    const after = (member?.pt_remaining || 0) + log.amount;
+
+    const { error: memberError } = await supabase
       .from("members")
-      .update({ pt_remaining: (member?.pt_remaining || 0) + log.amount })
+      .update({ pt_remaining: after })
       .eq("id", log.member_id);
 
-    await supabase
+    if (memberError) return alert("PT 복구 실패: " + memberError.message);
+
+    const { error: logError } = await supabase
       .from("pt_logs")
       .update({
         is_cancelled: true,
@@ -442,8 +481,19 @@ export default function Page() {
       })
       .eq("id", log.id);
 
-    if (selectedMember) await openDetail(selectedMember, "pt");
-    loadMembers();
+    if (logError) return alert("PT 차감 취소 실패: " + logError.message);
+
+    if (selectedMember) {
+      await openDetail(
+        {
+          ...selectedMember,
+          pt_remaining: after,
+        },
+        "pt"
+      );
+    }
+
+    await loadMembers();
   }
 
   async function undo() {
