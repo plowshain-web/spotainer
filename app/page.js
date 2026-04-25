@@ -1774,39 +1774,19 @@ export default function Page() {
                 <div style={styles.detailActionBox}>
                   <p style={styles.detailPtMini}>PT {selectedMember.pt_remaining || 0}회 남음</p>
 
-                  <div style={styles.detailButtonGrid}>
-                    <button onClick={() => minusPt(selectedMember)} style={styles.redButton}>
-                      1회 차감
-                    </button>
-
-                    <button onClick={() => setPtModalMember(selectedMember)} style={styles.whiteButton}>
+                  <div style={styles.detailButtonGridClean}>
+                    <button
+                      onClick={() => openPtModal(selectedMember)}
+                      style={styles.whiteButton}
+                    >
                       이용권 추가
                     </button>
 
-                    <button onClick={() => checkAttendance(selectedMember)} style={styles.blueButton}>
-                      출석 체크
-                    </button>
-
-                    {normalizePhone(selectedMember.phone) ? (
-                      <a href={`tel:${normalizePhone(selectedMember.phone)}`} style={styles.phoneButton}>
-                        전화하기
-                      </a>
-                    ) : (
-                      <button onClick={() => alert("전화번호가 없습니다.")} style={styles.phoneButton}>
-                        전화하기
-                      </button>
-                    )}
-
-                    <button onClick={() => markContacted(selectedMember)} style={styles.contactButton}>
-                      연락 완료
-                    </button>
-
-                    <button onClick={() => startEdit(selectedMember)} style={styles.darkButton}>
+                    <button
+                      onClick={() => startEdit(selectedMember)}
+                      style={styles.darkButton}
+                    >
                       수정
-                    </button>
-
-                    <button onClick={() => deleteMember(selectedMember)} style={styles.deleteButton}>
-                      삭제
                     </button>
                   </div>
                 </div>
@@ -3176,6 +3156,11 @@ const styles = {
     margin: "0 0 14px",
   },
   detailButtonGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+  },
+  detailButtonGridClean: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: 10,
