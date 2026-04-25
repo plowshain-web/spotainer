@@ -64,38 +64,41 @@ export default function Page() {
     loadMembers();
   }, []);
 
-  async function loadMembers() {
-    const { data } = await supabase
-      .from("members")
-      .select(
-  "*, attendance_logs(visited_at,is_cancelled,cancelled_at), pt_logs(type,amount,is_cancelled)"
-)
-      .order("created_at", { ascending: false });
+async function loadMembers() {
+  const { data } = await supabase
+    .from("members")
+    .select(
+      "*, attendance_logs(visited_at,is_cancelled,cancelled_at), pt_logs(type,amount,is_cancelled,created_at)"
+    )
+    .order("created_at", { ascending: false });
 
-    const formatted = (data || []).map((m) => {
-      const validLogs = (m.attendance_logs || []).filter((l) => !l.is_cancelled);
-      const latest = validLogs.map((l) => l.visited_at).sort().reverse()[0];
+  const formatted = (data || []).map((m) => {
+    const validLogs = (m.attendance_logs || []).filter((l) => !l.is_cancelled);
+    const latest = validLogs.map((l) => l.visited_at).sort().reverse()[0];
 
-      const validPtLogs = (m.pt_logs || []).filter((l) => !l.is_cancelled);
-      const used = validPtLogs
-        .filter((l) => l.type === "use")
-        .reduce((sum, l) => sum + l.amount, 0);
-      
-const latestPt = validPtLogs
-  .filter((l) => l.type === "use")
-  .map((l) => l.created_at)
-  .sort()
-  .reverse()[0];
-      return {
-        ...m,
-latest_visit: latest || null,
-latest_pt: latestPt || null,
-pt_used: used,
-pt_total: (m.pt_remaining || 0) + used,
-      };
-    });
+    const validPtLogs = (m.pt_logs || []).filter((l) => !l.is_cancelled);
 
-    setMembers(formatted);
+    const used = validPtLogs
+      .filter((l) => l.type === "use")
+      .reduce((sum, l) => sum + l.amount, 0);
+
+    const latestPt = validPtLogs
+      .filter((l) => l.type === "use")
+      .map((l) => l.created_at)
+      .sort()
+      .reverse()[0];
+
+    return {
+      ...m,
+      latest_visit: latest || null,
+      latest_pt: latestPt || null,
+      pt_used: used,
+      pt_total: (m.pt_remaining || 0) + used,
+    };
+  });
+
+  setMembers(formatted);
+}  
   }
 
   const filteredMembers = members.filter((member) => {
