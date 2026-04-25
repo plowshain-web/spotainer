@@ -19,11 +19,17 @@ export default function Page() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [age, setAge] = useState("");
+  const [goal, setGoal] = useState("");
+  const [note, setNote] = useState("");
+  const [memo, setMemo] = useState("");
 
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editAge, setEditAge] = useState("");
+  const [editGoal, setEditGoal] = useState("");
+  const [editNote, setEditNote] = useState("");
+  const [editMemo, setEditMemo] = useState("");
 
   const [selectedMember, setSelectedMember] = useState(null);
   const [attendanceList, setAttendanceList] = useState([]);
@@ -136,12 +142,18 @@ export default function Page() {
       name: name.trim(),
       phone: phone.trim(),
       age: age ? Number(age) : null,
+      goal: goal.trim(),
+      note: note.trim(),
+      memo: memo.trim(),
       pt_remaining: 0,
     });
 
     setName("");
     setPhone("");
     setAge("");
+    setGoal("");
+    setNote("");
+    setMemo("");
     setSearch("");
     setShowAddModal(false);
     loadMembers();
@@ -152,6 +164,9 @@ export default function Page() {
     setEditName(member.name);
     setEditPhone(member.phone || "");
     setEditAge(member.age || "");
+    setEditGoal(member.goal || "");
+    setEditNote(member.note || "");
+    setEditMemo(member.memo || "");
   }
 
   async function saveEdit(id) {
@@ -163,6 +178,9 @@ export default function Page() {
         name: editName.trim(),
         phone: editPhone.trim(),
         age: editAge ? Number(editAge) : null,
+        goal: editGoal.trim(),
+        note: editNote.trim(),
+        memo: editMemo.trim(),
       })
       .eq("id", id);
 
@@ -352,6 +370,15 @@ export default function Page() {
     return { total, used, remain };
   }
 
+  function renderInfoBlock(title, content) {
+    return (
+      <div style={styles.infoBlock}>
+        <strong>{title}</strong>
+        <p>{content && content.trim() ? content : "미입력"}</p>
+      </div>
+    );
+  }
+
   function renderSummaryMember(member) {
     const d = daysSince(member.latest_visit);
 
@@ -445,6 +472,15 @@ export default function Page() {
             <label style={styles.label}>나이</label>
             <input value={age} onChange={(e) => setAge(e.target.value)} placeholder="예: 32" type="number" style={styles.input} />
 
+            <label style={styles.label}>목표</label>
+            <input value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="예: 체지방 감량, 근력 증가" style={styles.input} />
+
+            <label style={styles.label}>특이사항</label>
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="예: 허리 통증, 무릎 주의, 식단 어려움" style={styles.textarea} />
+
+            <label style={styles.label}>트레이너 메모</label>
+            <textarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="상담 내용, 성향, 관리 포인트" style={styles.textarea} />
+
             <div style={styles.editActions}>
               <button onClick={addMember} style={styles.primaryButton}>저장</button>
               <button onClick={() => setShowAddModal(false)} style={styles.cancelButton}>취소</button>
@@ -476,6 +512,11 @@ export default function Page() {
 
               <button onClick={() => setSelectedMember(null)} style={styles.closeButton}>닫기</button>
             </div>
+
+            <h3 style={styles.subTitle}>회원 관리 정보</h3>
+            {renderInfoBlock("목표", selectedMember.goal)}
+            {renderInfoBlock("특이사항", selectedMember.note)}
+            {renderInfoBlock("트레이너 메모", selectedMember.memo)}
 
             <h3 style={styles.subTitle}>PT 사용 기록</h3>
 
@@ -599,6 +640,15 @@ export default function Page() {
 
                     <label style={styles.label}>나이</label>
                     <input value={editAge} onChange={(e) => setEditAge(e.target.value)} type="number" style={styles.input} />
+
+                    <label style={styles.label}>목표</label>
+                    <input value={editGoal} onChange={(e) => setEditGoal(e.target.value)} style={styles.input} />
+
+                    <label style={styles.label}>특이사항</label>
+                    <textarea value={editNote} onChange={(e) => setEditNote(e.target.value)} style={styles.textarea} />
+
+                    <label style={styles.label}>트레이너 메모</label>
+                    <textarea value={editMemo} onChange={(e) => setEditMemo(e.target.value)} style={styles.textarea} />
 
                     <div style={styles.editActions}>
                       <button onClick={() => saveEdit(member.id)} style={styles.primaryButton}>저장</button>
@@ -854,6 +904,20 @@ const styles = {
     boxSizing: "border-box",
     marginBottom: 16,
   },
+  textarea: {
+    width: "100%",
+    minHeight: 90,
+    padding: 17,
+    borderRadius: 17,
+    border: "1px solid #333",
+    background: "#f7f7f7",
+    color: "#111",
+    fontSize: 17,
+    boxSizing: "border-box",
+    marginBottom: 16,
+    resize: "vertical",
+    fontFamily: "Arial, sans-serif",
+  },
   primaryButton: {
     width: "100%",
     padding: 17,
@@ -1048,6 +1112,13 @@ const styles = {
     fontSize: 24,
     marginTop: 22,
     marginBottom: 14,
+  },
+  infoBlock: {
+    background: "#222",
+    borderRadius: 16,
+    padding: 15,
+    marginBottom: 10,
+    color: "#eee",
   },
   logItem: {
     background: "#222",
