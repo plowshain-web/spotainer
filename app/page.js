@@ -99,7 +99,6 @@ async function loadMembers() {
 
   setMembers(formatted);
 }  
-  }
 
   const filteredMembers = members.filter((member) => {
     const q = search.trim().toLowerCase();
