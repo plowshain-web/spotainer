@@ -1309,6 +1309,7 @@ export default function Page() {
               const attendedToday = member?.latest_visit && isToday(member.latest_visit);
               const ptUsedToday = member?.latest_pt && isToday(member.latest_pt);
               const isNoShow = schedule.status === "noshow";
+              const isCancelled = schedule.status === "cancelled";
               const isCompleted = schedule.status === "completed" || (attendedToday && ptUsedToday);
 
               return (
