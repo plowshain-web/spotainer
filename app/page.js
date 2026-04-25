@@ -101,29 +101,29 @@ export default function Page() {
   }
 
   const filteredMembers = members
-  .filter((member) => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
+    .filter((member) => {
+      const q = search.trim().toLowerCase();
+      if (!q) return true;
 
-    return (
-      member.name?.toLowerCase().includes(q) ||
-      member.phone?.toLowerCase().includes(q)
-    );
-  })
-  .sort((a, b) => {
-    const ptA = a.pt_remaining || 0;
-    const ptB = b.pt_remaining || 0;
+      return (
+        member.name?.toLowerCase().includes(q) ||
+        member.phone?.toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      const ptA = a.pt_remaining || 0;
+      const ptB = b.pt_remaining || 0;
 
-    if (ptA !== ptB) return ptA - ptB;
+      if (ptA !== ptB) return ptA - ptB;
 
-    const daysA = daysSince(a.latest_visit) ?? 999;
-    const daysB = daysSince(b.latest_visit) ?? 999;
+      const daysA = daysSince(a.latest_visit) ?? 999;
+      const daysB = daysSince(b.latest_visit) ?? 999;
 
-    if (daysA !== daysB) return daysB - daysA;
+      if (daysA !== daysB) return daysB - daysA;
 
-    return new Date(b.created_at) - new Date(a.created_at);
-  });
-  
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+
   function daysSince(date) {
     if (!date) return null;
     return Math.floor(
@@ -171,7 +171,8 @@ export default function Page() {
     }),
     dormant: members.filter((m) => {
       const d = daysSince(m.latest_visit);
-      return d === null || d >= 14;
+      const contactedToday = m.last_contacted_at && isToday(m.last_contacted_at);
+      return (d === null || d >= 14) && !contactedToday;
     }),
   };
 
@@ -384,6 +385,27 @@ export default function Page() {
     loadMembers();
   }
 
+  async function markContacted(member) {
+    const now = new Date().toISOString();
+
+    const { error } = await supabase
+      .from("members")
+      .update({ last_contacted_at: now })
+      .eq("id", member.id);
+
+    if (error) {
+      alert("연락 완료 저장 실패: " + error.message);
+      return;
+    }
+
+    alert(`${member.name} 연락 완료 처리되었습니다.`);
+    loadMembers();
+  }
+
+  function normalizePhone(phone) {
+    return String(phone || "").replace(/[^0-9+]/g, "");
+  }
+
   async function openDetail(member, mode = "menu") {
     setSelectedMember(member);
     setDetailMode(mode);
@@ -586,6 +608,7 @@ export default function Page() {
     await loadWorkoutSessions(workoutMember.id);
     alert(`${workoutMember.name} 운동기록이 저장되었습니다.`);
   }
+
   function getVisibleWorkouts() {
     return workoutSessions.filter((session) => isToday(session.workout_date));
   }
@@ -1462,6 +1485,7 @@ export default function Page() {
           filteredMembers.map((member) => {
             const ptStatus = getPtStatus(member);
             const visitStatus = getVisitStatus(member);
+            const phoneNumber = normalizePhone(member.phone);
 
             return (
               <article key={member.id} style={styles.card}>
@@ -1534,6 +1558,15 @@ export default function Page() {
                         <button onClick={() => setPtModalMember(member)} style={styles.whiteButton}>이용권 추가</button>
                         <button onClick={() => checkAttendance(member)} style={styles.blueButton}>출석 체크</button>
                         <button onClick={() => openWorkout(member)} style={styles.greenButton}>운동 기록</button>
+
+                        {phoneNumber ? (
+                          <a href={`tel:${phoneNumber}`} style={styles.phoneButton}>전화하기</a>
+                        ) : (
+                          <button onClick={() => alert("전화번호가 없습니다.")} style={styles.phoneButton}>전화하기</button>
+                        )}
+
+                        <button onClick={() => markContacted(member)} style={styles.contactButton}>연락 완료</button>
+
                         <button onClick={() => startEdit(member)} style={styles.darkButton}>수정</button>
                         <button onClick={() => deleteMember(member)} style={styles.deleteButton}>삭제</button>
                       </div>
@@ -1916,6 +1949,27 @@ const styles = {
     border: "none",
     borderRadius: 14,
     padding: "14px",
+    fontSize: 16,
+    fontWeight: 900,
+  },
+  phoneButton: {
+    background: "#0f766e",
+    color: "#fff",
+    border: "none",
+    borderRadius: 14,
+    padding: "13px 14px",
+    fontSize: 16,
+    fontWeight: 900,
+    textAlign: "center",
+    textDecoration: "none",
+    boxSizing: "border-box",
+  },
+  contactButton: {
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #444",
+    borderRadius: 14,
+    padding: "13px 14px",
     fontSize: 16,
     fontWeight: 900,
   },
