@@ -45,13 +45,13 @@ export default function Page() {
   const [workoutMode, setWorkoutMode] = useState("list");
   const [workoutMemo, setWorkoutMemo] = useState("");
   const [workoutExercises, setWorkoutExercises] = useState([
-    {
-      name: "",
-      sets: [{ weight: "", reps: "" }],
-    },
+    { name: "", sets: [{ weight: "", reps: "" }] },
   ]);
-  const [showAllWorkouts, setShowAllWorkouts] = useState(false);
   const [showAllWorkoutModal, setShowAllWorkoutModal] = useState(false);
+  const [editingWorkoutSetId, setEditingWorkoutSetId] = useState(null);
+  const [editWorkoutName, setEditWorkoutName] = useState("");
+  const [editWorkoutWeight, setEditWorkoutWeight] = useState("");
+  const [editWorkoutReps, setEditWorkoutReps] = useState("");
 
   const [ptModalMember, setPtModalMember] = useState(null);
   const [lastAction, setLastAction] = useState(null);
@@ -115,6 +115,19 @@ export default function Page() {
     const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
 
     return target >= yesterdayStart && target <= now;
+  }
+
+  function isToday(date) {
+    if (!date) return false;
+
+    const target = new Date(date);
+    const now = new Date();
+
+    return (
+      target.getFullYear() === now.getFullYear() &&
+      target.getMonth() === now.getMonth() &&
+      target.getDate() === now.getDate()
+    );
   }
 
   function getPtStatus(member) {
@@ -402,14 +415,9 @@ export default function Page() {
     setWorkoutMember(member);
     setWorkoutMode("list");
     setWorkoutMemo("");
-    setWorkoutExercises([
-      {
-        name: "",
-        sets: [{ weight: "", reps: "" }],
-      },
-    ]);
-    setShowAllWorkouts(false);
+    setWorkoutExercises([{ name: "", sets: [{ weight: "", reps: "" }] }]);
     setShowAllWorkoutModal(false);
+    clearWorkoutEdit();
 
     await loadWorkoutSessions(member.id);
   }
@@ -419,14 +427,9 @@ export default function Page() {
     setWorkoutSessions([]);
     setWorkoutMode("list");
     setWorkoutMemo("");
-    setWorkoutExercises([
-      {
-        name: "",
-        sets: [{ weight: "", reps: "" }],
-      },
-    ]);
-    setShowAllWorkouts(false);
+    setWorkoutExercises([{ name: "", sets: [{ weight: "", reps: "" }] }]);
     setShowAllWorkoutModal(false);
+    clearWorkoutEdit();
   }
 
   async function loadWorkoutSessions(memberId) {
@@ -448,19 +451,13 @@ export default function Page() {
   function addExercise() {
     setWorkoutExercises((prev) => [
       ...prev,
-      {
-        name: "",
-        sets: [{ weight: "", reps: "" }],
-      },
+      { name: "", sets: [{ weight: "", reps: "" }] },
     ]);
   }
 
   function removeExercise(exerciseIndex) {
     if (workoutExercises.length <= 1) return alert("운동은 최소 1개가 필요합니다.");
-
-    setWorkoutExercises((prev) =>
-      prev.filter((_, index) => index !== exerciseIndex)
-    );
+    setWorkoutExercises((prev) => prev.filter((_, index) => index !== exerciseIndex));
   }
 
   function updateExerciseName(exerciseIndex, value) {
@@ -475,10 +472,7 @@ export default function Page() {
     setWorkoutExercises((prev) =>
       prev.map((exercise, index) =>
         index === exerciseIndex
-          ? {
-              ...exercise,
-              sets: [...exercise.sets, { weight: "", reps: "" }],
-            }
+          ? { ...exercise, sets: [...exercise.sets, { weight: "", reps: "" }] }
           : exercise
       )
     );
@@ -569,12 +563,7 @@ export default function Page() {
     }
 
     setWorkoutMemo("");
-    setWorkoutExercises([
-      {
-        name: "",
-        sets: [{ weight: "", reps: "" }],
-      },
-    ]);
+    setWorkoutExercises([{ name: "", sets: [{ weight: "", reps: "" }] }]);
     setWorkoutMode("list");
 
     await loadWorkoutSessions(workoutMember.id);
@@ -582,8 +571,7 @@ export default function Page() {
   }
 
   function getVisibleWorkouts() {
-    if (showAllWorkouts) return workoutSessions;
-    return workoutSessions.filter((session) => isTodayOrYesterday(session.workout_date));
+    return workoutSessions.filter((session) => isToday(session.workout_date));
   }
 
   function groupWorkoutSets(sets = []) {
@@ -617,6 +605,88 @@ export default function Page() {
     });
 
     return groups;
+  }
+
+  function clearWorkoutEdit() {
+    setEditingWorkoutSetId(null);
+    setEditWorkoutName("");
+    setEditWorkoutWeight("");
+    setEditWorkoutReps("");
+  }
+
+  function startWorkoutSetEdit(set) {
+    setEditingWorkoutSetId(set.id);
+    setEditWorkoutName(set.exercise_name || "");
+    setEditWorkoutWeight(set.weight ?? "");
+    setEditWorkoutReps(set.reps ?? "");
+  }
+
+  async function saveWorkoutSetEdit(set) {
+    if (!editWorkoutName.trim()) {
+      alert("운동명을 입력하세요.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("workout_sets")
+      .update({
+        exercise_name: editWorkoutName.trim(),
+        weight: editWorkoutWeight ? Number(editWorkoutWeight) : null,
+        reps: editWorkoutReps ? Number(editWorkoutReps) : null,
+      })
+      .eq("id", set.id);
+
+    if (error) {
+      alert("운동기록 수정 실패: " + error.message);
+      return;
+    }
+
+    clearWorkoutEdit();
+    await loadWorkoutSessions(workoutMember.id);
+  }
+
+  async function deleteWorkoutSet(set) {
+    if (!confirm("이 세트를 삭제할까요?")) return;
+
+    const { error } = await supabase
+      .from("workout_sets")
+      .delete()
+      .eq("id", set.id);
+
+    if (error) {
+      alert("세트 삭제 실패: " + error.message);
+      return;
+    }
+
+    clearWorkoutEdit();
+    await loadWorkoutSessions(workoutMember.id);
+  }
+
+  async function deleteWorkoutSession(session) {
+    if (!confirm("이 날짜의 운동기록 전체를 삭제할까요?")) return;
+
+    const { error: setError } = await supabase
+      .from("workout_sets")
+      .delete()
+      .eq("session_id", session.id);
+
+    if (setError) {
+      alert("운동 상세 삭제 실패: " + setError.message);
+      return;
+    }
+
+    const { error: sessionError } = await supabase
+      .from("workout_sessions")
+      .delete()
+      .eq("id", session.id);
+
+    if (sessionError) {
+      alert("운동기록 삭제 실패: " + sessionError.message);
+      return;
+    }
+
+    clearWorkoutEdit();
+    await loadWorkoutSessions(workoutMember.id);
   }
 
   function formatDate(date) {
@@ -695,7 +765,7 @@ export default function Page() {
     );
   }
 
-  function renderWorkoutSession(session) {
+  function renderTodayWorkoutSession(session) {
     const groups = groupWorkoutSets(session.workout_sets || []);
 
     return (
@@ -707,26 +777,17 @@ export default function Page() {
             <p style={styles.summaryMemberInfo}>운동 상세 없음</p>
           ) : (
             groups.map((group, groupIndex) => (
-              <div key={group.key} style={{ marginTop: groupIndex === 0 ? 8 : 18 }}>
-                <p
-                  style={{
-                    ...styles.summaryMemberInfo,
-                    color: "#fff",
-                    fontWeight: 900,
-                    fontSize: 16,
-                  }}
-                >
-                  {groupIndex + 1}번 운동 · {group.exerciseName}
-                </p>
-
-                {group.sets.map((set, setIndex) => (
-                  <p key={set.id || `${group.key}-${setIndex}`} style={styles.summaryMemberInfo}>
-                    {set.set_number || setIndex + 1}세트 ·{" "}
-                    {set.weight ? `${set.weight}kg` : "중량 미입력"} ·{" "}
-                    {set.reps ? `${set.reps}회` : "횟수 미입력"}
-                  </p>
-                ))}
-              </div>
+              <p
+                key={group.key}
+                style={{
+                  ...styles.summaryMemberInfo,
+                  color: "#fff",
+                  fontWeight: 900,
+                  fontSize: 16,
+                }}
+              >
+                {groupIndex + 1}번 운동 · {group.exerciseName}
+              </p>
             ))
           )}
 
@@ -737,7 +798,6 @@ export default function Page() {
       </div>
     );
   }
-
 return (
     <main style={styles.page}>
       <header style={styles.header}>
@@ -1000,7 +1060,7 @@ return (
                 </div>
 
                 <div style={styles.recordHeader}>
-                  <h3 style={styles.subTitle}>최근 운동기록</h3>
+                  <h3 style={styles.subTitle}>오늘 운동기록</h3>
 
                   <button
                     onClick={() => setShowAllWorkoutModal(true)}
@@ -1011,9 +1071,9 @@ return (
                 </div>
 
                 {getVisibleWorkouts().length === 0 ? (
-                  <p style={styles.muted}>오늘/어제 운동기록이 없습니다.</p>
+                  <p style={styles.muted}>오늘 운동기록이 없습니다.</p>
                 ) : (
-                  getVisibleWorkouts().map(renderWorkoutSession)
+                  getVisibleWorkouts().map(renderTodayWorkoutSession)
                 )}
               </>
             )}
@@ -1121,11 +1181,14 @@ return (
             <div style={styles.whiteModalTop}>
               <div>
                 <h2 style={styles.whiteModalTitle}>{workoutMember.name} 전체 운동기록</h2>
-                <p style={styles.whiteMuted}>저장된 모든 운동기록입니다.</p>
+                <p style={styles.whiteMuted}>중량이나 횟수를 잘못 입력했을 때 여기서 수정할 수 있습니다.</p>
               </div>
 
               <button
-                onClick={() => setShowAllWorkoutModal(false)}
+                onClick={() => {
+                  setShowAllWorkoutModal(false);
+                  clearWorkoutEdit();
+                }}
                 style={styles.whiteCloseButton}
               >
                 닫기
@@ -1140,9 +1203,18 @@ return (
 
                 return (
                   <div key={session.id} style={styles.whiteWorkoutCard}>
-                    <h3 style={styles.whiteWorkoutDate}>
-                      {formatDate(session.workout_date)}
-                    </h3>
+                    <div style={styles.whiteSessionTop}>
+                      <h3 style={styles.whiteWorkoutDate}>
+                        {formatDate(session.workout_date)}
+                      </h3>
+
+                      <button
+                        onClick={() => deleteWorkoutSession(session)}
+                        style={styles.whiteDeleteButton}
+                      >
+                        날짜 전체 삭제
+                      </button>
+                    </div>
 
                     {groups.length === 0 ? (
                       <p style={styles.whiteMuted}>운동 상세 없음</p>
@@ -1154,14 +1226,73 @@ return (
                           </p>
 
                           {group.sets.map((set, setIndex) => (
-                            <p
+                            <div
                               key={set.id || `${group.key}-${setIndex}`}
-                              style={styles.whiteSetText}
+                              style={styles.whiteSetRow}
                             >
-                              {set.set_number || setIndex + 1}세트 ·{" "}
-                              {set.weight ? `${set.weight}kg` : "중량 미입력"} ·{" "}
-                              {set.reps ? `${set.reps}회` : "횟수 미입력"}
-                            </p>
+                              {editingWorkoutSetId === set.id ? (
+                                <>
+                                  <input
+                                    value={editWorkoutName}
+                                    onChange={(e) => setEditWorkoutName(e.target.value)}
+                                    placeholder="운동명"
+                                    style={styles.whiteInput}
+                                  />
+                                  <input
+                                    value={editWorkoutWeight}
+                                    onChange={(e) => setEditWorkoutWeight(e.target.value)}
+                                    placeholder="중량"
+                                    type="number"
+                                    style={styles.whiteInput}
+                                  />
+                                  <input
+                                    value={editWorkoutReps}
+                                    onChange={(e) => setEditWorkoutReps(e.target.value)}
+                                    placeholder="횟수"
+                                    type="number"
+                                    style={styles.whiteInput}
+                                  />
+
+                                  <div style={styles.whiteActionRow}>
+                                    <button
+                                      onClick={() => saveWorkoutSetEdit(set)}
+                                      style={styles.whiteSaveButton}
+                                    >
+                                      저장
+                                    </button>
+                                    <button
+                                      onClick={clearWorkoutEdit}
+                                      style={styles.whiteCancelButton}
+                                    >
+                                      취소
+                                    </button>
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <p style={styles.whiteSetText}>
+                                    {set.set_number || setIndex + 1}세트 ·{" "}
+                                    {set.weight ? `${set.weight}kg` : "중량 미입력"} ·{" "}
+                                    {set.reps ? `${set.reps}회` : "횟수 미입력"}
+                                  </p>
+
+                                  <div style={styles.whiteActionRow}>
+                                    <button
+                                      onClick={() => startWorkoutSetEdit(set)}
+                                      style={styles.whiteEditButton}
+                                    >
+                                      수정
+                                    </button>
+                                    <button
+                                      onClick={() => deleteWorkoutSet(set)}
+                                      style={styles.whiteDeleteButton}
+                                    >
+                                      삭제
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           ))}
                         </div>
                       ))
@@ -1864,10 +1995,16 @@ const styles = {
     padding: 16,
     marginBottom: 12,
   },
+  whiteSessionTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "center",
+    marginBottom: 12,
+  },
   whiteWorkoutDate: {
     fontSize: 20,
     margin: 0,
-    marginBottom: 12,
     fontWeight: 900,
   },
   whiteExerciseGroup: {
@@ -1882,10 +2019,63 @@ const styles = {
     margin: 0,
     marginBottom: 8,
   },
+  whiteSetRow: {
+    borderTop: "1px solid #eee",
+    paddingTop: 8,
+    marginTop: 8,
+  },
   whiteSetText: {
     fontSize: 15,
     color: "#333",
     margin: "5px 0",
+  },
+  whiteInput: {
+    width: "100%",
+    padding: 12,
+    borderRadius: 12,
+    border: "1px solid #ddd",
+    background: "#fff",
+    color: "#111",
+    fontSize: 15,
+    boxSizing: "border-box",
+    marginBottom: 8,
+  },
+  whiteActionRow: {
+    display: "flex",
+    gap: 8,
+    marginTop: 8,
+  },
+  whiteEditButton: {
+    background: "#111",
+    color: "#fff",
+    border: "none",
+    borderRadius: 10,
+    padding: "8px 12px",
+    fontWeight: 900,
+  },
+  whiteSaveButton: {
+    background: "#111",
+    color: "#fff",
+    border: "none",
+    borderRadius: 10,
+    padding: "8px 12px",
+    fontWeight: 900,
+  },
+  whiteCancelButton: {
+    background: "#e5e5e5",
+    color: "#111",
+    border: "none",
+    borderRadius: 10,
+    padding: "8px 12px",
+    fontWeight: 900,
+  },
+  whiteDeleteButton: {
+    background: "#fee2e2",
+    color: "#991b1b",
+    border: "1px solid #fecaca",
+    borderRadius: 10,
+    padding: "8px 12px",
+    fontWeight: 900,
   },
   whiteMemo: {
     color: "#555",
