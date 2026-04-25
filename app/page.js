@@ -1244,6 +1244,8 @@ export default function Page() {
               const member = getScheduleMember(schedule);
               const attendedToday = member?.latest_visit && isToday(member.latest_visit);
               const ptUsedToday = member?.latest_pt && isToday(member.latest_pt);
+              const isNoShow = schedule.status === "noshow";
+              const isCompleted = schedule.status === "completed" || (attendedToday && ptUsedToday);
 
               return (
                 <div key={schedule.id} style={styles.scheduleItem}>
