@@ -37,6 +37,9 @@ export default function Page() {
   const [detailMode, setDetailMode] = useState(null);
   const [attendanceList, setAttendanceList] = useState([]);
   const [ptLogList, setPtLogList] = useState([]);
+  const [showAllPtLogs, setShowAllPtLogs] = useState(false);
+  const [showAllAttendanceLogs, setShowAllAttendanceLogs] = useState(false);
+
   const [ptModalMember, setPtModalMember] = useState(null);
   const [lastAction, setLastAction] = useState(null);
 
@@ -87,6 +90,18 @@ export default function Page() {
     return Math.floor(
       (new Date().getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24)
     );
+  }
+
+  function isTodayOrYesterday(date) {
+    if (!date) return false;
+
+    const target = new Date(date);
+    const now = new Date();
+
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+
+    return target >= yesterdayStart && target <= now;
   }
 
   function getPtStatus(member) {
@@ -329,6 +344,8 @@ export default function Page() {
   async function openDetail(member, mode = "menu") {
     setSelectedMember(member);
     setDetailMode(mode);
+    setShowAllPtLogs(false);
+    setShowAllAttendanceLogs(false);
 
     const { data: attendanceData } = await supabase
       .from("attendance_logs")
@@ -349,6 +366,8 @@ export default function Page() {
   function closeDetail() {
     setSelectedMember(null);
     setDetailMode(null);
+    setShowAllPtLogs(false);
+    setShowAllAttendanceLogs(false);
   }
 
   async function cancelAttendance(log) {
@@ -386,6 +405,24 @@ export default function Page() {
     const total = remain + used;
 
     return { total, used, remain };
+  }
+
+  function getVisiblePtLogs() {
+    const validUseLogs = ptLogList.filter(
+      (log) => log.type === "use" && !log.is_cancelled
+    );
+
+    if (showAllPtLogs) return validUseLogs;
+
+    return validUseLogs.filter((log) => isTodayOrYesterday(log.created_at));
+  }
+
+  function getVisibleAttendanceLogs() {
+    const validLogs = attendanceList.filter((log) => !log.is_cancelled);
+
+    if (showAllAttendanceLogs) return validLogs;
+
+    return validLogs.filter((log) => isTodayOrYesterday(log.visited_at));
   }
 
   function renderInfoBlock(title, content) {
@@ -578,19 +615,31 @@ export default function Page() {
                   );
                 })()}
 
-                <h3 style={styles.subTitle}>PT 사용 기록</h3>
+                <div style={styles.recordHeader}>
+                  <h3 style={styles.subTitle}>
+                    {showAllPtLogs ? "전체 PT 사용내역" : "최근 PT 사용기록"}
+                  </h3>
 
-                {ptLogList.filter((log) => log.type === "use").length === 0 ? (
-                  <p style={styles.muted}>PT 사용 기록이 없습니다.</p>
+                  <button
+                    onClick={() => setShowAllPtLogs(!showAllPtLogs)}
+                    style={styles.smallDark}
+                  >
+                    {showAllPtLogs ? "최근 기록 보기" : "전체 사용내역 보기"}
+                  </button>
+                </div>
+
+                {getVisiblePtLogs().length === 0 ? (
+                  <p style={styles.muted}>
+                    {showAllPtLogs ? "PT 사용내역이 없습니다." : "오늘/어제 PT 사용기록이 없습니다."}
+                  </p>
                 ) : (
-                  ptLogList.filter((log) => log.type === "use").map((log) => (
-                    <div key={log.id} style={{ ...styles.logItem, opacity: log.is_cancelled ? 0.45 : 1 }}>
+                  getVisiblePtLogs().map((log) => (
+                    <div key={log.id} style={styles.logItem}>
                       <div>
                         <div style={styles.logDate}>{formatDateTime(log.created_at)} · {log.amount}회 사용</div>
-                        {log.is_cancelled && <div style={styles.cancelText}>취소됨</div>}
                       </div>
 
-                      {!log.is_cancelled && (
+                      {!showAllPtLogs && (
                         <button onClick={() => cancelPtUse(log)} style={styles.smallDanger}>차감 취소</button>
                       )}
                     </div>
@@ -605,19 +654,31 @@ export default function Page() {
 
             {detailMode === "attendance" && (
               <>
-                <h3 style={styles.subTitle}>출석 기록</h3>
+                <div style={styles.recordHeader}>
+                  <h3 style={styles.subTitle}>
+                    {showAllAttendanceLogs ? "전체 출석기록" : "최근 출석기록"}
+                  </h3>
 
-                {attendanceList.length === 0 ? (
-                  <p style={styles.muted}>출석 기록이 없습니다.</p>
+                  <button
+                    onClick={() => setShowAllAttendanceLogs(!showAllAttendanceLogs)}
+                    style={styles.smallDark}
+                  >
+                    {showAllAttendanceLogs ? "최근 기록 보기" : "전체 출석기록 보기"}
+                  </button>
+                </div>
+
+                {getVisibleAttendanceLogs().length === 0 ? (
+                  <p style={styles.muted}>
+                    {showAllAttendanceLogs ? "출석기록이 없습니다." : "오늘/어제 출석기록이 없습니다."}
+                  </p>
                 ) : (
-                  attendanceList.map((log) => (
-                    <div key={log.id} style={{ ...styles.logItem, opacity: log.is_cancelled ? 0.45 : 1 }}>
+                  getVisibleAttendanceLogs().map((log) => (
+                    <div key={log.id} style={styles.logItem}>
                       <div>
                         <div style={styles.logDate}>{formatDateTime(log.visited_at)}</div>
-                        {log.is_cancelled && <div style={styles.cancelText}>취소됨</div>}
                       </div>
 
-                      {!log.is_cancelled && (
+                      {!showAllAttendanceLogs && (
                         <button onClick={() => cancelAttendance(log)} style={styles.smallDanger}>출석 취소</button>
                       )}
                     </div>
@@ -943,6 +1004,14 @@ const styles = {
     padding: 18,
     fontSize: 18,
     fontWeight: 900,
+  },
+  recordHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "center",
+    marginTop: 22,
+    marginBottom: 14,
   },
   searchBox: {
     background: "#151515",
