@@ -58,10 +58,20 @@ export default function Page() {
   const [ptModalMember, setPtModalMember] = useState(null);
   const [lastAction, setLastAction] = useState(null);
 
+  const [schedules, setSchedules] = useState([]);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduleMemberId, setScheduleMemberId] = useState("");
+  const [scheduleDate, setScheduleDate] = useState(getTodayDateString());
+  const [scheduleStartTime, setScheduleStartTime] = useState("");
+  const [scheduleEndTime, setScheduleEndTime] = useState("");
+  const [scheduleType, setScheduleType] = useState("pt");
+  const [scheduleMemo, setScheduleMemo] = useState("");
+
   const isSearching = search.trim().length > 0;
 
   useEffect(() => {
     loadMembers();
+    loadSchedules();
   }, []);
 
   async function loadMembers() {
@@ -98,6 +108,106 @@ export default function Page() {
     });
 
     setMembers(formatted);
+  }
+
+  function getTodayDateString() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  async function loadSchedules(date = getTodayDateString()) {
+    const { data, error } = await supabase
+      .from("schedules")
+      .select("*, members(*)")
+      .eq("schedule_date", date)
+      .order("start_time", { ascending: true });
+
+    if (error) {
+      alert("스케줄 불러오기 실패: " + error.message);
+      return;
+    }
+
+    setSchedules(data || []);
+  }
+
+  function resetScheduleForm() {
+    setScheduleMemberId("");
+    setScheduleDate(getTodayDateString());
+    setScheduleStartTime("");
+    setScheduleEndTime("");
+    setScheduleType("pt");
+    setScheduleMemo("");
+  }
+
+  function openScheduleModal() {
+    resetScheduleForm();
+    setShowScheduleModal(true);
+  }
+
+  function closeScheduleModal() {
+    setShowScheduleModal(false);
+    resetScheduleForm();
+  }
+
+  async function addSchedule() {
+    if (!scheduleMemberId) return alert("회원을 선택하세요.");
+    if (!scheduleDate) return alert("날짜를 선택하세요.");
+    if (!scheduleStartTime) return alert("시작 시간을 입력하세요.");
+
+    const { error } = await supabase.from("schedules").insert({
+      member_id: scheduleMemberId,
+      schedule_date: scheduleDate,
+      start_time: scheduleStartTime,
+      end_time: scheduleEndTime || null,
+      type: scheduleType,
+      memo: scheduleMemo.trim(),
+    });
+
+    if (error) {
+      alert("스케줄 저장 실패: " + error.message);
+      return;
+    }
+
+    closeScheduleModal();
+    await loadSchedules(getTodayDateString());
+    alert("스케줄이 저장되었습니다.");
+  }
+
+  async function deleteSchedule(schedule) {
+    if (!confirm("이 스케줄을 삭제할까요?")) return;
+
+    const { error } = await supabase.from("schedules").delete().eq("id", schedule.id);
+
+    if (error) {
+      alert("스케줄 삭제 실패: " + error.message);
+      return;
+    }
+
+    await loadSchedules(getTodayDateString());
+  }
+
+  function getScheduleTypeText(type) {
+    if (type === "ot") return "OT";
+    if (type === "consult") return "상담";
+    return "PT";
+  }
+
+  function formatTime(time) {
+    if (!time) return "";
+    const [hourText, minuteText] = String(time).split(":");
+    const hour = Number(hourText);
+    const minute = minuteText || "00";
+    const period = hour >= 12 ? "오후" : "오전";
+    const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+    return `${period} ${displayHour}:${minute}`;
+  }
+
+  function openScheduleMember(schedule) {
+    if (!schedule.members) return alert("연결된 회원 정보를 찾을 수 없습니다.");
+    openDetail(schedule.members, "menu");
   }
 
   const filteredMembers = members
@@ -874,6 +984,45 @@ export default function Page() {
         </button>
       </section>
 
+      <section style={styles.scheduleBox}>
+        <div style={styles.scheduleTop}>
+          <div>
+            <h2 style={styles.scheduleTitle}>오늘 스케줄</h2>
+            <p style={styles.scheduleDateText}>{formatDate(getTodayDateString())}</p>
+          </div>
+
+          <button onClick={openScheduleModal} style={styles.scheduleAddButton}>
+            + 스케줄 추가
+          </button>
+        </div>
+
+        {schedules.length === 0 ? (
+          <p style={styles.muted}>오늘 등록된 스케줄이 없습니다.</p>
+        ) : (
+          <div style={styles.scheduleList}>
+            {schedules.map((schedule) => (
+              <div key={schedule.id} style={styles.scheduleItem}>
+                <div onClick={() => openScheduleMember(schedule)} style={styles.scheduleMain}>
+                  <div style={styles.scheduleTime}>{formatTime(schedule.start_time)}</div>
+                  <div>
+                    <strong style={styles.scheduleMemberName}>
+                      {getScheduleTypeText(schedule.type)} · {schedule.members?.name || "회원 정보 없음"}
+                    </strong>
+                    <p style={styles.scheduleMemo}>
+                      {schedule.memo ? schedule.memo : "메모 없음"}
+                    </p>
+                  </div>
+                </div>
+
+                <button onClick={() => deleteSchedule(schedule)} style={styles.scheduleDeleteButton}>
+                  삭제
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       {summaryModal && (
         <div style={styles.modalOverlay}>
           <section style={styles.modalBox}>
@@ -892,6 +1041,85 @@ export default function Page() {
             ) : (
               summaryConfig[summaryModal].list.map(renderSummaryMember)
             )}
+          </section>
+        </div>
+      )}
+
+      {showScheduleModal && (
+        <div style={styles.modalOverlay}>
+          <section style={styles.modalBox}>
+            <div style={styles.detailTop}>
+              <h2 style={styles.modalTitle}>스케줄 추가</h2>
+              <button onClick={closeScheduleModal} style={styles.closeButton}>
+                닫기
+              </button>
+            </div>
+
+            <label style={styles.label}>회원 선택</label>
+            <select
+              value={scheduleMemberId}
+              onChange={(e) => setScheduleMemberId(e.target.value)}
+              style={styles.input}
+            >
+              <option value="">회원을 선택하세요</option>
+              {members.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.name} · PT {member.pt_remaining || 0}회
+                </option>
+              ))}
+            </select>
+
+            <label style={styles.label}>날짜</label>
+            <input
+              value={scheduleDate}
+              onChange={(e) => setScheduleDate(e.target.value)}
+              type="date"
+              style={styles.input}
+            />
+
+            <label style={styles.label}>시작 시간</label>
+            <input
+              value={scheduleStartTime}
+              onChange={(e) => setScheduleStartTime(e.target.value)}
+              type="time"
+              style={styles.input}
+            />
+
+            <label style={styles.label}>종료 시간</label>
+            <input
+              value={scheduleEndTime}
+              onChange={(e) => setScheduleEndTime(e.target.value)}
+              type="time"
+              style={styles.input}
+            />
+
+            <label style={styles.label}>구분</label>
+            <select
+              value={scheduleType}
+              onChange={(e) => setScheduleType(e.target.value)}
+              style={styles.input}
+            >
+              <option value="pt">PT</option>
+              <option value="ot">OT</option>
+              <option value="consult">상담</option>
+            </select>
+
+            <label style={styles.label}>메모</label>
+            <textarea
+              value={scheduleMemo}
+              onChange={(e) => setScheduleMemo(e.target.value)}
+              placeholder="예: 하체, 체형상담, 보강수업"
+              style={styles.textarea}
+            />
+
+            <div style={styles.editActions}>
+              <button onClick={addSchedule} style={styles.primaryButton}>
+                저장
+              </button>
+              <button onClick={closeScheduleModal} style={styles.cancelButton}>
+                취소
+              </button>
+            </div>
           </section>
         </div>
       )}
@@ -1663,6 +1891,84 @@ const styles = {
     gridTemplateColumns: "1fr 1fr 1fr",
     gap: 10,
     textAlign: "center",
+  },
+  scheduleBox: {
+    background: "#151515",
+    border: "1px solid #272727",
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 22,
+  },
+  scheduleTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 14,
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  scheduleTitle: {
+    fontSize: 26,
+    margin: 0,
+    fontWeight: 900,
+  },
+  scheduleDateText: {
+    color: "#aaa",
+    margin: "6px 0 0",
+    fontSize: 14,
+  },
+  scheduleAddButton: {
+    background: "#f5f5f5",
+    color: "#111",
+    border: "none",
+    borderRadius: 16,
+    padding: "13px 16px",
+    fontSize: 16,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  scheduleList: {
+    display: "grid",
+    gap: 10,
+  },
+  scheduleItem: {
+    background: "#202020",
+    border: "1px solid #333",
+    borderRadius: 18,
+    padding: 14,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  scheduleMain: {
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+    flex: 1,
+    cursor: "pointer",
+  },
+  scheduleTime: {
+    minWidth: 72,
+    color: "#93c5fd",
+    fontSize: 16,
+    fontWeight: 900,
+  },
+  scheduleMemberName: {
+    color: "#fff",
+    fontSize: 17,
+  },
+  scheduleMemo: {
+    color: "#aaa",
+    fontSize: 13,
+    margin: "5px 0 0",
+  },
+  scheduleDeleteButton: {
+    background: "#3f1111",
+    color: "#fca5a5",
+    border: "1px solid #7f1d1d",
+    borderRadius: 12,
+    padding: "9px 12px",
+    fontWeight: 900,
   },
   summaryCard: {
     background: "transparent",
