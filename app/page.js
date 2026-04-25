@@ -1083,6 +1083,16 @@ export default function Page() {
     );
   }
 
+  const incompleteSchedules = schedules.filter((schedule) => {
+    const member = getScheduleMember(schedule);
+    if (!member) return false;
+
+    const attendedToday = member.latest_visit && isToday(member.latest_visit);
+    const ptUsedToday = member.latest_pt && isToday(member.latest_pt);
+
+    return !attendedToday || !ptUsedToday;
+  });
+
   return (
     <main style={styles.page}>
       <header style={styles.header}>
@@ -1107,6 +1117,65 @@ export default function Page() {
           <p>{summaryGroups.dormant.length}명</p>
         </button>
       </section>
+
+      {incompleteSchedules.length > 0 && (
+        <section style={styles.incompleteBox}>
+          <div style={styles.incompleteTop}>
+            <div>
+              <h2 style={styles.incompleteTitle}>처리 안된 수업</h2>
+              <p style={styles.incompleteDesc}>
+                출석 또는 PT 차감이 아직 완료되지 않은 오늘 스케줄입니다.
+              </p>
+            </div>
+
+            <div style={styles.incompleteCount}>{incompleteSchedules.length}건</div>
+          </div>
+
+          <div style={styles.incompleteList}>
+            {incompleteSchedules.map((schedule) => {
+              const member = getScheduleMember(schedule);
+              const attendedToday = member?.latest_visit && isToday(member.latest_visit);
+              const ptUsedToday = member?.latest_pt && isToday(member.latest_pt);
+
+              return (
+                <div key={schedule.id} style={styles.incompleteItem}>
+                  <div style={styles.incompleteMain}>
+                    <div style={styles.scheduleTime}>{formatTime(schedule.start_time)}</div>
+
+                    <div>
+                      <strong style={styles.scheduleMemberName}>
+                        {getScheduleTypeText(schedule.type)} · {member?.name || "회원 정보 없음"}
+                        {member ? ` (${member.pt_remaining || 0}회)` : ""}
+                      </strong>
+
+                      <div style={styles.scheduleStatusRow}>
+                        {attendedToday ? (
+                          <span style={styles.scheduleDoneText}>출석 완료</span>
+                        ) : (
+                          <span style={styles.scheduleWarningText}>출석 전</span>
+                        )}
+
+                        {ptUsedToday ? (
+                          <span style={styles.scheduleDoneText}>차감 완료</span>
+                        ) : (
+                          <span style={styles.scheduleWarningText}>차감 전</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => completeScheduleClass(schedule)}
+                    style={styles.incompleteCompleteButton}
+                  >
+                    수업 완료
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <section style={styles.scheduleBox}>
         <div style={styles.scheduleTop}>
@@ -2239,6 +2308,70 @@ const styles = {
     borderRadius: 12,
     padding: "9px 12px",
     fontWeight: 900,
+  },
+  incompleteBox: {
+    background: "#1f1a12",
+    border: "1px solid #5b4320",
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 22,
+  },
+  incompleteTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 14,
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  incompleteTitle: {
+    fontSize: 26,
+    margin: 0,
+    fontWeight: 900,
+    color: "#fde68a",
+  },
+  incompleteDesc: {
+    color: "#c9b27a",
+    margin: "6px 0 0",
+    fontSize: 14,
+  },
+  incompleteCount: {
+    background: "#facc15",
+    color: "#111",
+    borderRadius: 999,
+    padding: "8px 12px",
+    fontSize: 15,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  incompleteList: {
+    display: "grid",
+    gap: 10,
+  },
+  incompleteItem: {
+    background: "#241f17",
+    border: "1px solid #4a3a1f",
+    borderRadius: 18,
+    padding: 14,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  incompleteMain: {
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+    flex: 1,
+  },
+  incompleteCompleteButton: {
+    background: "#f5f5f5",
+    color: "#111",
+    border: "1px solid #ffffff",
+    borderRadius: 12,
+    padding: "10px 12px",
+    fontWeight: 900,
+    fontSize: 14,
+    whiteSpace: "nowrap",
   },
   summaryCard: {
     background: "transparent",
