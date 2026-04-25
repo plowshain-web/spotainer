@@ -40,6 +40,16 @@ export default function Page() {
   const [showAllPtLogs, setShowAllPtLogs] = useState(false);
   const [showAllAttendanceLogs, setShowAllAttendanceLogs] = useState(false);
 
+  const [workoutMember, setWorkoutMember] = useState(null);
+  const [workoutSessions, setWorkoutSessions] = useState([]);
+  const [workoutMode, setWorkoutMode] = useState("list");
+  const [workoutMemo, setWorkoutMemo] = useState("");
+  const [exerciseName, setExerciseName] = useState("");
+  const [exerciseWeight, setExerciseWeight] = useState("");
+  const [exerciseReps, setExerciseReps] = useState("");
+  const [exerciseSets, setExerciseSets] = useState("");
+  const [showAllWorkouts, setShowAllWorkouts] = useState(false);
+
   const [ptModalMember, setPtModalMember] = useState(null);
   const [lastAction, setLastAction] = useState(null);
 
@@ -385,6 +395,94 @@ export default function Page() {
     loadMembers();
   }
 
+  async function openWorkout(member) {
+    setWorkoutMember(member);
+    setWorkoutMode("list");
+    setWorkoutMemo("");
+    setExerciseName("");
+    setExerciseWeight("");
+    setExerciseReps("");
+    setExerciseSets("");
+    setShowAllWorkouts(false);
+
+    await loadWorkoutSessions(member.id);
+  }
+
+  function closeWorkout() {
+    setWorkoutMember(null);
+    setWorkoutSessions([]);
+    setWorkoutMode("list");
+    setWorkoutMemo("");
+    setExerciseName("");
+    setExerciseWeight("");
+    setExerciseReps("");
+    setExerciseSets("");
+    setShowAllWorkouts(false);
+  }
+
+  async function loadWorkoutSessions(memberId) {
+    const { data, error } = await supabase
+      .from("workout_sessions")
+      .select("*, workout_sets(*)")
+      .eq("member_id", memberId)
+      .order("workout_date", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      alert("운동기록 불러오기 실패: " + error.message);
+      return;
+    }
+
+    setWorkoutSessions(data || []);
+  }
+
+  async function saveWorkout() {
+    if (!workoutMember) return;
+    if (!exerciseName.trim()) return alert("운동명을 입력하세요.");
+
+    const { data: session, error: sessionError } = await supabase
+      .from("workout_sessions")
+      .insert({
+        member_id: workoutMember.id,
+        memo: workoutMemo.trim(),
+      })
+      .select()
+      .single();
+
+    if (sessionError) {
+      alert("운동 세션 저장 실패: " + sessionError.message);
+      return;
+    }
+
+    const { error: setError } = await supabase.from("workout_sets").insert({
+      session_id: session.id,
+      exercise_name: exerciseName.trim(),
+      weight: exerciseWeight ? Number(exerciseWeight) : null,
+      reps: exerciseReps ? Number(exerciseReps) : null,
+      sets: exerciseSets ? Number(exerciseSets) : null,
+    });
+
+    if (setError) {
+      alert("운동 상세 저장 실패: " + setError.message);
+      return;
+    }
+
+    setWorkoutMemo("");
+    setExerciseName("");
+    setExerciseWeight("");
+    setExerciseReps("");
+    setExerciseSets("");
+    setWorkoutMode("list");
+
+    await loadWorkoutSessions(workoutMember.id);
+    alert(`${workoutMember.name} 운동기록이 저장되었습니다.`);
+  }
+
+  function getVisibleWorkouts() {
+    if (showAllWorkouts) return workoutSessions;
+    return workoutSessions.filter((session) => isTodayOrYesterday(session.workout_date));
+  }
+
   function formatDate(date) {
     if (!date) return "없음";
     return new Date(date).toLocaleDateString("ko-KR");
@@ -406,7 +504,7 @@ export default function Page() {
 
     return { total, used, remain };
   }
-
+  
   function getVisiblePtLogs() {
     const validUseLogs = ptLogList.filter(
       (log) => log.type === "use" && !log.is_cancelled
@@ -457,6 +555,35 @@ export default function Page() {
         >
           상세
         </button>
+      </div>
+    );
+  }
+
+  function renderWorkoutSession(session) {
+    const sets = session.workout_sets || [];
+
+    return (
+      <div key={session.id} style={styles.logItem}>
+        <div>
+          <div style={styles.logDate}>{formatDate(session.workout_date)}</div>
+
+          {sets.length === 0 ? (
+            <p style={styles.summaryMemberInfo}>운동 상세 없음</p>
+          ) : (
+            sets.map((set) => (
+              <p key={set.id} style={styles.summaryMemberInfo}>
+                {set.exercise_name || "운동명 없음"}
+                {set.weight ? ` · ${set.weight}kg` : ""}
+                {set.reps ? ` · ${set.reps}회` : ""}
+                {set.sets ? ` · ${set.sets}세트` : ""}
+              </p>
+            ))
+          )}
+
+          {session.memo && (
+            <p style={styles.summaryMemberInfo}>메모: {session.memo}</p>
+          )}
+        </div>
       </div>
     );
   }
@@ -577,6 +704,15 @@ export default function Page() {
                   <button onClick={() => setDetailMode("attendance")} style={styles.menuButton}>
                     출석 기록
                   </button>
+                  <button
+                    onClick={() => {
+                      closeDetail();
+                      openWorkout(selectedMember);
+                    }}
+                    style={styles.menuButton}
+                  >
+                    운동 기록
+                  </button>
                 </div>
               </>
             )}
@@ -688,6 +824,105 @@ export default function Page() {
                 <button onClick={() => setDetailMode("menu")} style={styles.cancelButton}>
                   뒤로
                 </button>
+              </>
+            )}
+          </section>
+        </div>
+      )}
+
+      {workoutMember && (
+        <div style={styles.modalOverlay}>
+          <section style={styles.modalBox}>
+            <div style={styles.detailTop}>
+              <div>
+                <h2 style={styles.detailName}>{workoutMember.name} 운동 기록</h2>
+                <p style={styles.muted}>운동명, 중량, 횟수, 세트를 기록하세요.</p>
+              </div>
+              <button onClick={closeWorkout} style={styles.closeButton}>닫기</button>
+            </div>
+
+            {workoutMode === "list" && (
+              <>
+                <div style={styles.menuGrid}>
+                  <button onClick={() => setWorkoutMode("add")} style={styles.menuButton}>
+                    + 오늘 운동 기록하기
+                  </button>
+                </div>
+
+                <div style={styles.recordHeader}>
+                  <h3 style={styles.subTitle}>
+                    {showAllWorkouts ? "전체 운동기록" : "최근 운동기록"}
+                  </h3>
+
+                  <button
+                    onClick={() => setShowAllWorkouts(!showAllWorkouts)}
+                    style={styles.smallDark}
+                  >
+                    {showAllWorkouts ? "최근 기록 보기" : "전체 운동기록 보기"}
+                  </button>
+                </div>
+
+                {getVisibleWorkouts().length === 0 ? (
+                  <p style={styles.muted}>
+                    {showAllWorkouts ? "운동기록이 없습니다." : "오늘/어제 운동기록이 없습니다."}
+                  </p>
+                ) : (
+                  getVisibleWorkouts().map(renderWorkoutSession)
+                )}
+              </>
+            )}
+
+            {workoutMode === "add" && (
+              <>
+                <h3 style={styles.subTitle}>오늘 운동 입력</h3>
+
+                <label style={styles.label}>운동명</label>
+                <input
+                  value={exerciseName}
+                  onChange={(e) => setExerciseName(e.target.value)}
+                  placeholder="예: 스쿼트"
+                  style={styles.input}
+                />
+
+                <label style={styles.label}>중량(kg)</label>
+                <input
+                  value={exerciseWeight}
+                  onChange={(e) => setExerciseWeight(e.target.value)}
+                  placeholder="예: 40"
+                  type="number"
+                  style={styles.input}
+                />
+
+                <label style={styles.label}>횟수</label>
+                <input
+                  value={exerciseReps}
+                  onChange={(e) => setExerciseReps(e.target.value)}
+                  placeholder="예: 10"
+                  type="number"
+                  style={styles.input}
+                />
+
+                <label style={styles.label}>세트</label>
+                <input
+                  value={exerciseSets}
+                  onChange={(e) => setExerciseSets(e.target.value)}
+                  placeholder="예: 3"
+                  type="number"
+                  style={styles.input}
+                />
+
+                <label style={styles.label}>메모</label>
+                <textarea
+                  value={workoutMemo}
+                  onChange={(e) => setWorkoutMemo(e.target.value)}
+                  placeholder="컨디션, 자세 피드백, 다음 운동 참고사항"
+                  style={styles.textarea}
+                />
+
+                <div style={styles.editActions}>
+                  <button onClick={saveWorkout} style={styles.primaryButton}>저장</button>
+                  <button onClick={() => setWorkoutMode("list")} style={styles.cancelButton}>취소</button>
+                </div>
               </>
             )}
           </section>
@@ -826,6 +1061,7 @@ export default function Page() {
                         <button onClick={() => minusPt(member)} style={styles.redButton}>1회 차감</button>
                         <button onClick={() => setPtModalMember(member)} style={styles.whiteButton}>이용권 추가</button>
                         <button onClick={() => checkAttendance(member)} style={styles.blueButton}>출석 체크</button>
+                        <button onClick={() => openWorkout(member)} style={styles.greenButton}>운동 기록</button>
                         <button onClick={() => startEdit(member)} style={styles.darkButton}>수정</button>
                         <button onClick={() => deleteMember(member)} style={styles.deleteButton}>삭제</button>
                       </div>
@@ -1193,6 +1429,16 @@ const styles = {
   blueButton: {
     gridColumn: "1 / 3",
     background: "#2563eb",
+    color: "#fff",
+    border: "none",
+    borderRadius: 14,
+    padding: "14px",
+    fontSize: 16,
+    fontWeight: 900,
+  },
+  greenButton: {
+    gridColumn: "1 / 3",
+    background: "#16a34a",
     color: "#fff",
     border: "none",
     borderRadius: 14,
