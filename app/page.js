@@ -1372,34 +1372,12 @@ export default function Page() {
 
                     <div style={styles.scheduleSubActionRow}>
                       <button
-                        onClick={() => scheduleCheckAttendance(schedule)}
-                        style={
-                          isNoShow || isCancelled || attendedToday
-                            ? styles.scheduleDisabledSmallButton
-                            : styles.scheduleMiniButton
-                        }
-                        disabled={!!(isNoShow || isCancelled || attendedToday)}
-                      >
-                        {attendedToday ? "출석완료" : "출석만"}
-                      </button>
-
-                      <button
-                        onClick={() => scheduleMinusPt(schedule)}
-                        style={
-                          isNoShow || isCancelled || ptUsedToday
-                            ? styles.scheduleDisabledSmallButton
-                            : styles.scheduleMiniDanger
-                        }
-                        disabled={!!(isNoShow || isCancelled || ptUsedToday)}
-                      >
-                        {ptUsedToday ? "차감완료" : "차감만"}
-                      </button>
-                    </div>
-
-                    <div style={styles.scheduleSubActionRow}>
-                      <button
                         onClick={() => markScheduleNoShow(schedule)}
-                        style={isNoShow || isCancelled || isCompleted ? styles.scheduleDisabledSmallButton : styles.scheduleNoShowButton}
+                        style={
+                          isNoShow || isCancelled || isCompleted
+                            ? styles.scheduleDisabledSmallButton
+                            : styles.scheduleNoShowButton
+                        }
                         disabled={!!(isNoShow || isCancelled || isCompleted)}
                       >
                         노쇼
@@ -1407,7 +1385,11 @@ export default function Page() {
 
                       <button
                         onClick={() => markScheduleCancelled(schedule)}
-                        style={isNoShow || isCancelled || isCompleted ? styles.scheduleDisabledSmallButton : styles.scheduleCancelButton}
+                        style={
+                          isNoShow || isCancelled || isCompleted
+                            ? styles.scheduleDisabledSmallButton
+                            : styles.scheduleCancelButton
+                        }
                         disabled={!!(isNoShow || isCancelled || isCompleted)}
                       >
                         취소
@@ -2340,7 +2322,7 @@ const styles = {
     padding: 14,
     display: "grid",
     gridTemplateColumns: "1fr",
-    gap: 12,
+    gap: 10,
   },
   scheduleMain: {
     display: "flex",
@@ -2416,9 +2398,9 @@ const styles = {
     color: "#111",
     border: "1px solid #ffffff",
     borderRadius: 12,
-    padding: "10px 12px",
+    padding: "12px 12px",
     fontWeight: 900,
-    fontSize: 14,
+    fontSize: 15,
     whiteSpace: "nowrap",
   },
   scheduleSubActionRow: {
@@ -2471,9 +2453,9 @@ const styles = {
     color: "#777",
     border: "1px solid #3a3a3a",
     borderRadius: 12,
-    padding: "10px 12px",
+    padding: "12px 12px",
     fontWeight: 900,
-    fontSize: 14,
+    fontSize: 15,
     whiteSpace: "nowrap",
   },
   scheduleDisabledSmallButton: {
