@@ -25,6 +25,7 @@ export default function Page() {
   const [memo, setMemo] = useState("");
 
   const [editingId, setEditingId] = useState(null);
+  const [editModalMember, setEditModalMember] = useState(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editAge, setEditAge] = useState("");
@@ -480,7 +481,8 @@ export default function Page() {
   }
 
   function startEdit(member) {
-    setEditingId(member.id);
+    setEditModalMember(member);
+    setEditingId(null);
     setEditName(member.name);
     setEditPhone(member.phone || "");
     setEditAge(member.age || "");
@@ -488,6 +490,18 @@ export default function Page() {
     setEditGoal(member.goal || "");
     setEditNote(member.note || "");
     setEditMemo(member.memo || "");
+  }
+
+  function closeEditModal() {
+    setEditModalMember(null);
+    setEditingId(null);
+    setEditName("");
+    setEditPhone("");
+    setEditAge("");
+    setEditHeight("");
+    setEditGoal("");
+    setEditNote("");
+    setEditMemo("");
   }
 
   async function saveEdit(id) {
@@ -507,6 +521,21 @@ export default function Page() {
       .eq("id", id);
 
     setEditingId(null);
+
+    if (selectedMember?.id === id) {
+      setSelectedMember({
+        ...selectedMember,
+        name: editName.trim(),
+        phone: editPhone.trim(),
+        age: editAge ? Number(editAge) : null,
+        height: editHeight ? Number(editHeight) : null,
+        goal: editGoal.trim(),
+        note: editNote.trim(),
+        memo: editMemo.trim(),
+      });
+    }
+
+    closeEditModal();
     loadMembers();
   }
 
@@ -1554,6 +1583,95 @@ export default function Page() {
         </div>
       )}
 
+      {editModalMember && (
+        <div style={styles.whiteModalOverlay}>
+          <section style={styles.whiteModalBox}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>회원 정보 수정</h2>
+                <p style={styles.whiteMuted}>
+                  {editModalMember.name} 회원의 기본 정보를 수정합니다.
+                </p>
+              </div>
+
+              <button onClick={closeEditModal} style={styles.whiteCloseButton}>
+                닫기
+              </button>
+            </div>
+
+            <label style={styles.whiteLabel}>이름</label>
+            <input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              style={styles.whiteInput}
+            />
+
+            <label style={styles.whiteLabel}>전화번호</label>
+            <input
+              value={editPhone}
+              onChange={(e) => setEditPhone(e.target.value)}
+              style={styles.whiteInput}
+            />
+
+            <div style={styles.whiteTwoColumn}>
+              <div>
+                <label style={styles.whiteLabel}>나이</label>
+                <input
+                  value={editAge}
+                  onChange={(e) => setEditAge(e.target.value)}
+                  type="number"
+                  style={styles.whiteInput}
+                />
+              </div>
+
+              <div>
+                <label style={styles.whiteLabel}>키(cm)</label>
+                <input
+                  value={editHeight}
+                  onChange={(e) => setEditHeight(e.target.value)}
+                  type="number"
+                  style={styles.whiteInput}
+                />
+              </div>
+            </div>
+
+            <label style={styles.whiteLabel}>목표</label>
+            <input
+              value={editGoal}
+              onChange={(e) => setEditGoal(e.target.value)}
+              style={styles.whiteInput}
+            />
+
+            <label style={styles.whiteLabel}>특이사항</label>
+            <textarea
+              value={editNote}
+              onChange={(e) => setEditNote(e.target.value)}
+              style={styles.whiteTextarea}
+            />
+
+            <label style={styles.whiteLabel}>트레이너 메모</label>
+            <textarea
+              value={editMemo}
+              onChange={(e) => setEditMemo(e.target.value)}
+              style={styles.whiteTextarea}
+            />
+
+            <div style={styles.whiteActionRowFull}>
+              <button
+                onClick={() => saveEdit(editModalMember.id)}
+                style={styles.whiteSaveLargeButton}
+              >
+                저장
+              </button>
+
+              <button onClick={closeEditModal} style={styles.whiteCancelLargeButton}>
+                취소
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {selectedMember && detailMode && (
         <div style={styles.modalOverlay}>
           <section style={styles.modalBox}>
@@ -2410,19 +2528,15 @@ const styles = {
     gap: 8,
   },
   scheduleCompleteButton: {
-  background: "#ffffff",
-  color: "#000",
-  border: "1px solid #ffffff",
-  borderRadius: 14,
-  padding: "14px 12px",
-  fontWeight: 900,
-  fontSize: 16,
-  whiteSpace: "nowrap",
-
-  // 👇 핵심: 살짝 튀게 (고급스럽게)
-  boxShadow: "0 4px 12px rgba(255,255,255,0.08)",
-  transform: "scale(1.02)",
-},
+    background: "#f5f5f5",
+    color: "#111",
+    border: "1px solid #ffffff",
+    borderRadius: 12,
+    padding: "12px 12px",
+    fontWeight: 900,
+    fontSize: 15,
+    whiteSpace: "nowrap",
+  },
   scheduleSubActionRow: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
@@ -3227,6 +3341,56 @@ const styles = {
     fontSize: 15,
     boxSizing: "border-box",
     marginBottom: 8,
+  },
+  whiteLabel: {
+    display: "block",
+    color: "#333",
+    fontSize: 14,
+    marginBottom: 7,
+    fontWeight: 900,
+  },
+  whiteTextarea: {
+    width: "100%",
+    minHeight: 86,
+    padding: 12,
+    borderRadius: 12,
+    border: "1px solid #ddd",
+    background: "#fff",
+    color: "#111",
+    fontSize: 15,
+    boxSizing: "border-box",
+    marginBottom: 12,
+    resize: "vertical",
+    fontFamily: "Arial, sans-serif",
+  },
+  whiteTwoColumn: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+  },
+  whiteActionRowFull: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+    marginTop: 8,
+  },
+  whiteSaveLargeButton: {
+    background: "#111",
+    color: "#fff",
+    border: "none",
+    borderRadius: 14,
+    padding: "14px 12px",
+    fontWeight: 900,
+    fontSize: 16,
+  },
+  whiteCancelLargeButton: {
+    background: "#e5e5e5",
+    color: "#111",
+    border: "none",
+    borderRadius: 14,
+    padding: "14px 12px",
+    fontWeight: 900,
+    fontSize: 16,
   },
   whiteActionRow: {
     display: "flex",
