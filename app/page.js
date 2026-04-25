@@ -19,6 +19,7 @@ export default function Page() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [age, setAge] = useState("");
+  const [height, setHeight] = useState("");
   const [goal, setGoal] = useState("");
   const [note, setNote] = useState("");
   const [memo, setMemo] = useState("");
@@ -27,11 +28,13 @@ export default function Page() {
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editAge, setEditAge] = useState("");
+  const [editHeight, setEditHeight] = useState("");
   const [editGoal, setEditGoal] = useState("");
   const [editNote, setEditNote] = useState("");
   const [editMemo, setEditMemo] = useState("");
 
   const [selectedMember, setSelectedMember] = useState(null);
+  const [detailMode, setDetailMode] = useState(null);
   const [attendanceList, setAttendanceList] = useState([]);
   const [ptLogList, setPtLogList] = useState([]);
   const [ptModalMember, setPtModalMember] = useState(null);
@@ -142,6 +145,7 @@ export default function Page() {
       name: name.trim(),
       phone: phone.trim(),
       age: age ? Number(age) : null,
+      height: height ? Number(height) : null,
       goal: goal.trim(),
       note: note.trim(),
       memo: memo.trim(),
@@ -151,6 +155,7 @@ export default function Page() {
     setName("");
     setPhone("");
     setAge("");
+    setHeight("");
     setGoal("");
     setNote("");
     setMemo("");
@@ -164,6 +169,7 @@ export default function Page() {
     setEditName(member.name);
     setEditPhone(member.phone || "");
     setEditAge(member.age || "");
+    setEditHeight(member.height || "");
     setEditGoal(member.goal || "");
     setEditNote(member.note || "");
     setEditMemo(member.memo || "");
@@ -178,6 +184,7 @@ export default function Page() {
         name: editName.trim(),
         phone: editPhone.trim(),
         age: editAge ? Number(editAge) : null,
+        height: editHeight ? Number(editHeight) : null,
         goal: editGoal.trim(),
         note: editNote.trim(),
         memo: editMemo.trim(),
@@ -193,7 +200,11 @@ export default function Page() {
 
     await supabase.from("members").delete().eq("id", member.id);
 
-    if (selectedMember?.id === member.id) setSelectedMember(null);
+    if (selectedMember?.id === member.id) {
+      setSelectedMember(null);
+      setDetailMode(null);
+    }
+
     loadMembers();
   }
 
@@ -265,7 +276,7 @@ export default function Page() {
       })
       .eq("id", log.id);
 
-    openDetail(selectedMember);
+    openDetail(selectedMember, "pt");
     loadMembers();
   }
 
@@ -310,12 +321,14 @@ export default function Page() {
       memberName: member.name,
     });
 
+    alert(`${member.name} 출석 체크되었습니다.`);
+
     loadMembers();
-    openDetail(member);
   }
 
-  async function openDetail(member) {
+  async function openDetail(member, mode = "menu") {
     setSelectedMember(member);
+    setDetailMode(mode);
 
     const { data: attendanceData } = await supabase
       .from("attendance_logs")
@@ -333,6 +346,11 @@ export default function Page() {
     setPtLogList(ptData || []);
   }
 
+  function closeDetail() {
+    setSelectedMember(null);
+    setDetailMode(null);
+  }
+
   async function cancelAttendance(log) {
     if (!confirm("이 출석 기록을 취소할까요?")) return;
 
@@ -344,7 +362,7 @@ export default function Page() {
       })
       .eq("id", log.id);
 
-    openDetail(selectedMember);
+    openDetail(selectedMember, "attendance");
     loadMembers();
   }
 
@@ -374,7 +392,7 @@ export default function Page() {
     return (
       <div style={styles.infoBlock}>
         <strong>{title}</strong>
-        <p>{content && content.trim() ? content : "미입력"}</p>
+        <p>{content && String(content).trim() ? content : "미입력"}</p>
       </div>
     );
   }
@@ -396,7 +414,7 @@ export default function Page() {
         <button
           onClick={() => {
             setSummaryModal(null);
-            openDetail(member);
+            openDetail(member, "menu");
           }}
           style={styles.smallDark}
         >
@@ -472,6 +490,9 @@ export default function Page() {
             <label style={styles.label}>나이</label>
             <input value={age} onChange={(e) => setAge(e.target.value)} placeholder="예: 32" type="number" style={styles.input} />
 
+            <label style={styles.label}>키(cm)</label>
+            <input value={height} onChange={(e) => setHeight(e.target.value)} placeholder="예: 165" type="number" style={styles.input} />
+
             <label style={styles.label}>목표</label>
             <input value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="예: 체지방 감량, 근력 증가" style={styles.input} />
 
@@ -489,7 +510,7 @@ export default function Page() {
         </div>
       )}
 
-      {selectedMember && (
+      {selectedMember && detailMode && (
         <div style={styles.modalOverlay}>
           <section style={styles.modalBox}>
             <div style={styles.detailTop}>
@@ -497,9 +518,34 @@ export default function Page() {
                 <h2 style={styles.detailName}>{selectedMember.name}</h2>
                 <p style={styles.muted}>
                   {selectedMember.age ? `${selectedMember.age}세 · ` : ""}
+                  {selectedMember.height ? `${selectedMember.height}cm · ` : ""}
                   {selectedMember.phone || "전화번호 없음"}
                 </p>
+              </div>
 
+              <button onClick={closeDetail} style={styles.closeButton}>닫기</button>
+            </div>
+
+            {detailMode === "menu" && (
+              <>
+                <h3 style={styles.subTitle}>상세 보기</h3>
+
+                <div style={styles.menuGrid}>
+                  <button onClick={() => setDetailMode("info")} style={styles.menuButton}>
+                    회원 정보
+                  </button>
+                  <button onClick={() => setDetailMode("pt")} style={styles.menuButton}>
+                    PT 사용 기록
+                  </button>
+                  <button onClick={() => setDetailMode("attendance")} style={styles.menuButton}>
+                    출석 기록
+                  </button>
+                </div>
+              </>
+            )}
+
+            {detailMode === "info" && (
+              <>
                 {(() => {
                   const pt = getPtSummary(selectedMember, ptLogList);
                   return (
@@ -508,52 +554,80 @@ export default function Page() {
                     </p>
                   );
                 })()}
-              </div>
 
-              <button onClick={() => setSelectedMember(null)} style={styles.closeButton}>닫기</button>
-            </div>
+                <h3 style={styles.subTitle}>회원 관리 정보</h3>
+                {renderInfoBlock("키", selectedMember.height ? `${selectedMember.height}cm` : "")}
+                {renderInfoBlock("목표", selectedMember.goal)}
+                {renderInfoBlock("특이사항", selectedMember.note)}
+                {renderInfoBlock("트레이너 메모", selectedMember.memo)}
 
-            <h3 style={styles.subTitle}>회원 관리 정보</h3>
-            {renderInfoBlock("목표", selectedMember.goal)}
-            {renderInfoBlock("특이사항", selectedMember.note)}
-            {renderInfoBlock("트레이너 메모", selectedMember.memo)}
-
-            <h3 style={styles.subTitle}>PT 사용 기록</h3>
-
-            {ptLogList.filter((log) => log.type === "use").length === 0 ? (
-              <p style={styles.muted}>PT 사용 기록이 없습니다.</p>
-            ) : (
-              ptLogList.filter((log) => log.type === "use").map((log) => (
-                <div key={log.id} style={{ ...styles.logItem, opacity: log.is_cancelled ? 0.45 : 1 }}>
-                  <div>
-                    <div style={styles.logDate}>{formatDateTime(log.created_at)} · {log.amount}회 사용</div>
-                    {log.is_cancelled && <div style={styles.cancelText}>취소됨</div>}
-                  </div>
-
-                  {!log.is_cancelled && (
-                    <button onClick={() => cancelPtUse(log)} style={styles.smallDanger}>차감 취소</button>
-                  )}
-                </div>
-              ))
+                <button onClick={() => setDetailMode("menu")} style={styles.cancelButton}>
+                  뒤로
+                </button>
+              </>
             )}
 
-            <h3 style={styles.subTitle}>출석 기록</h3>
+            {detailMode === "pt" && (
+              <>
+                {(() => {
+                  const pt = getPtSummary(selectedMember, ptLogList);
+                  return (
+                    <p style={styles.detailPt}>
+                      총 {pt.total}회 중 {pt.used}회 사용 / {pt.remain}회 남음
+                    </p>
+                  );
+                })()}
 
-            {attendanceList.length === 0 ? (
-              <p style={styles.muted}>출석 기록이 없습니다.</p>
-            ) : (
-              attendanceList.map((log) => (
-                <div key={log.id} style={{ ...styles.logItem, opacity: log.is_cancelled ? 0.45 : 1 }}>
-                  <div>
-                    <div style={styles.logDate}>{formatDateTime(log.visited_at)}</div>
-                    {log.is_cancelled && <div style={styles.cancelText}>취소됨</div>}
-                  </div>
+                <h3 style={styles.subTitle}>PT 사용 기록</h3>
 
-                  {!log.is_cancelled && (
-                    <button onClick={() => cancelAttendance(log)} style={styles.smallDanger}>출석 취소</button>
-                  )}
-                </div>
-              ))
+                {ptLogList.filter((log) => log.type === "use").length === 0 ? (
+                  <p style={styles.muted}>PT 사용 기록이 없습니다.</p>
+                ) : (
+                  ptLogList.filter((log) => log.type === "use").map((log) => (
+                    <div key={log.id} style={{ ...styles.logItem, opacity: log.is_cancelled ? 0.45 : 1 }}>
+                      <div>
+                        <div style={styles.logDate}>{formatDateTime(log.created_at)} · {log.amount}회 사용</div>
+                        {log.is_cancelled && <div style={styles.cancelText}>취소됨</div>}
+                      </div>
+
+                      {!log.is_cancelled && (
+                        <button onClick={() => cancelPtUse(log)} style={styles.smallDanger}>차감 취소</button>
+                      )}
+                    </div>
+                  ))
+                )}
+
+                <button onClick={() => setDetailMode("menu")} style={styles.cancelButton}>
+                  뒤로
+                </button>
+              </>
+            )}
+
+            {detailMode === "attendance" && (
+              <>
+                <h3 style={styles.subTitle}>출석 기록</h3>
+
+                {attendanceList.length === 0 ? (
+                  <p style={styles.muted}>출석 기록이 없습니다.</p>
+                ) : (
+                  attendanceList.map((log) => (
+                    <div key={log.id} style={{ ...styles.logItem, opacity: log.is_cancelled ? 0.45 : 1 }}>
+                      <div>
+                        <div style={styles.logDate}>{formatDateTime(log.visited_at)}</div>
+                        {log.is_cancelled && <div style={styles.cancelText}>취소됨</div>}
+                      </div>
+
+                      {!log.is_cancelled && (
+                        <button onClick={() => cancelAttendance(log)} style={styles.smallDanger}>출석 취소</button>
+                      )}
+                    </div>
+                  ))
+                )}
+
+                <button onClick={() => setDetailMode("menu")} style={styles.cancelButton}>
+                  뒤로
+                </button>
+              </>
             )}
           </section>
         </div>
@@ -641,6 +715,9 @@ export default function Page() {
                     <label style={styles.label}>나이</label>
                     <input value={editAge} onChange={(e) => setEditAge(e.target.value)} type="number" style={styles.input} />
 
+                    <label style={styles.label}>키(cm)</label>
+                    <input value={editHeight} onChange={(e) => setEditHeight(e.target.value)} type="number" style={styles.input} />
+
                     <label style={styles.label}>목표</label>
                     <input value={editGoal} onChange={(e) => setEditGoal(e.target.value)} style={styles.input} />
 
@@ -657,10 +734,11 @@ export default function Page() {
                   </div>
                 ) : (
                   <>
-                    <div onClick={() => openDetail(member)} style={styles.memberMain}>
+                    <div onClick={() => openDetail(member, "menu")} style={styles.memberMain}>
                       <h3 style={styles.memberName}>{member.name}</h3>
                       <p style={styles.phone}>
                         {member.age ? `${member.age}세 · ` : ""}
+                        {member.height ? `${member.height}cm · ` : ""}
                         {member.phone || "전화번호 없음"}
                       </p>
                       <p style={styles.visit}>최근 출석: {formatDate(member.latest_visit)}</p>
@@ -670,7 +748,7 @@ export default function Page() {
                         {visitStatus && <span style={visitStatus.style}>{visitStatus.text}</span>}
                       </div>
 
-                      <p style={styles.hint}>눌러서 상세 출석기록 보기</p>
+                      <p style={styles.hint}>눌러서 상세 보기</p>
                     </div>
 
                     <div style={styles.memberSide}>
@@ -850,6 +928,19 @@ const styles = {
     border: "none",
     borderRadius: 16,
     padding: "16px 10px",
+    fontSize: 18,
+    fontWeight: 900,
+  },
+  menuGrid: {
+    display: "grid",
+    gap: 12,
+  },
+  menuButton: {
+    background: "#222",
+    color: "#fff",
+    border: "1px solid #333",
+    borderRadius: 18,
+    padding: 18,
     fontSize: 18,
     fontWeight: 900,
   },
@@ -1079,6 +1170,7 @@ const styles = {
     color: "#fff",
     fontSize: 18,
     fontWeight: 900,
+    marginTop: 12,
   },
   detailTop: {
     display: "flex",
