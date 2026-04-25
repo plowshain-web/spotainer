@@ -80,12 +80,18 @@ export default function Page() {
       const used = validPtLogs
         .filter((l) => l.type === "use")
         .reduce((sum, l) => sum + l.amount, 0);
-
+      
+const latestPt = validPtLogs
+  .filter((l) => l.type === "use")
+  .map((l) => l.created_at)
+  .sort()
+  .reverse()[0];
       return {
         ...m,
-        latest_visit: latest || null,
-        pt_used: used,
-        pt_total: (m.pt_remaining || 0) + used,
+latest_visit: latest || null,
+latest_pt: latestPt || null,
+pt_used: used,
+pt_total: (m.pt_remaining || 0) + used,
       };
     });
 
@@ -1600,7 +1606,7 @@ export default function Page() {
                         {member.phone || "전화번호 없음"}
                       </p>
                       <p style={styles.visit}>최근 출석: {formatDate(member.latest_visit)}</p>
-
+                      <p style={styles.visit}>최근 PT: {formatDate(member.latest_pt)}</p>
                       <div style={styles.warningRow}>
                         {ptStatus && <span style={ptStatus.style}>{ptStatus.text}</span>}
                         {visitStatus && <span style={visitStatus.style}>{visitStatus.text}</span>}
