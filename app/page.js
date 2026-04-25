@@ -788,15 +788,31 @@ export default function Page() {
           <p style={styles.summaryMemberInfo}>{member.phone || "전화번호 없음"}</p>
         </div>
 
-        <button
-          onClick={() => {
-            setSummaryModal(null);
-            openDetail(member, "menu");
-          }}
-          style={styles.smallDark}
-        >
-          상세
-        </button>
+        <div style={styles.summaryActionGroup}>
+          {normalizePhone(member.phone) ? (
+            <a href={`tel:${normalizePhone(member.phone)}`} style={styles.summaryPhoneButton}>
+              전화
+            </a>
+          ) : (
+            <button onClick={() => alert("전화번호가 없습니다.")} style={styles.summaryPhoneButton}>
+              전화
+            </button>
+          )}
+
+          <button onClick={() => markContacted(member)} style={styles.summaryContactButton}>
+            완료
+          </button>
+
+          <button
+            onClick={() => {
+              setSummaryModal(null);
+              openDetail(member, "menu");
+            }}
+            style={styles.smallDark}
+          >
+            상세
+          </button>
+        </div>
       </div>
     );
   }
@@ -1649,6 +1665,32 @@ const styles = {
     margin: "6px 0 0",
     fontSize: 14,
   },
+  summaryActionGroup: {
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: 8,
+    minWidth: 72,
+  },
+  summaryPhoneButton: {
+    background: "#263a36",
+    color: "#d7fff3",
+    border: "1px solid #3f5f58",
+    borderRadius: 12,
+    padding: "9px 12px",
+    fontWeight: 900,
+    textAlign: "center",
+    textDecoration: "none",
+    fontSize: 14,
+  },
+  summaryContactButton: {
+    background: "#181818",
+    color: "#fff",
+    border: "1px solid #444",
+    borderRadius: 12,
+    padding: "9px 12px",
+    fontWeight: 900,
+    fontSize: 14,
+  },
   smallDark: {
     background: "#111",
     color: "#fff",
@@ -1915,18 +1957,18 @@ const styles = {
     gap: 10,
   },
   redButton: {
-    background: "#ef4444",
-    color: "#fff",
-    border: "none",
+    background: "#7f1d1d",
+    color: "#fee2e2",
+    border: "1px solid #991b1b",
     borderRadius: 14,
     padding: "13px 14px",
     fontSize: 16,
     fontWeight: 900,
   },
   whiteButton: {
-    background: "#fff",
+    background: "#f5f5f5",
     color: "#111",
-    border: "none",
+    border: "1px solid #ffffff",
     borderRadius: 14,
     padding: "13px 14px",
     fontSize: 16,
@@ -1934,9 +1976,9 @@ const styles = {
   },
   blueButton: {
     gridColumn: "1 / 3",
-    background: "#2563eb",
+    background: "#1d4ed8",
     color: "#fff",
-    border: "none",
+    border: "1px solid #2563eb",
     borderRadius: 14,
     padding: "14px",
     fontSize: 16,
@@ -1944,18 +1986,18 @@ const styles = {
   },
   greenButton: {
     gridColumn: "1 / 3",
-    background: "#16a34a",
-    color: "#fff",
-    border: "none",
+    background: "#202020",
+    color: "#f5f5f5",
+    border: "1px solid #3a3a3a",
     borderRadius: 14,
     padding: "14px",
     fontSize: 16,
     fontWeight: 900,
   },
   phoneButton: {
-    background: "#0f766e",
-    color: "#fff",
-    border: "none",
+    background: "#263a36",
+    color: "#d7fff3",
+    border: "1px solid #3f5f58",
     borderRadius: 14,
     padding: "13px 14px",
     fontSize: 16,
@@ -1965,17 +2007,17 @@ const styles = {
     boxSizing: "border-box",
   },
   contactButton: {
-    background: "#111",
-    color: "#fff",
-    border: "1px solid #444",
+    background: "#181818",
+    color: "#f5f5f5",
+    border: "1px solid #4a4a4a",
     borderRadius: 14,
     padding: "13px 14px",
     fontSize: 16,
     fontWeight: 900,
   },
   darkButton: {
-    background: "#111",
-    color: "#fff",
+    background: "#181818",
+    color: "#f5f5f5",
     border: "1px solid #444",
     borderRadius: 14,
     padding: "13px 14px",
