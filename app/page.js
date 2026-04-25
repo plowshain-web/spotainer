@@ -68,8 +68,8 @@ export default function Page() {
     const { data } = await supabase
       .from("members")
       .select(
-        "*, attendance_logs(visited_at,is_cancelled,cancelled_at), pt_logs(type,amount,is_cancelled)"
-      )
+  "*, attendance_logs(visited_at,is_cancelled,cancelled_at), pt_logs(type,amount,is_cancelled)"
+)
       .order("created_at", { ascending: false });
 
     const formatted = (data || []).map((m) => {
