@@ -63,6 +63,7 @@ export default function Page() {
 
   const [schedules, setSchedules] = useState([]);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [actionModalSchedule, setActionModalSchedule] = useState(null);
   const [scheduleMemberId, setScheduleMemberId] = useState("");
   const [scheduleDate, setScheduleDate] = useState(getTodayDateString());
   const [scheduleStartTime, setScheduleStartTime] = useState("");
@@ -155,6 +156,14 @@ export default function Page() {
     resetScheduleForm();
   }
 
+  function openActionModal(schedule) {
+    setActionModalSchedule(schedule);
+  }
+
+  function closeActionModal() {
+    setActionModalSchedule(null);
+  }
+
   async function addSchedule() {
     if (!scheduleMemberId) return alert("회원을 선택하세요.");
     if (!scheduleDate) return alert("날짜를 선택하세요.");
@@ -242,8 +251,13 @@ export default function Page() {
     const member = getScheduleMember(schedule);
     if (!member) return alert("연결된 회원 정보를 찾을 수 없습니다.");
 
+    if (schedule.status === "completed") {
+      alert("이미 완료 처리된 스케줄입니다.");
+      return;
+    }
+
     if (schedule.status === "noshow") {
-      alert("노쇼 처리된 스케줄입니다. 먼저 노쇼를 취소하거나 스케줄을 새로 등록하세요.");
+      alert("노쇼 처리된 스케줄입니다. 스케줄을 새로 등록하세요.");
       return;
     }
 
@@ -252,13 +266,20 @@ export default function Page() {
       return;
     }
 
-    const attendedToday = member.latest_visit && isToday(member.latest_visit);
-    const ptUsedToday = member.latest_pt && isToday(member.latest_pt);
+    if (schedule.attendance_checked && schedule.pt_used) {
+      const { error } = await supabase
+        .from("schedules")
+        .update({ status: "completed" })
+        .eq("id", schedule.id);
 
-    if (attendedToday && ptUsedToday) {
-      await supabase.from("schedules").update({ status: "completed" }).eq("id", schedule.id);
+      if (error) {
+        alert("스케줄 완료 처리 실패: " + error.message);
+        return;
+      }
+
+      closeActionModal();
       await loadSchedules(getTodayDateString());
-      alert("이미 출석과 PT 차감이 완료되었습니다.");
+      alert("이미 출석과 PT 차감이 완료되어 완료 처리만 했습니다.");
       return;
     }
 
@@ -270,22 +291,67 @@ export default function Page() {
       return;
     }
 
-    if (!attendedToday) {
-      await checkAttendance(member, false);
+    if (!schedule.attendance_checked) {
+      const { error: attendanceError } = await supabase.from("attendance_logs").insert({
+        member_id: member.id,
+      });
+
+      if (attendanceError) {
+        alert("출석 체크 실패: " + attendanceError.message);
+        return;
+      }
     }
 
-    const refreshedMember =
-      members.find((m) => m.id === member.id) || {
-        ...member,
-        latest_visit: new Date().toISOString(),
-      };
+    if (!schedule.pt_used) {
+      if ((member.pt_remaining || 0) <= 0) {
+        alert("남은 PT가 없습니다.");
+        return;
+      }
 
-    if (!ptUsedToday) {
-      await minusPt(refreshedMember);
+      const { error: memberError } = await supabase
+        .from("members")
+        .update({ pt_remaining: (member.pt_remaining || 0) - 1 })
+        .eq("id", member.id);
+
+      if (memberError) {
+        alert("PT 차감 실패: " + memberError.message);
+        return;
+      }
+
+      const { error: logError } = await supabase.from("pt_logs").insert({
+        member_id: member.id,
+        type: "use",
+        amount: 1,
+      });
+
+      if (logError) {
+        alert("PT 사용 기록 저장 실패: " + logError.message);
+        return;
+      }
+
+      setLastAction({
+        type: "pt",
+        memberId: member.id,
+        previousPt: member.pt_remaining || 0,
+        memberName: member.name,
+      });
     }
 
-    await supabase.from("schedules").update({ status: "completed" }).eq("id", schedule.id);
+    const { error } = await supabase
+      .from("schedules")
+      .update({
+        status: "completed",
+        attendance_checked: true,
+        pt_used: true,
+      })
+      .eq("id", schedule.id);
 
+    if (error) {
+      alert("스케줄 완료 처리 실패: " + error.message);
+      return;
+    }
+
+    closeActionModal();
     await loadMembers();
     await loadSchedules(getTodayDateString());
   }
@@ -299,7 +365,15 @@ export default function Page() {
       return;
     }
 
-    const ptUsedToday = member.latest_pt && isToday(member.latest_pt);
+    if (schedule.status === "cancelled") {
+      alert("취소 처리된 스케줄입니다. 스케줄을 새로 등록하세요.");
+      return;
+    }
+
+    if (schedule.status === "noshow") {
+      alert("이미 노쇼 처리된 스케줄입니다.");
+      return;
+    }
 
     if (
       !confirm(
@@ -309,13 +383,48 @@ export default function Page() {
       return;
     }
 
-    if (!ptUsedToday) {
-      await minusPt(member);
+    if (!schedule.pt_used) {
+      if ((member.pt_remaining || 0) <= 0) {
+        alert("남은 PT가 없습니다.");
+        return;
+      }
+
+      const { error: memberError } = await supabase
+        .from("members")
+        .update({ pt_remaining: (member.pt_remaining || 0) - 1 })
+        .eq("id", member.id);
+
+      if (memberError) {
+        alert("PT 차감 실패: " + memberError.message);
+        return;
+      }
+
+      const { error: logError } = await supabase.from("pt_logs").insert({
+        member_id: member.id,
+        type: "use",
+        amount: 1,
+      });
+
+      if (logError) {
+        alert("PT 사용 기록 저장 실패: " + logError.message);
+        return;
+      }
+
+      setLastAction({
+        type: "pt",
+        memberId: member.id,
+        previousPt: member.pt_remaining || 0,
+        memberName: member.name,
+      });
     }
 
     const { error } = await supabase
       .from("schedules")
-      .update({ status: "noshow" })
+      .update({
+        status: "noshow",
+        attendance_checked: false,
+        pt_used: true,
+      })
       .eq("id", schedule.id);
 
     if (error) {
@@ -323,6 +432,7 @@ export default function Page() {
       return;
     }
 
+    closeActionModal();
     await loadMembers();
     await loadSchedules(getTodayDateString());
   }
@@ -341,6 +451,11 @@ export default function Page() {
       return;
     }
 
+    if (schedule.status === "cancelled") {
+      alert("이미 취소 처리된 스케줄입니다.");
+      return;
+    }
+
     if (
       !confirm(
         `${memberName} 스케줄을 취소 처리할까요?\n출석 기록과 PT 차감은 하지 않습니다.`
@@ -351,7 +466,11 @@ export default function Page() {
 
     const { error } = await supabase
       .from("schedules")
-      .update({ status: "cancelled" })
+      .update({
+        status: "cancelled",
+        attendance_checked: false,
+        pt_used: false,
+      })
       .eq("id", schedule.id);
 
     if (error) {
@@ -359,6 +478,7 @@ export default function Page() {
       return;
     }
 
+    closeActionModal();
     await loadSchedules(getTodayDateString());
   }
 
@@ -1263,13 +1383,7 @@ export default function Page() {
       schedule.status === "cancelled"
     ) return false;
 
-    const member = getScheduleMember(schedule);
-    if (!member) return false;
-
-    const attendedToday = member.latest_visit && isToday(member.latest_visit);
-    const ptUsedToday = member.latest_pt && isToday(member.latest_pt);
-
-    return !attendedToday || !ptUsedToday;
+    return !schedule.attendance_checked || !schedule.pt_used;
   });
 
   return (
@@ -1313,11 +1427,8 @@ export default function Page() {
           <div style={styles.incompleteList}>
             {incompleteSchedules.map((schedule) => {
               const member = getScheduleMember(schedule);
-              const attendedToday = member?.latest_visit && isToday(member.latest_visit);
-              const ptUsedToday = member?.latest_pt && isToday(member.latest_pt);
-              const isNoShow = schedule.status === "noshow";
-              const isCancelled = schedule.status === "cancelled";
-              const isCompleted = schedule.status === "completed" || (attendedToday && ptUsedToday);
+              const attended = !!schedule.attendance_checked;
+              const ptUsed = !!schedule.pt_used;
 
               return (
                 <div key={schedule.id} style={styles.incompleteItem}>
@@ -1331,13 +1442,13 @@ export default function Page() {
                       </strong>
 
                       <div style={styles.scheduleStatusRow}>
-                        {attendedToday ? (
+                        {attended ? (
                           <span style={styles.scheduleDoneText}>출석 완료</span>
                         ) : (
                           <span style={styles.scheduleWarningText}>출석 전</span>
                         )}
 
-                        {ptUsedToday ? (
+                        {ptUsed ? (
                           <span style={styles.scheduleDoneText}>차감 완료</span>
                         ) : (
                           <span style={styles.scheduleWarningText}>차감 전</span>
@@ -1348,24 +1459,10 @@ export default function Page() {
 
                   <div style={styles.incompleteButtonGroup}>
                     <button
-                      onClick={() => completeScheduleClass(schedule)}
+                      onClick={() => openActionModal(schedule)}
                       style={styles.incompleteCompleteButton}
                     >
-                      수업 완료
-                    </button>
-
-                    <button
-                      onClick={() => markScheduleNoShow(schedule)}
-                      style={styles.incompleteNoShowButton}
-                    >
-                      노쇼
-                    </button>
-
-                    <button
-                      onClick={() => markScheduleCancelled(schedule)}
-                      style={styles.incompleteCancelScheduleButton}
-                    >
-                      취소
+                      처리하기
                     </button>
                   </div>
                 </div>
@@ -1393,11 +1490,11 @@ export default function Page() {
           <div style={styles.scheduleList}>
             {schedules.map((schedule) => {
               const member = getScheduleMember(schedule);
-              const attendedToday = member?.latest_visit && isToday(member.latest_visit);
-              const ptUsedToday = member?.latest_pt && isToday(member.latest_pt);
+              const attended = !!schedule.attendance_checked;
+              const ptUsed = !!schedule.pt_used;
               const isNoShow = schedule.status === "noshow";
               const isCancelled = schedule.status === "cancelled";
-              const isCompleted = schedule.status === "completed" || (attendedToday && ptUsedToday);
+              const isCompleted = schedule.status === "completed" || (attended && ptUsed);
 
               return (
                 <div
@@ -1434,13 +1531,13 @@ export default function Page() {
                           </>
                         ) : (
                           <>
-                            {attendedToday ? (
+                            {attended ? (
                               <span style={styles.scheduleDoneText}>출석 완료</span>
                             ) : (
                               <span style={styles.scheduleWarningText}>출석 전</span>
                             )}
 
-                            {ptUsedToday ? (
+                            {ptUsed ? (
                               <span style={styles.scheduleDoneText}>차감 완료</span>
                             ) : (
                               <span style={styles.scheduleWarningText}>차감 전</span>
@@ -1452,43 +1549,18 @@ export default function Page() {
                   </div>
 
                   <div style={styles.scheduleActionRow}>
-                    <button
-                      onClick={() => completeScheduleClass(schedule)}
-                      style={
-                        isNoShow || isCancelled || isCompleted
-                          ? styles.scheduleDisabledButton
-                          : styles.scheduleCompleteButton
-                      }
-                      disabled={!!(isNoShow || isCancelled || isCompleted)}
-                    >
-                      {isCancelled ? "취소됨" : isNoShow ? "노쇼" : isCompleted ? "완료됨" : "수업 완료"}
-                    </button>
-
-                    <div style={styles.scheduleSubActionRow}>
-                      <button
-                        onClick={() => markScheduleNoShow(schedule)}
-                        style={
-                          isNoShow || isCancelled || isCompleted
-                            ? styles.scheduleDisabledSmallButton
-                            : styles.scheduleNoShowButton
-                        }
-                        disabled={!!(isNoShow || isCancelled || isCompleted)}
-                      >
-                        노쇼
+                    {isNoShow || isCancelled || isCompleted ? (
+                      <button style={styles.scheduleDisabledButton} disabled>
+                        {isCancelled ? "취소됨" : isNoShow ? "노쇼" : "완료됨"}
                       </button>
-
+                    ) : (
                       <button
-                        onClick={() => markScheduleCancelled(schedule)}
-                        style={
-                          isNoShow || isCancelled || isCompleted
-                            ? styles.scheduleDisabledSmallButton
-                            : styles.scheduleCancelButton
-                        }
-                        disabled={!!(isNoShow || isCancelled || isCompleted)}
+                        onClick={() => openActionModal(schedule)}
+                        style={styles.scheduleCompleteButton}
                       >
-                        취소
+                        처리하기
                       </button>
-                    </div>
+                    )}
 
                     <button onClick={() => deleteSchedule(schedule)} style={styles.scheduleDeleteButton}>
                       삭제
@@ -1500,6 +1572,52 @@ export default function Page() {
           </div>
         )}
       </section>
+
+      {actionModalSchedule && (
+        <div style={styles.modalOverlay}>
+          <section style={styles.modalBox}>
+            <div style={styles.detailTop}>
+              <div>
+                <h2 style={styles.modalTitle}>스케줄 처리</h2>
+                <p style={styles.muted}>
+                  {getScheduleMember(actionModalSchedule)?.name || "회원"} 수업 결과를 선택하세요.
+                </p>
+              </div>
+
+              <button onClick={closeActionModal} style={styles.closeButton}>
+                닫기
+              </button>
+            </div>
+
+            <div style={styles.menuGrid}>
+              <button
+                onClick={() => completeScheduleClass(actionModalSchedule)}
+                style={styles.whiteButton}
+              >
+                수업 완료
+              </button>
+
+              <button
+                onClick={() => markScheduleNoShow(actionModalSchedule)}
+                style={styles.deleteButton}
+              >
+                노쇼
+              </button>
+
+              <button
+                onClick={() => markScheduleCancelled(actionModalSchedule)}
+                style={styles.darkButton}
+              >
+                취소
+              </button>
+            </div>
+
+            <button onClick={closeActionModal} style={styles.cancelButton}>
+              닫기
+            </button>
+          </section>
+        </div>
+      )}
 
       {summaryModal && (
         <div style={styles.modalOverlay}>
@@ -1774,19 +1892,39 @@ export default function Page() {
                 <div style={styles.detailActionBox}>
                   <p style={styles.detailPtMini}>PT {selectedMember.pt_remaining || 0}회 남음</p>
 
-                  <div style={styles.detailButtonGridClean}>
-                    <button
-                      onClick={() => openPtModal(selectedMember)}
-                      style={styles.whiteButton}
-                    >
+                  <div style={styles.detailButtonGrid}>
+                    <button onClick={() => minusPt(selectedMember)} style={styles.redButton}>
+                      1회 차감
+                    </button>
+
+                    <button onClick={() => setPtModalMember(selectedMember)} style={styles.whiteButton}>
                       이용권 추가
                     </button>
 
-                    <button
-                      onClick={() => startEdit(selectedMember)}
-                      style={styles.darkButton}
-                    >
+                    <button onClick={() => checkAttendance(selectedMember)} style={styles.blueButton}>
+                      출석 체크
+                    </button>
+
+                    {normalizePhone(selectedMember.phone) ? (
+                      <a href={`tel:${normalizePhone(selectedMember.phone)}`} style={styles.phoneButton}>
+                        전화하기
+                      </a>
+                    ) : (
+                      <button onClick={() => alert("전화번호가 없습니다.")} style={styles.phoneButton}>
+                        전화하기
+                      </button>
+                    )}
+
+                    <button onClick={() => markContacted(selectedMember)} style={styles.contactButton}>
+                      연락 완료
+                    </button>
+
+                    <button onClick={() => startEdit(selectedMember)} style={styles.darkButton}>
                       수정
+                    </button>
+
+                    <button onClick={() => deleteMember(selectedMember)} style={styles.deleteButton}>
+                      삭제
                     </button>
                   </div>
                 </div>
@@ -2431,16 +2569,13 @@ export default function Page() {
                         PT {member.pt_remaining}회
                       </div>
 
-                        <button
-  onClick={(e) => {
-    e.stopPropagation();
-    openPtModal(member);
-  }}
-  style={styles.cardPtAddButton}
->
-  + 이용권
-</button>
-                          </div>
+                      <button
+                        onClick={() => openPtModal(member)}
+                        style={styles.cardPtAddButton}
+                      >
+                        + 이용권
+                      </button>
+                    </div>
 
                     <p style={styles.phoneSmall}>
                       {member.age ? `${member.age}세 · ` : ""}
@@ -3159,11 +3294,6 @@ const styles = {
     margin: "0 0 14px",
   },
   detailButtonGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-  },
-  detailButtonGridClean: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: 10,
