@@ -217,6 +217,30 @@ export default function Page() {
     return `${period} ${displayHour}:${minute}`;
   }
 
+  function getTimeOptions() {
+    const options = [];
+
+    for (let hour = 5; hour <= 23; hour += 1) {
+      [0, 30].forEach((minute) => {
+        const value = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+        options.push(value);
+      });
+    }
+
+    return options;
+  }
+
+  function addMinutesToTime(time, minutesToAdd) {
+    if (!time) return "";
+
+    const [hourText, minuteText] = String(time).split(":");
+    const date = new Date();
+    date.setHours(Number(hourText), Number(minuteText || 0), 0, 0);
+    date.setMinutes(date.getMinutes() + minutesToAdd);
+
+    return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  }
+
   function openScheduleMember(schedule) {
     const member = getFreshMember(schedule.member_id) || schedule.members;
     if (!member) return alert("연결된 회원 정보를 찾을 수 없습니다.");
@@ -1674,20 +1698,56 @@ export default function Page() {
             />
 
             <label style={styles.label}>시작 시간</label>
-            <input
+            <select
               value={scheduleStartTime}
-              onChange={(e) => setScheduleStartTime(e.target.value)}
-              type="time"
+              onChange={(e) => {
+                const value = e.target.value;
+                setScheduleStartTime(value);
+
+                if (value && !scheduleEndTime) {
+                  setScheduleEndTime(addMinutesToTime(value, 50));
+                }
+              }}
               style={styles.input}
-            />
+            >
+              <option value="">시작 시간을 선택하세요</option>
+              {getTimeOptions().map((time) => (
+                <option key={time} value={time}>
+                  {formatTime(time)}
+                </option>
+              ))}
+            </select>
 
             <label style={styles.label}>종료 시간</label>
-            <input
+            <select
               value={scheduleEndTime}
               onChange={(e) => setScheduleEndTime(e.target.value)}
-              type="time"
               style={styles.input}
-            />
+            >
+              <option value="">종료 시간 선택 안 함</option>
+              {getTimeOptions().map((time) => (
+                <option key={time} value={time}>
+                  {formatTime(time)}
+                </option>
+              ))}
+            </select>
+
+            <div style={styles.timeQuickRow}>
+              <button
+                type="button"
+                onClick={() => scheduleStartTime && setScheduleEndTime(addMinutesToTime(scheduleStartTime, 50))}
+                style={styles.timeQuickButton}
+              >
+                50분 수업
+              </button>
+              <button
+                type="button"
+                onClick={() => scheduleStartTime && setScheduleEndTime(addMinutesToTime(scheduleStartTime, 60))}
+                style={styles.timeQuickButton}
+              >
+                60분 수업
+              </button>
+            </div>
 
             <label style={styles.label}>구분</label>
             <select
@@ -2459,31 +2519,36 @@ export default function Page() {
         </div>
       )}
 
-      <section style={styles.topActionBox}>
-        <button onClick={() => setShowAddModal(true)} style={styles.addMemberButton}>
-          + 회원 추가
-        </button>
-      </section>
-
-      <section style={styles.searchBox}>
-        <label style={styles.label}>회원 검색</label>
-
-        <div style={styles.searchRow}>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="이름 또는 전화번호 검색"
-            style={{ ...styles.input, marginBottom: 0 }}
-          />
-
-          {isSearching && (
-            <button onClick={() => setSearch("")} style={styles.resetButton}>
-              초기화
-            </button>
-          )}
+      <section style={styles.actionSearchGrid}>
+        <div style={styles.actionHalfCard}>
+          <h2 style={styles.actionHalfTitle}>회원 추가</h2>
+          <p style={styles.actionHalfDesc}>새로운 회원을 등록합니다.</p>
+          <button onClick={() => setShowAddModal(true)} style={styles.addMemberButton}>
+            + 회원 추가
+          </button>
         </div>
 
-        {isSearching && <p style={styles.searchInfo}>“{search}” 검색 중</p>}
+        <div style={styles.actionHalfCard}>
+          <h2 style={styles.actionHalfTitle}>회원 검색</h2>
+          <p style={styles.actionHalfDesc}>이름 또는 전화번호로 빠르게 찾습니다.</p>
+
+          <div style={styles.searchRow}>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="이름 또는 전화번호 검색"
+              style={{ ...styles.input, marginBottom: 0 }}
+            />
+
+            {isSearching && (
+              <button onClick={() => setSearch("")} style={styles.resetButton}>
+                초기화
+              </button>
+            )}
+          </div>
+
+          {isSearching && <p style={styles.searchInfo}>“{search}” 검색 중</p>}
+        </div>
       </section>
 
       <section>
@@ -2845,7 +2910,7 @@ const styles = {
     background: "#1f1a12",
     border: "1px solid #5b4320",
     borderRadius: 24,
-    padding: 20,
+    padding: 18,
     marginBottom: 22,
   },
   incompleteTop: {
@@ -2856,7 +2921,7 @@ const styles = {
     marginBottom: 16,
   },
   incompleteTitle: {
-    fontSize: 26,
+    fontSize: 24,
     margin: 0,
     fontWeight: 900,
     color: "#fde68a",
@@ -2883,7 +2948,7 @@ const styles = {
     background: "#241f17",
     border: "1px solid #4a3a1f",
     borderRadius: 18,
-    padding: 14,
+    padding: "12px 14px",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
@@ -2987,6 +3052,29 @@ const styles = {
     borderRadius: 12,
     padding: "9px 12px",
     fontWeight: 800,
+  },
+  actionSearchGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 16,
+    marginBottom: 34,
+  },
+  actionHalfCard: {
+    background: "#151515",
+    border: "1px solid #272727",
+    borderRadius: 24,
+    padding: 20,
+  },
+  actionHalfTitle: {
+    fontSize: 26,
+    margin: 0,
+    marginBottom: 8,
+    fontWeight: 900,
+  },
+  actionHalfDesc: {
+    color: "#aaa",
+    margin: "0 0 16px",
+    fontSize: 14,
   },
   topActionBox: {
     marginBottom: 22,
@@ -3118,6 +3206,22 @@ const styles = {
     fontSize: 15,
     lineHeight: 1.5,
     fontWeight: 700,
+  },
+  timeQuickRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+    marginTop: -6,
+    marginBottom: 16,
+  },
+  timeQuickButton: {
+    background: "#222",
+    color: "#fff",
+    border: "1px solid #444",
+    borderRadius: 14,
+    padding: "12px 10px",
+    fontSize: 14,
+    fontWeight: 900,
   },
   menuGrid: {
     display: "grid",
