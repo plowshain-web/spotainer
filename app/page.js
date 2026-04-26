@@ -969,6 +969,47 @@ export default function Page() {
     return String(phone || "").replace(/[^0-9+]/g, "");
   }
 
+  async function sendGroupSMS(type, targetMembers) {
+    const validMembers = (targetMembers || []).filter((member) => normalizePhone(member.phone));
+
+    if (validMembers.length === 0) {
+      alert("문자를 보낼 전화번호가 있는 회원이 없습니다.");
+      return;
+    }
+
+    let message = "";
+
+    if (type === "rejoin") {
+      message = "회원님, PT 잔여 횟수가 얼마 남지 않아 안내드립니다. 재등록 상담 도와드릴게요 🙂";
+    } else if (type === "urgent") {
+      message = "회원님, PT 잔여 횟수가 거의 소진되었습니다. 일정 확인 부탁드립니다.";
+    } else {
+      message = "회원님, 최근 방문이 없어 연락드립니다 🙂 편한 시간에 예약 부탁드립니다.";
+    }
+
+    const confirmSend = confirm(
+      `${validMembers.length}명에게 문자를 보낼까요?\n\n확인을 누르면 문자앱이 열리고, 연락완료 처리됩니다.`
+    );
+
+    if (!confirmSend) return;
+
+    const phones = validMembers.map((member) => normalizePhone(member.phone)).join(",");
+    const now = new Date().toISOString();
+
+    for (const member of validMembers) {
+      await supabase
+        .from("members")
+        .update({ last_contacted_at: now })
+        .eq("id", member.id);
+    }
+
+    window.location.href = `sms:${phones}?body=${encodeURIComponent(message)}`;
+
+    await loadMembers();
+    alert("연락 완료 처리되었습니다.");
+  }
+
+
   async function openDetail(member, mode = "menu") {
     setSelectedMember(member);
     setDetailMode(mode);
@@ -1521,27 +1562,56 @@ export default function Page() {
       </header>
 
       <section style={styles.summaryBox}>
-        <button onClick={() => setSummaryModal("rejoin")} style={styles.summaryCardWithIcon}>
-          <span style={{ ...styles.summaryIcon, ...styles.summaryIconYellow }}>👤</span>
-          <span style={styles.summaryTextWrap}>
-            <strong>재등록 상담</strong>
-            <p>{summaryGroups.rejoin.length}명</p>
-          </span>
-        </button>
-        <button onClick={() => setSummaryModal("urgent")} style={styles.summaryCardWithIcon}>
-          <span style={{ ...styles.summaryIcon, ...styles.summaryIconRed }}>⚠</span>
-          <span style={styles.summaryTextWrap}>
-            <strong>강한 경고</strong>
-            <p>{summaryGroups.urgent.length}명</p>
-          </span>
-        </button>
-        <button onClick={() => setSummaryModal("dormant")} style={styles.summaryCardWithIcon}>
-          <span style={{ ...styles.summaryIcon, ...styles.summaryIconGreen }}>☎</span>
-          <span style={styles.summaryTextWrap}>
-            <strong>연락 필요</strong>
-            <p>{summaryGroups.dormant.length}명</p>
-          </span>
-        </button>
+        <div style={styles.summaryCardWithIcon}>
+          <button onClick={() => setSummaryModal("rejoin")} style={styles.summaryMainButton}>
+            <span style={{ ...styles.summaryIcon, ...styles.summaryIconYellow }}>👤</span>
+            <span style={styles.summaryTextWrap}>
+              <strong>재등록 상담</strong>
+              <p>{summaryGroups.rejoin.length}명</p>
+            </span>
+          </button>
+
+          <button
+            onClick={() => sendGroupSMS("rejoin", summaryGroups.rejoin)}
+            style={styles.summarySmsButton}
+          >
+            문자
+          </button>
+        </div>
+
+        <div style={styles.summaryCardWithIcon}>
+          <button onClick={() => setSummaryModal("urgent")} style={styles.summaryMainButton}>
+            <span style={{ ...styles.summaryIcon, ...styles.summaryIconRed }}>⚠</span>
+            <span style={styles.summaryTextWrap}>
+              <strong>강한 경고</strong>
+              <p>{summaryGroups.urgent.length}명</p>
+            </span>
+          </button>
+
+          <button
+            onClick={() => sendGroupSMS("urgent", summaryGroups.urgent)}
+            style={styles.summarySmsButton}
+          >
+            문자
+          </button>
+        </div>
+
+        <div style={styles.summaryCardWithIcon}>
+          <button onClick={() => setSummaryModal("dormant")} style={styles.summaryMainButton}>
+            <span style={{ ...styles.summaryIcon, ...styles.summaryIconGreen }}>☎</span>
+            <span style={styles.summaryTextWrap}>
+              <strong>연락 필요</strong>
+              <p>{summaryGroups.dormant.length}명</p>
+            </span>
+          </button>
+
+          <button
+            onClick={() => sendGroupSMS("dormant", summaryGroups.dormant)}
+            style={styles.summarySmsButton}
+          >
+            문자
+          </button>
+        </div>
       </section>
 
       <section style={styles.incompleteBox}>
@@ -2673,13 +2743,34 @@ const styles = {
     background: "#151515",
     border: "1px solid #272727",
     borderRadius: 22,
-    padding: "18px 20px",
+    padding: "16px 18px",
+    color: "#fff",
+    display: "grid",
+    gridTemplateColumns: "1fr auto",
+    alignItems: "center",
+    gap: 12,
+    textAlign: "left",
+  },
+  summaryMainButton: {
+    background: "transparent",
+    border: "none",
     color: "#fff",
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
     gap: 18,
     textAlign: "left",
+    padding: 0,
+    cursor: "pointer",
+  },
+  summarySmsButton: {
+    background: "#f5f5f5",
+    color: "#111",
+    border: "1px solid #ffffff",
+    borderRadius: 12,
+    padding: "10px 14px",
+    fontSize: 14,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
   },
   summaryIcon: {
     width: 46,
