@@ -10,6 +10,29 @@ const supabase = createClient(
 
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
+const commonExercises = [
+  "스쿼트",
+  "런지",
+  "레그프레스",
+  "레그익스텐션",
+  "레그컬",
+  "힙쓰러스트",
+  "힙어브덕션",
+  "랫풀다운",
+  "시티드로우",
+  "체스트프레스",
+  "숄더프레스",
+  "사이드레터럴레이즈",
+  "케이블푸쉬다운",
+  "바이셉스컬",
+  "플랭크",
+  "크런치",
+  "데드버그",
+  "버드독",
+  "힙브릿지",
+  "스트레칭",
+];
+
 export default function Page() {
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");
@@ -442,6 +465,9 @@ export default function Page() {
     closeActionModal();
     await loadMembers();
     await loadSchedules(getTodayDateString());
+
+    await openWorkout(member);
+    setWorkoutMode("add");
   }
 
   async function markScheduleNoShow(schedule) {
@@ -1185,6 +1211,85 @@ export default function Page() {
         index === exerciseIndex ? { ...exercise, name: value } : exercise
       )
     );
+  }
+
+  function getWorkoutHistoryNames() {
+    const names = [];
+
+    workoutSessions.forEach((session) => {
+      (session.workout_sets || []).forEach((set) => {
+        const name = String(set.exercise_name || "").trim();
+        if (name) names.push(name);
+      });
+    });
+
+    return [...new Set([...names, ...commonExercises])];
+  }
+
+  function getExerciseSuggestions(value) {
+    const q = String(value || "").trim().toLowerCase();
+    if (!q) return [];
+
+    return getWorkoutHistoryNames()
+      .filter((name) => name.toLowerCase().includes(q))
+      .slice(0, 6);
+  }
+
+  function getLastExerciseGroup(exerciseName) {
+    const target = String(exerciseName || "").trim().toLowerCase();
+    if (!target) return null;
+
+    for (const session of workoutSessions) {
+      const groups = groupWorkoutSets(session.workout_sets || []);
+      const found = groups.find(
+        (group) => String(group.exerciseName || "").trim().toLowerCase() === target
+      );
+
+      if (found) {
+        return {
+          ...found,
+          workoutDate: session.workout_date,
+          memo: session.memo || "",
+        };
+      }
+    }
+
+    return null;
+  }
+
+  function getLastExerciseSummary(group) {
+    if (!group || !group.sets?.length) return "";
+
+    return group.sets
+      .map((set, index) => {
+        const weightText = set.weight ? `${set.weight}kg` : "맨몸";
+        const repsText = set.reps ? `${set.reps}회` : "횟수 없음";
+        return `${index + 1}세트 ${weightText} ${repsText}`;
+      })
+      .join(" / ");
+  }
+
+  function applyLastExercise(exerciseIndex, group) {
+    if (!group) return;
+
+    setWorkoutExercises((prev) =>
+      prev.map((exercise, index) => {
+        if (index !== exerciseIndex) return exercise;
+
+        return {
+          ...exercise,
+          name: group.exerciseName,
+          sets: group.sets.map((set) => ({
+            weight: set.weight ?? "",
+            reps: set.reps ?? "",
+          })),
+        };
+      })
+    );
+  }
+
+  function selectExerciseSuggestion(exerciseIndex, name) {
+    updateExerciseName(exerciseIndex, name);
   }
 
   function addSet(exerciseIndex) {
@@ -2463,9 +2568,47 @@ export default function Page() {
                     <input
                       value={exercise.name}
                       onChange={(e) => updateExerciseName(exerciseIndex, e.target.value)}
-                      placeholder="예: 랫풀다운"
+                      placeholder="예: 스쿼트, 런지, 랫풀다운"
                       style={styles.input}
                     />
+
+                    {getExerciseSuggestions(exercise.name).length > 0 && (
+                      <div style={styles.exerciseSuggestBox}>
+                        {getExerciseSuggestions(exercise.name).map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            onClick={() => selectExerciseSuggestion(exerciseIndex, suggestion)}
+                            style={styles.exerciseSuggestButton}
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {(() => {
+                      const lastGroup = getLastExerciseGroup(exercise.name);
+
+                      if (!lastGroup) return null;
+
+                      return (
+                        <div style={styles.lastExerciseBox}>
+                          <div>
+                            <strong>지난 기록</strong>
+                            <p>{formatDate(lastGroup.workoutDate)} · {getLastExerciseSummary(lastGroup)}</p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => applyLastExercise(exerciseIndex, lastGroup)}
+                            style={styles.lastExerciseButton}
+                          >
+                            불러오기
+                          </button>
+                        </div>
+                      );
+                    })()}
 
                     {exercise.sets.map((set, setIndex) => (
                       <div key={setIndex} style={styles.setRow}>
@@ -3601,6 +3744,44 @@ const styles = {
     padding: "12px 10px",
     fontSize: 14,
     fontWeight: 900,
+  },
+  exerciseSuggestBox: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: -8,
+    marginBottom: 14,
+  },
+  exerciseSuggestButton: {
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #444",
+    borderRadius: 999,
+    padding: "8px 12px",
+    fontSize: 13,
+    fontWeight: 900,
+  },
+  lastExerciseBox: {
+    background: "#2a2415",
+    border: "1px solid #6b4d12",
+    borderRadius: 16,
+    padding: 12,
+    marginTop: -4,
+    marginBottom: 14,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 10,
+  },
+  lastExerciseButton: {
+    background: "#facc15",
+    color: "#111",
+    border: "none",
+    borderRadius: 12,
+    padding: "9px 12px",
+    fontSize: 13,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
   },
   menuGrid: {
     display: "grid",
