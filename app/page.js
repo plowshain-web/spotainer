@@ -64,6 +64,8 @@ export default function Page() {
   const [schedules, setSchedules] = useState([]);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [actionModalSchedule, setActionModalSchedule] = useState(null);
+  const [showMemberListModal, setShowMemberListModal] = useState(false);
+  const [memberListTitle, setMemberListTitle] = useState("회원 목록");
   const [scheduleMemberId, setScheduleMemberId] = useState("");
   const [scheduleDate, setScheduleDate] = useState(getTodayDateString());
   const [scheduleStartTime, setScheduleStartTime] = useState("");
@@ -162,6 +164,16 @@ export default function Page() {
 
   function closeActionModal() {
     setActionModalSchedule(null);
+  }
+
+  function openMemberListModal(title = "회원 목록", resetSearch = false) {
+    if (resetSearch) setSearch("");
+    setMemberListTitle(title);
+    setShowMemberListModal(true);
+  }
+
+  function closeMemberListModal() {
+    setShowMemberListModal(false);
   }
 
   async function addSchedule() {
@@ -1400,6 +1412,94 @@ export default function Page() {
     );
   }
 
+  function renderMemberCard(member) {
+    const ptStatus = getPtStatus(member);
+    const visitStatus = getVisitStatus(member);
+
+    return (
+      <article
+        key={member.id}
+        style={editingId === member.id ? styles.card : styles.cardCompact}
+      >
+        {editingId === member.id ? (
+          <div style={styles.editBox}>
+            <h3 style={styles.editTitle}>회원 정보 수정</h3>
+
+            <label style={styles.label}>이름</label>
+            <input value={editName} onChange={(e) => setEditName(e.target.value)} style={styles.input} />
+
+            <label style={styles.label}>전화번호</label>
+            <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} style={styles.input} />
+
+            <label style={styles.label}>나이</label>
+            <input value={editAge} onChange={(e) => setEditAge(e.target.value)} type="number" style={styles.input} />
+
+            <label style={styles.label}>키(cm)</label>
+            <input value={editHeight} onChange={(e) => setEditHeight(e.target.value)} type="number" style={styles.input} />
+
+            <label style={styles.label}>목표</label>
+            <input value={editGoal} onChange={(e) => setEditGoal(e.target.value)} style={styles.input} />
+
+            <label style={styles.label}>특이사항</label>
+            <textarea value={editNote} onChange={(e) => setEditNote(e.target.value)} style={styles.textarea} />
+
+            <label style={styles.label}>트레이너 메모</label>
+            <textarea value={editMemo} onChange={(e) => setEditMemo(e.target.value)} style={styles.textarea} />
+
+            <div style={styles.editActions}>
+              <button onClick={() => saveEdit(member.id)} style={styles.primaryButton}>
+                저장
+              </button>
+              <button onClick={() => setEditingId(null)} style={styles.cancelButton}>
+                취소
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div onClick={() => openDetail(member, "menu")} style={styles.memberMain}>
+            <div style={styles.compactTop}>
+              <h3 style={styles.memberNameSmall}>{member.name}</h3>
+              <div
+                style={{
+                  ...styles.ptCountSmall,
+                  color: (member.pt_remaining || 0) <= 2 ? "#f87171" : "#ffffff",
+                }}
+              >
+                PT {member.pt_remaining}회
+              </div>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openPtModal(member);
+                }}
+                style={styles.cardPtAddButton}
+              >
+                + 이용권
+              </button>
+            </div>
+
+            <p style={styles.phoneSmall}>
+              {member.age ? `${member.age}세 · ` : ""}
+              {member.height ? `${member.height}cm · ` : ""}
+              {member.phone || "전화번호 없음"}
+            </p>
+
+            <div style={styles.compactInfoRow}>
+              <span>출석 {formatDate(member.latest_visit)}</span>
+              <span>PT {formatDate(member.latest_pt)}</span>
+            </div>
+
+            <div style={styles.warningRow}>
+              {ptStatus && <span style={ptStatus.style}>{ptStatus.text}</span>}
+              {visitStatus && <span style={visitStatus.style}>{visitStatus.text}</span>}
+            </div>
+          </div>
+        )}
+      </article>
+    );
+  }
+
   const incompleteSchedules = schedules.filter((schedule) => {
     if (
       schedule.status === "noshow" ||
@@ -1421,97 +1521,45 @@ export default function Page() {
       </header>
 
       <section style={styles.summaryBox}>
-        <button onClick={() => setSummaryModal("rejoin")} style={styles.summaryCard}>
-          <strong>재등록 상담</strong>
-          <p>{summaryGroups.rejoin.length}명</p>
+        <button onClick={() => setSummaryModal("rejoin")} style={styles.summaryCardWithIcon}>
+          <span style={{ ...styles.summaryIcon, ...styles.summaryIconYellow }}>👤</span>
+          <span style={styles.summaryTextWrap}>
+            <strong>재등록 상담</strong>
+            <p>{summaryGroups.rejoin.length}명</p>
+          </span>
         </button>
-        <button onClick={() => setSummaryModal("urgent")} style={styles.summaryCard}>
-          <strong>강한 경고</strong>
-          <p>{summaryGroups.urgent.length}명</p>
+        <button onClick={() => setSummaryModal("urgent")} style={styles.summaryCardWithIcon}>
+          <span style={{ ...styles.summaryIcon, ...styles.summaryIconRed }}>⚠</span>
+          <span style={styles.summaryTextWrap}>
+            <strong>강한 경고</strong>
+            <p>{summaryGroups.urgent.length}명</p>
+          </span>
         </button>
-        <button onClick={() => setSummaryModal("dormant")} style={styles.summaryCard}>
-          <strong>연락 필요</strong>
-          <p>{summaryGroups.dormant.length}명</p>
+        <button onClick={() => setSummaryModal("dormant")} style={styles.summaryCardWithIcon}>
+          <span style={{ ...styles.summaryIcon, ...styles.summaryIconGreen }}>☎</span>
+          <span style={styles.summaryTextWrap}>
+            <strong>연락 필요</strong>
+            <p>{summaryGroups.dormant.length}명</p>
+          </span>
         </button>
       </section>
 
-      {incompleteSchedules.length > 0 && (
-        <section style={styles.incompleteBox}>
-          <div style={styles.incompleteTop}>
-            <div>
-              <h2 style={styles.incompleteTitle}>처리 안된 수업</h2>
-              <p style={styles.incompleteDesc}>
-                출석 또는 PT 차감이 아직 완료되지 않은 오늘 스케줄입니다.
-              </p>
-            </div>
-
-            <div style={styles.incompleteCount}>{incompleteSchedules.length}건</div>
-          </div>
-
-          <div style={styles.incompleteList}>
-            {incompleteSchedules.map((schedule) => {
-              const member = getScheduleMember(schedule);
-              const attended = !!schedule.attendance_checked;
-              const ptUsed = !!schedule.pt_used;
-
-              return (
-                <div key={schedule.id} style={styles.incompleteItem}>
-                  <div style={styles.incompleteMain}>
-                    <div style={styles.scheduleTime}>{formatTime(schedule.start_time)}</div>
-
-                    <div>
-                      <strong style={styles.scheduleMemberName}>
-                        {getScheduleTypeText(schedule.type)} · {member?.name || "회원 정보 없음"}
-                        {member ? ` (${member.pt_remaining || 0}회)` : ""}
-                      </strong>
-
-                      <div style={styles.scheduleStatusRow}>
-                        {attended ? (
-                          <span style={styles.scheduleDoneText}>출석 완료</span>
-                        ) : (
-                          <span style={styles.scheduleWarningText}>출석 전</span>
-                        )}
-
-                        {ptUsed ? (
-                          <span style={styles.scheduleDoneText}>차감 완료</span>
-                        ) : (
-                          <span style={styles.scheduleWarningText}>차감 전</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={styles.incompleteButtonGroup}>
-                    <button
-                      onClick={() => openActionModal(schedule)}
-                      style={styles.incompleteCompleteButton}
-                    >
-                      처리하기
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      <section style={styles.scheduleBox}>
-        <div style={styles.scheduleTop}>
+      <section style={styles.incompleteBox}>
+        <div style={styles.incompleteTop}>
           <div>
-            <h2 style={styles.scheduleTitle}>오늘 스케줄</h2>
-            <p style={styles.scheduleDateText}>{formatDate(getTodayDateString())}</p>
+            <h2 style={styles.incompleteTitle}>오늘 스케줄</h2>
+            <p style={styles.incompleteDesc}>
+              출석과 PT 차감 상태를 한 번에 확인하세요.
+            </p>
           </div>
 
-          <button onClick={openScheduleModal} style={styles.scheduleAddButton}>
-            + 스케줄 추가
-          </button>
+          <div style={styles.incompleteCount}>{schedules.length}건</div>
         </div>
 
         {schedules.length === 0 ? (
           <p style={styles.muted}>오늘 등록된 스케줄이 없습니다.</p>
         ) : (
-          <div style={styles.scheduleList}>
+          <div style={styles.incompleteList}>
             {schedules.map((schedule) => {
               const member = getScheduleMember(schedule);
               const attended = !!schedule.attendance_checked;
@@ -1521,24 +1569,15 @@ export default function Page() {
               const isCompleted = schedule.status === "completed" || (attended && ptUsed);
 
               return (
-                <div
-                  key={schedule.id}
-                  style={{
-                    ...styles.scheduleItem,
-                    ...(isNoShow ? styles.scheduleItemNoShow : {}),
-                    ...(isCancelled ? styles.scheduleItemCancelled : {}),
-                  }}
-                >
-                  <div onClick={() => openScheduleMember(schedule)} style={styles.scheduleMain}>
+                <div key={schedule.id} style={styles.incompleteItem}>
+                  <div onClick={() => openScheduleMember(schedule)} style={styles.incompleteMain}>
                     <div style={styles.scheduleTime}>{formatTime(schedule.start_time)}</div>
+
                     <div>
                       <strong style={styles.scheduleMemberName}>
                         {getScheduleTypeText(schedule.type)} · {member?.name || "회원 정보 없음"}
                         {member ? ` (${member.pt_remaining || 0}회)` : ""}
                       </strong>
-                      <p style={styles.scheduleMemo}>
-                        {schedule.memo ? schedule.memo : "메모 없음"}
-                      </p>
 
                       <div style={styles.scheduleStatusRow}>
                         {isCancelled ? (
@@ -1572,7 +1611,7 @@ export default function Page() {
                     </div>
                   </div>
 
-                  <div style={styles.scheduleActionRow}>
+                  <div style={styles.incompleteButtonGroup}>
                     {isNoShow || isCancelled || isCompleted ? (
                       <button style={styles.scheduleDisabledButton} disabled>
                         {isCancelled ? "취소됨" : isNoShow ? "노쇼" : "완료됨"}
@@ -1580,21 +1619,25 @@ export default function Page() {
                     ) : (
                       <button
                         onClick={() => openActionModal(schedule)}
-                        style={styles.scheduleCompleteButton}
+                        style={styles.incompleteCompleteButton}
                       >
                         처리하기
                       </button>
                     )}
-
-                    <button onClick={() => deleteSchedule(schedule)} style={styles.scheduleDeleteButton}>
-                      삭제
-                    </button>
                   </div>
                 </div>
               );
             })}
           </div>
         )}
+      </section>
+
+      <section style={styles.scheduleAddWideBox}>
+        <button onClick={openScheduleModal} style={styles.scheduleAddWideButton}>
+          <span style={styles.actionCardIcon}>▣</span>
+          <span>스케줄 추가</span>
+          <span style={styles.actionCardArrow}>›</span>
+        </button>
       </section>
 
       {actionModalSchedule && (
@@ -2519,136 +2562,77 @@ export default function Page() {
         </div>
       )}
 
-      <section style={styles.actionSearchGrid}>
-        <div style={styles.actionHalfCard}>
-          <h2 style={styles.actionHalfTitle}>회원 추가</h2>
-          <p style={styles.actionHalfDesc}>새로운 회원을 등록합니다.</p>
-          <button onClick={() => setShowAddModal(true)} style={styles.addMemberButton}>
-            + 회원 추가
-          </button>
-        </div>
+      <section style={styles.actionSearchGridThree}>
+        <button onClick={() => setShowAddModal(true)} style={styles.actionBigCard}>
+          <span style={{ ...styles.actionBigIcon, color: "#facc15" }}>👤</span>
+          <span>
+            <strong>회원 추가</strong>
+            <p>새로운 회원을 등록합니다</p>
+          </span>
+        </button>
 
-        <div style={styles.actionHalfCard}>
-          <h2 style={styles.actionHalfTitle}>회원 검색</h2>
-          <p style={styles.actionHalfDesc}>이름 또는 전화번호로 빠르게 찾습니다.</p>
+        <button onClick={() => openMemberListModal("회원 검색", false)} style={styles.actionBigCard}>
+          <span style={{ ...styles.actionBigIcon, color: "#22c55e" }}>🔍</span>
+          <span>
+            <strong>회원 검색</strong>
+            <p>기존 회원을 검색하고 확인합니다</p>
+          </span>
+        </button>
 
-          <div style={styles.searchRow}>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="이름 또는 전화번호 검색"
-              style={{ ...styles.input, marginBottom: 0 }}
-            />
+        <button onClick={() => openMemberListModal("회원 목록", true)} style={styles.actionBigCard}>
+          <span style={{ ...styles.actionBigIcon, color: "#38bdf8" }}>☰</span>
+          <span>
+            <strong>회원 목록</strong>
+            <p>전체 회원 목록을 확인합니다</p>
+          </span>
+          <span style={styles.actionCardArrow}>›</span>
+        </button>
+      </section>
 
-            {isSearching && (
-              <button onClick={() => setSearch("")} style={styles.resetButton}>
-                초기화
+      {showMemberListModal && (
+        <div style={styles.whiteModalOverlay}>
+          <section style={styles.memberListModalBox}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>{memberListTitle}</h2>
+                <p style={styles.whiteMuted}>회원 카드를 누르면 상세보기가 열립니다.</p>
+              </div>
+
+              <button onClick={closeMemberListModal} style={styles.whiteCloseButton}>
+                닫기
               </button>
+            </div>
+
+            <div style={styles.memberListSearchBox}>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="이름 또는 전화번호 검색"
+                style={{ ...styles.whiteInput, marginBottom: 0 }}
+              />
+
+              {isSearching && (
+                <button onClick={() => setSearch("")} style={styles.whiteCancelButton}>
+                  초기화
+                </button>
+              )}
+            </div>
+
+            {isSearching && <p style={styles.whiteMuted}>“{search}” 검색 중</p>}
+
+            {filteredMembers.length === 0 ? (
+              <p style={styles.whiteMuted}>
+                {isSearching ? "검색 결과가 없습니다." : "회원이 없습니다."}
+              </p>
+            ) : (
+              <div style={styles.memberModalGrid}>
+                {filteredMembers.map(renderMemberCard)}
+              </div>
             )}
-          </div>
-
-          {isSearching && <p style={styles.searchInfo}>“{search}” 검색 중</p>}
+          </section>
         </div>
-      </section>
+      )}
 
-      <section>
-        <h2 style={styles.sectionTitle}>회원 목록</h2>
-
-        {filteredMembers.length === 0 ? (
-          <p style={styles.muted}>
-            {isSearching ? "검색 결과가 없습니다." : "회원이 없습니다."}
-          </p>
-        ) : (
-          <div style={styles.membersGrid}>
-            {filteredMembers.map((member) => {
-              const ptStatus = getPtStatus(member);
-              const visitStatus = getVisitStatus(member);
-              return (
-                <article
-                key={member.id}
-                style={editingId === member.id ? styles.card : styles.cardCompact}
-              >
-                {editingId === member.id ? (
-                  <div style={styles.editBox}>
-                    <h3 style={styles.editTitle}>회원 정보 수정</h3>
-
-                    <label style={styles.label}>이름</label>
-                    <input value={editName} onChange={(e) => setEditName(e.target.value)} style={styles.input} />
-
-                    <label style={styles.label}>전화번호</label>
-                    <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} style={styles.input} />
-
-                    <label style={styles.label}>나이</label>
-                    <input value={editAge} onChange={(e) => setEditAge(e.target.value)} type="number" style={styles.input} />
-
-                    <label style={styles.label}>키(cm)</label>
-                    <input value={editHeight} onChange={(e) => setEditHeight(e.target.value)} type="number" style={styles.input} />
-
-                    <label style={styles.label}>목표</label>
-                    <input value={editGoal} onChange={(e) => setEditGoal(e.target.value)} style={styles.input} />
-
-                    <label style={styles.label}>특이사항</label>
-                    <textarea value={editNote} onChange={(e) => setEditNote(e.target.value)} style={styles.textarea} />
-
-                    <label style={styles.label}>트레이너 메모</label>
-                    <textarea value={editMemo} onChange={(e) => setEditMemo(e.target.value)} style={styles.textarea} />
-
-                    <div style={styles.editActions}>
-                      <button onClick={() => saveEdit(member.id)} style={styles.primaryButton}>
-                        저장
-                      </button>
-                      <button onClick={() => setEditingId(null)} style={styles.cancelButton}>
-                        취소
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div onClick={() => openDetail(member, "menu")} style={styles.memberMain}>
-                    <div style={styles.compactTop}>
-                      <h3 style={styles.memberNameSmall}>{member.name}</h3>
-                      <div
-                        style={{
-                          ...styles.ptCountSmall,
-                          color: (member.pt_remaining || 0) <= 2 ? "#f87171" : "#ffffff",
-                        }}
-                      >
-                        PT {member.pt_remaining}회
-                      </div>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openPtModal(member);
-                        }}
-                        style={styles.cardPtAddButton}
-                      >
-                        + 이용권
-                      </button>
-                    </div>
-
-                    <p style={styles.phoneSmall}>
-                      {member.age ? `${member.age}세 · ` : ""}
-                      {member.height ? `${member.height}cm · ` : ""}
-                      {member.phone || "전화번호 없음"}
-                    </p>
-
-                    <div style={styles.compactInfoRow}>
-                      <span>출석 {formatDate(member.latest_visit)}</span>
-                      <span>PT {formatDate(member.latest_pt)}</span>
-                    </div>
-
-                    <div style={styles.warningRow}>
-                      {ptStatus && <span style={ptStatus.style}>{ptStatus.text}</span>}
-                      {visitStatus && <span style={visitStatus.style}>{visitStatus.text}</span>}
-                    </div>
-                  </div>
-                )}
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
     </main>
   );
 }
@@ -2687,15 +2671,47 @@ const styles = {
     color: "#ddd",
   },
   summaryBox: {
-    background: "#151515",
-    border: "1px solid #272727",
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 22,
     display: "grid",
     gridTemplateColumns: "1fr 1fr 1fr",
-    gap: 10,
-    textAlign: "center",
+    gap: 12,
+    marginBottom: 22,
+  },
+  summaryCardWithIcon: {
+    background: "#151515",
+    border: "1px solid #272727",
+    borderRadius: 22,
+    padding: "18px 20px",
+    color: "#fff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 18,
+    textAlign: "left",
+  },
+  summaryIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 30,
+    fontWeight: 900,
+  },
+  summaryIconYellow: {
+    color: "#facc15",
+  },
+  summaryIconRed: {
+    color: "#ef4444",
+  },
+  summaryIconGreen: {
+    color: "#22c55e",
+  },
+  summaryTextWrap: {
+    display: "grid",
+    gap: 4,
+    fontSize: 16,
+    fontWeight: 900,
   },
   scheduleBox: {
     background: "#151515",
@@ -3053,28 +3069,54 @@ const styles = {
     padding: "9px 12px",
     fontWeight: 800,
   },
-  actionSearchGrid: {
+  scheduleAddWideBox: {
+    marginBottom: 22,
+  },
+  scheduleAddWideButton: {
+    width: "100%",
+    background: "#151515",
+    border: "1px solid #272727",
+    borderRadius: 22,
+    color: "#fff",
+    padding: "22px 24px",
+    display: "flex",
+    alignItems: "center",
+    gap: 16,
+    fontSize: 22,
+    fontWeight: 900,
+    textAlign: "left",
+  },
+  actionSearchGridThree: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
+    gridTemplateColumns: "1fr 1fr 1fr",
     gap: 16,
     marginBottom: 34,
   },
-  actionHalfCard: {
+  actionBigCard: {
     background: "#151515",
     border: "1px solid #272727",
     borderRadius: 24,
-    padding: 20,
+    padding: 22,
+    color: "#fff",
+    display: "flex",
+    alignItems: "center",
+    gap: 16,
+    minHeight: 116,
+    textAlign: "left",
   },
-  actionHalfTitle: {
-    fontSize: 26,
-    margin: 0,
-    marginBottom: 8,
+  actionBigIcon: {
+    fontSize: 42,
     fontWeight: 900,
+    lineHeight: 1,
   },
-  actionHalfDesc: {
-    color: "#aaa",
-    margin: "0 0 16px",
-    fontSize: 14,
+  actionCardIcon: {
+    fontSize: 28,
+    color: "#fff",
+  },
+  actionCardArrow: {
+    marginLeft: "auto",
+    fontSize: 34,
+    color: "#ddd",
   },
   topActionBox: {
     marginBottom: 22,
@@ -3676,6 +3718,29 @@ const styles = {
     borderRadius: 28,
     padding: 24,
     boxShadow: "0 20px 60px rgba(0,0,0,.45)",
+  },
+  memberListModalBox: {
+    width: "100%",
+    maxWidth: 1180,
+    maxHeight: "86vh",
+    overflowY: "auto",
+    background: "#ffffff",
+    color: "#111",
+    borderRadius: 28,
+    padding: 24,
+    boxShadow: "0 20px 60px rgba(0,0,0,.45)",
+  },
+  memberListSearchBox: {
+    display: "grid",
+    gridTemplateColumns: "1fr auto",
+    gap: 10,
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  memberModalGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: 12,
   },
   whiteModalTop: {
     display: "flex",
