@@ -60,6 +60,11 @@ export default function Page() {
   const [selectedPtAmount, setSelectedPtAmount] = useState("");
   const [ptTotalPrice, setPtTotalPrice] = useState("");
   const [lastAction, setLastAction] = useState(null);
+  const [salesData, setSalesData] = useState({
+    total: 0,
+    count: 0,
+    average: 0,
+  });
 
   const [schedules, setSchedules] = useState([]);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -78,6 +83,7 @@ export default function Page() {
   useEffect(() => {
     loadMembers();
     loadSchedules();
+    loadSales();
   }, []);
 
   async function loadMembers() {
@@ -137,6 +143,31 @@ export default function Page() {
     }
 
     setSchedules(data || []);
+  }
+
+  async function loadSales() {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    const { data, error } = await supabase
+      .from("pt_logs")
+      .select("member_id,total_price,is_cancelled,created_at")
+      .eq("type", "add")
+      .gte("created_at", start.toISOString())
+      .lt("created_at", end.toISOString());
+
+    if (error) {
+      console.error("매출 불러오기 실패", error);
+      return;
+    }
+
+    const validSales = (data || []).filter((log) => !log.is_cancelled);
+    const total = validSales.reduce((sum, log) => sum + (Number(log.total_price) || 0), 0);
+    const count = new Set(validSales.map((log) => log.member_id).filter(Boolean)).size;
+    const average = count ? Math.round(total / count) : 0;
+
+    setSalesData({ total, count, average });
   }
 
   function resetScheduleForm() {
@@ -828,6 +859,7 @@ export default function Page() {
 
     await loadMembers();
     await loadSchedules(getTodayDateString());
+    await loadSales();
   }
 
   async function submitPtAdd() {
@@ -1611,6 +1643,23 @@ export default function Page() {
           >
             문자
           </button>
+        </div>
+      </section>
+
+      <section style={styles.salesBox}>
+        <div style={styles.salesCard}>
+          <p style={styles.salesLabel}>이번달 매출</p>
+          <strong style={styles.salesValue}>{salesData.total.toLocaleString("ko-KR")}원</strong>
+        </div>
+
+        <div style={styles.salesCard}>
+          <p style={styles.salesLabel}>결제 회원</p>
+          <strong style={styles.salesValue}>{salesData.count}명</strong>
+        </div>
+
+        <div style={styles.salesCard}>
+          <p style={styles.salesLabel}>객단가</p>
+          <strong style={styles.salesValue}>{salesData.average.toLocaleString("ko-KR")}원</strong>
         </div>
       </section>
 
@@ -2737,7 +2786,31 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "1fr 1fr 1fr",
     gap: 12,
+    marginBottom: 14,
+  },
+  salesBox: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1fr",
+    gap: 12,
     marginBottom: 22,
+  },
+  salesCard: {
+    background: "#111",
+    border: "1px solid #333",
+    borderRadius: 20,
+    padding: 18,
+    textAlign: "center",
+  },
+  salesLabel: {
+    color: "#aaa",
+    margin: "0 0 8px",
+    fontSize: 14,
+    fontWeight: 800,
+  },
+  salesValue: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: 900,
   },
   summaryCardWithIcon: {
     background: "#151515",
