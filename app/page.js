@@ -71,6 +71,7 @@ export default function Page() {
   const [actionModalSchedule, setActionModalSchedule] = useState(null);
   const [showMemberListModal, setShowMemberListModal] = useState(false);
   const [memberListTitle, setMemberListTitle] = useState("회원 목록");
+  const [memberSortMode, setMemberSortMode] = useState("default");
   const [scheduleMemberId, setScheduleMemberId] = useState("");
   const [scheduleDate, setScheduleDate] = useState(getTodayDateString());
   const [scheduleStartTime, setScheduleStartTime] = useState("");
@@ -90,7 +91,7 @@ export default function Page() {
     const { data } = await supabase
       .from("members")
       .select(
-        "*, attendance_logs(visited_at,is_cancelled,cancelled_at), pt_logs(type,amount,is_cancelled,created_at)"
+        "*, attendance_logs(visited_at,is_cancelled,cancelled_at), pt_logs(type,amount,total_price,is_cancelled,created_at)"
       )
       .order("created_at", { ascending: false });
 
@@ -110,12 +111,22 @@ export default function Page() {
         .sort()
         .reverse()[0];
 
+      const paymentLogs = validPtLogs.filter((l) => l.type === "add");
+      const totalPaid = paymentLogs.reduce(
+        (sum, l) => sum + (Number(l.total_price) || 0),
+        0
+      );
+      const paymentCount = paymentLogs.filter((l) => Number(l.total_price) > 0).length;
+
       return {
         ...m,
         latest_visit: latest || null,
         latest_pt: latestPt || null,
         pt_used: used,
         pt_total: (m.pt_remaining || 0) + used,
+        total_paid: totalPaid,
+        payment_count: paymentCount,
+        is_vip: totalPaid >= 1000000,
       };
     });
 
@@ -199,6 +210,7 @@ export default function Page() {
 
   function openMemberListModal(title = "회원 목록", resetSearch = false) {
     if (resetSearch) setSearch("");
+    setMemberSortMode("default");
     setMemberListTitle(title);
     setShowMemberListModal(true);
   }
@@ -560,6 +572,15 @@ export default function Page() {
       );
     })
     .sort((a, b) => {
+      if (memberSortMode === "sales") {
+        const paidA = Number(a.total_paid || 0);
+        const paidB = Number(b.total_paid || 0);
+
+        if (paidA !== paidB) return paidB - paidA;
+
+        return new Date(b.created_at) - new Date(a.created_at);
+      }
+
       const ptA = a.pt_remaining || 0;
       const ptB = b.pt_remaining || 0;
 
@@ -1557,6 +1578,13 @@ export default function Page() {
               {member.height ? `${member.height}cm · ` : ""}
               {member.phone || "전화번호 없음"}
             </p>
+
+            <div style={styles.memberSalesRow}>
+              <span style={styles.memberSalesText}>
+                누적 결제 {Number(member.total_paid || 0).toLocaleString("ko-KR")}원
+              </span>
+              {member.is_vip && <span style={styles.vipBadge}>VIP</span>}
+            </div>
 
             <div style={styles.compactInfoRow}>
               <span>출석 {formatDate(member.latest_visit)}</span>
@@ -2730,6 +2758,23 @@ export default function Page() {
               )}
             </div>
 
+            <div style={styles.memberSortRow}>
+              <button
+                type="button"
+                onClick={() => setMemberSortMode("default")}
+                style={memberSortMode === "default" ? styles.memberSortButtonActive : styles.memberSortButton}
+              >
+                기본순
+              </button>
+              <button
+                type="button"
+                onClick={() => setMemberSortMode("sales")}
+                style={memberSortMode === "sales" ? styles.memberSortButtonActive : styles.memberSortButton}
+              >
+                매출순
+              </button>
+            </div>
+
             {isSearching && <p style={styles.whiteMuted}>“{search}” 검색 중</p>}
 
             {filteredMembers.length === 0 ? (
@@ -3569,6 +3614,26 @@ const styles = {
     margin: 0,
     marginBottom: 8,
   },
+  memberSalesRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  memberSalesText: {
+    color: "#facc15",
+    fontSize: 14,
+    fontWeight: 900,
+  },
+  vipBadge: {
+    background: "#facc15",
+    color: "#111",
+    borderRadius: 999,
+    padding: "4px 8px",
+    fontSize: 12,
+    fontWeight: 900,
+  },
   compactInfoRow: {
     display: "flex",
     gap: 12,
@@ -3896,6 +3961,30 @@ const styles = {
     gap: 10,
     alignItems: "center",
     marginBottom: 16,
+  },
+  memberSortRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 8,
+    marginBottom: 14,
+  },
+  memberSortButton: {
+    background: "#f3f3f3",
+    color: "#333",
+    border: "1px solid #ddd",
+    borderRadius: 12,
+    padding: "11px 12px",
+    fontSize: 14,
+    fontWeight: 900,
+  },
+  memberSortButtonActive: {
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #111",
+    borderRadius: 12,
+    padding: "11px 12px",
+    fontSize: 14,
+    fontWeight: 900,
   },
   memberModalGrid: {
     display: "grid",
