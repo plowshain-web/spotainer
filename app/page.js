@@ -64,6 +64,7 @@ export default function Page() {
     total: 0,
     count: 0,
     average: 0,
+    todayTotal: 0,
   });
 
   const [schedules, setSchedules] = useState([]);
@@ -158,15 +159,17 @@ export default function Page() {
 
   async function loadSales() {
     const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
     const { data, error } = await supabase
       .from("pt_logs")
       .select("member_id,total_price,is_cancelled,created_at")
       .eq("type", "add")
-      .gte("created_at", start.toISOString())
-      .lt("created_at", end.toISOString());
+      .gte("created_at", monthStart.toISOString())
+      .lt("created_at", monthEnd.toISOString());
 
     if (error) {
       console.error("매출 불러오기 실패", error);
@@ -177,8 +180,14 @@ export default function Page() {
     const total = validSales.reduce((sum, log) => sum + (Number(log.total_price) || 0), 0);
     const count = new Set(validSales.map((log) => log.member_id).filter(Boolean)).size;
     const average = count ? Math.round(total / count) : 0;
+    const todayTotal = validSales
+      .filter((log) => {
+        const createdAt = new Date(log.created_at);
+        return createdAt >= todayStart && createdAt < tomorrowStart;
+      })
+      .reduce((sum, log) => sum + (Number(log.total_price) || 0), 0);
 
-    setSalesData({ total, count, average });
+    setSalesData({ total, count, average, todayTotal });
   }
 
   function resetScheduleForm() {
@@ -646,6 +655,15 @@ export default function Page() {
     }),
   };
 
+  summaryGroups.vipDormant = summaryGroups.dormant.filter((m) => m.is_vip);
+
+  const todayTodoItems = [
+    { key: "rejoin", label: "재등록 상담", count: summaryGroups.rejoin.length, desc: "PT 3~5회 남음" },
+    { key: "urgent", label: "강한 경고", count: summaryGroups.urgent.length, desc: "PT 0~2회 남음" },
+    { key: "dormant", label: "연락 필요", count: summaryGroups.dormant.length, desc: "14일 이상 미출석" },
+    { key: "vipDormant", label: "VIP 연락", count: summaryGroups.vipDormant.length, desc: "고매출 회원 우선" },
+  ];
+
   const summaryConfig = {
     rejoin: {
       title: "재등록 상담",
@@ -661,6 +679,11 @@ export default function Page() {
       title: "연락 필요",
       desc: "출석 기록 없음 또는 14일 이상 미출석 회원",
       list: summaryGroups.dormant,
+    },
+    vipDormant: {
+      title: "VIP 연락",
+      desc: "누적 결제가 높은 연락 필요 회원",
+      list: summaryGroups.vipDormant,
     },
   };
 
@@ -1688,6 +1711,41 @@ export default function Page() {
         <div style={styles.salesCard}>
           <p style={styles.salesLabel}>객단가</p>
           <strong style={styles.salesValue}>{salesData.average.toLocaleString("ko-KR")}원</strong>
+        </div>
+      </section>
+
+      <section style={styles.todoBox}>
+        <div style={styles.todoTop}>
+          <div>
+            <h2 style={styles.todoTitle}>오늘 할 일</h2>
+            <p style={styles.todoDesc}>재등록, 이탈 방지, VIP 관리를 한 번에 확인하세요.</p>
+          </div>
+
+          <div
+            style={
+              salesData.todayTotal > 0
+                ? styles.todaySalesGood
+                : styles.todaySalesWarning
+            }
+          >
+            {salesData.todayTotal > 0
+              ? `오늘 매출 ${salesData.todayTotal.toLocaleString("ko-KR")}원`
+              : "오늘 매출 없음"}
+          </div>
+        </div>
+
+        <div style={styles.todoGrid}>
+          {todayTodoItems.map((item) => (
+            <button
+              key={item.key}
+              onClick={() => setSummaryModal(item.key)}
+              style={styles.todoCard}
+            >
+              <span style={styles.todoCardLabel}>{item.label}</span>
+              <strong style={styles.todoCardCount}>{item.count}명</strong>
+              <span style={styles.todoCardDesc}>{item.desc}</span>
+            </button>
+          ))}
         </div>
       </section>
 
@@ -2856,6 +2914,83 @@ const styles = {
     color: "#fff",
     fontSize: 24,
     fontWeight: 900,
+  },
+  todoBox: {
+    background: "#151515",
+    border: "1px solid #272727",
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 22,
+  },
+  todoTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 14,
+    marginBottom: 14,
+  },
+  todoTitle: {
+    fontSize: 26,
+    margin: 0,
+    fontWeight: 900,
+  },
+  todoDesc: {
+    color: "#aaa",
+    margin: "6px 0 0",
+    fontSize: 14,
+  },
+  todaySalesGood: {
+    background: "#263a36",
+    color: "#d7fff3",
+    border: "1px solid #3f5f58",
+    borderRadius: 999,
+    padding: "9px 13px",
+    fontSize: 14,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  todaySalesWarning: {
+    background: "#33270a",
+    color: "#fde68a",
+    border: "1px solid #854d0e",
+    borderRadius: 999,
+    padding: "9px 13px",
+    fontSize: 14,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  todoGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 10,
+  },
+  todoCard: {
+    background: "#202020",
+    color: "#fff",
+    border: "1px solid #333",
+    borderRadius: 18,
+    padding: 14,
+    textAlign: "left",
+  },
+  todoCardLabel: {
+    display: "block",
+    color: "#aaa",
+    fontSize: 13,
+    fontWeight: 900,
+    marginBottom: 8,
+  },
+  todoCardCount: {
+    display: "block",
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: 900,
+    marginBottom: 6,
+  },
+  todoCardDesc: {
+    display: "block",
+    color: "#777",
+    fontSize: 12,
+    fontWeight: 800,
   },
   summaryCardWithIcon: {
     background: "#151515",
