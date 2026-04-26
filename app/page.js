@@ -1456,7 +1456,7 @@ export default function Page() {
             </div>
           </div>
         ) : (
-          <div onClick={() => openDetail(member, "menu")} style={styles.memberMain}>
+          <div onClick={() => { closeMemberListModal(); openDetail(member, "menu"); }} style={styles.memberMain}>
             <div style={styles.compactTop}>
               <h3 style={styles.memberNameSmall}>{member.name}</h3>
               <div
@@ -1570,7 +1570,7 @@ export default function Page() {
 
               return (
                 <div key={schedule.id} style={styles.incompleteItem}>
-                  <div onClick={() => openScheduleMember(schedule)} style={styles.incompleteMain}>
+                  <div style={styles.incompleteMain}>
                     <div style={styles.scheduleTime}>{formatTime(schedule.start_time)}</div>
 
                     <div>
@@ -2562,28 +2562,21 @@ export default function Page() {
         </div>
       )}
 
-      <section style={styles.actionSearchGridThree}>
+      <section style={styles.actionSearchGridTwo}>
         <button onClick={() => setShowAddModal(true)} style={styles.actionBigCard}>
           <span style={{ ...styles.actionBigIcon, color: "#facc15" }}>👤</span>
           <span>
             <strong>회원 추가</strong>
             <p>새로운 회원을 등록합니다</p>
           </span>
-        </button>
-
-        <button onClick={() => openMemberListModal("회원 검색", false)} style={styles.actionBigCard}>
-          <span style={{ ...styles.actionBigIcon, color: "#22c55e" }}>🔍</span>
-          <span>
-            <strong>회원 검색</strong>
-            <p>기존 회원을 검색하고 확인합니다</p>
-          </span>
+          <span style={styles.actionCardArrow}>›</span>
         </button>
 
         <button onClick={() => openMemberListModal("회원 목록", true)} style={styles.actionBigCard}>
           <span style={{ ...styles.actionBigIcon, color: "#38bdf8" }}>☰</span>
           <span>
-            <strong>회원 목록</strong>
-            <p>전체 회원 목록을 확인합니다</p>
+            <strong>회원 목록 / 검색</strong>
+            <p>전체 회원을 보고 바로 검색합니다</p>
           </span>
           <span style={styles.actionCardArrow}>›</span>
         </button>
@@ -2595,7 +2588,7 @@ export default function Page() {
             <div style={styles.whiteModalTop}>
               <div>
                 <h2 style={styles.whiteModalTitle}>{memberListTitle}</h2>
-                <p style={styles.whiteMuted}>회원 카드를 누르면 상세보기가 열립니다.</p>
+                <p style={styles.whiteMuted}>회원을 검색하고 카드를 누르면 상세보기로 바로 이동합니다.</p>
               </div>
 
               <button onClick={closeMemberListModal} style={styles.whiteCloseButton}>
@@ -3086,9 +3079,9 @@ const styles = {
     fontWeight: 900,
     textAlign: "left",
   },
-  actionSearchGridThree: {
+  actionSearchGridTwo: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr 1fr",
+    gridTemplateColumns: "1fr 1fr",
     gap: 16,
     marginBottom: 34,
   },
@@ -3388,16 +3381,18 @@ const styles = {
     boxShadow: "0 8px 22px rgba(0,0,0,.2)",
   },
   compactTop: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 12,
+    display: "grid",
+    gridTemplateColumns: "1fr auto",
+    alignItems: "center",
+    gap: 10,
   },
   memberNameSmall: {
     fontSize: 24,
     margin: 0,
     marginBottom: 8,
     fontWeight: 900,
+    color: "#ffffff",
+    wordBreak: "keep-all",
   },
   ptCountSmall: {
     fontSize: 24,
@@ -3509,6 +3504,7 @@ const styles = {
     marginBottom: 16,
   },
   cardPtAddButton: {
+    gridColumn: "1 / 3",
     background: "#f5f5f5",
     color: "#111",
     border: "1px solid #ffffff",
