@@ -38,6 +38,12 @@ export default function Page() {
   const [search, setSearch] = useState("");
   const [summaryModal, setSummaryModal] = useState(null);
   const [showContactListModal, setShowContactListModal] = useState(false);
+  const [showCenterModal, setShowCenterModal] = useState(false);
+  const [centerInfoId, setCenterInfoId] = useState(null);
+  const [centerName, setCenterName] = useState("");
+  const [centerPhone, setCenterPhone] = useState("");
+  const [centerAddress, setCenterAddress] = useState("");
+  const [centerMemo, setCenterMemo] = useState("");
   const [contactModalMember, setContactModalMember] = useState(null);
   const [contactResult, setContactResult] = useState("pending");
   const [contactNote, setContactNote] = useState("");
@@ -141,6 +147,7 @@ export default function Page() {
     loadMembers();
     loadSchedules();
     loadSales();
+    loadCenterInfo();
   }, []);
 
   useEffect(() => {
@@ -297,6 +304,77 @@ export default function Page() {
       .reduce((sum, log) => sum + (Number(log.total_price) || 0), 0);
 
     setSalesData({ total, count, average, todayTotal });
+  }
+
+
+  async function loadCenterInfo() {
+    const { data, error } = await supabase
+      .from("center_info")
+      .select("*")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error("센터 정보 불러오기 실패", error);
+      return;
+    }
+
+    if (!data) return;
+
+    setCenterInfoId(data.id);
+    setCenterName(data.name || "");
+    setCenterPhone(data.phone || "");
+    setCenterAddress(data.address || "");
+    setCenterMemo(data.memo || "");
+  }
+
+  function openCenterModal() {
+    setShowCenterModal(true);
+    loadCenterInfo();
+  }
+
+  function closeCenterModal() {
+    setShowCenterModal(false);
+  }
+
+  async function saveCenterInfo() {
+    const row = {
+      name: centerName.trim(),
+      phone: centerPhone.trim(),
+      address: centerAddress.trim(),
+      memo: centerMemo.trim(),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (centerInfoId) {
+      const { error } = await supabase
+        .from("center_info")
+        .update(row)
+        .eq("id", centerInfoId);
+
+      if (error) {
+        alert("센터 정보 저장 실패: " + error.message);
+        return;
+      }
+    } else {
+      const { data, error } = await supabase
+        .from("center_info")
+        .insert(row)
+        .select()
+        .single();
+
+      if (error) {
+        alert("센터 정보 저장 실패: " + error.message);
+        return;
+      }
+
+      setCenterInfoId(data.id);
+    }
+
+    alert("센터 정보가 저장되었습니다.");
+    setShowCenterModal(false);
+    await loadCenterInfo();
   }
 
   function resetScheduleForm() {
@@ -2608,7 +2686,9 @@ export default function Page() {
           <h1 style={styles.title}>Spotainer</h1>
           <p style={styles.subtitle}>여성전용 PT 회원관리</p>
         </div>
-        <div style={styles.adminBadge}>관리자</div>
+        <button onClick={openCenterModal} style={styles.adminBadge}>
+          관리자
+        </button>
       </header>
 
       <section style={styles.summaryBox}>
@@ -2892,6 +2972,73 @@ export default function Page() {
             ) : (
               summaryConfig[summaryModal].list.map(renderSummaryMember)
             )}
+          </section>
+        </div>
+      )}
+
+      {showCenterModal && (
+        <div style={styles.whiteModalOverlay}>
+          <section style={styles.whiteModalBox}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>센터 정보</h2>
+                <p style={styles.whiteMuted}>센터명, 전화번호, 주소를 저장해두는 관리자 정보입니다.</p>
+              </div>
+
+              <button onClick={closeCenterModal} style={styles.whiteCloseButton}>
+                닫기
+              </button>
+            </div>
+
+            <label style={styles.whiteLabel}>센터명</label>
+            <input
+              value={centerName}
+              onChange={(e) => setCenterName(e.target.value)}
+              placeholder="예: 스포테이너"
+              style={styles.whiteInput}
+            />
+
+            <label style={styles.whiteLabel}>전화번호</label>
+            <input
+              value={centerPhone}
+              onChange={(e) => setCenterPhone(e.target.value)}
+              placeholder="예: 010-0000-0000"
+              style={styles.whiteInput}
+            />
+
+            <label style={styles.whiteLabel}>주소</label>
+            <input
+              value={centerAddress}
+              onChange={(e) => setCenterAddress(e.target.value)}
+              placeholder="예: 전북 익산시 ..."
+              style={styles.whiteInput}
+            />
+
+            <label style={styles.whiteLabel}>메모</label>
+            <input
+              value={centerMemo}
+              onChange={(e) => setCenterMemo(e.target.value)}
+              placeholder="예: 운영시간, 주차 안내"
+              style={styles.whiteInput}
+            />
+
+            <div style={styles.centerPreviewBox}>
+              <strong>저장 미리보기</strong>
+              <p>{centerName || "센터명 미입력"}</p>
+              <p>{centerPhone || "전화번호 미입력"}</p>
+              <p>{centerAddress || "주소 미입력"}</p>
+              {centerMemo && <p>{centerMemo}</p>}
+            </div>
+
+            <div style={styles.whiteActionRowFull}>
+              <button onClick={saveCenterInfo} style={styles.whiteSaveLargeButton}>
+                저장
+              </button>
+
+              <button onClick={closeCenterModal} style={styles.whiteCancelLargeButton}>
+                취소
+              </button>
+            </div>
           </section>
         </div>
       )}
@@ -4637,6 +4784,7 @@ const styles = {
     borderRadius: 999,
     fontWeight: 700,
     color: "#ddd",
+    cursor: "pointer",
   },
   summaryBox: {
     display: "grid",
@@ -6301,6 +6449,14 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: "4px 10px",
+  },
+  centerPreviewBox: {
+    background: "#f3f3f3",
+    border: "1px solid #e5e5e5",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+    color: "#111",
   },
   contactResultGrid: {
     display: "grid",
