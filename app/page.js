@@ -109,6 +109,7 @@ export default function Page() {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [actionModalSchedule, setActionModalSchedule] = useState(null);
   const [showMemberListModal, setShowMemberListModal] = useState(false);
+  const [returnToMemberListAfterDetail, setReturnToMemberListAfterDetail] = useState(false);
   const [memberListTitle, setMemberListTitle] = useState("회원 목록");
   const [memberSortMode, setMemberSortMode] = useState("default");
   const [showInactiveMembers, setShowInactiveMembers] = useState(false);
@@ -267,6 +268,12 @@ export default function Page() {
 
   function closeMemberListModal() {
     setShowMemberListModal(false);
+  }
+
+  function openDetailFromMemberList(member) {
+    setReturnToMemberListAfterDetail(true);
+    setShowMemberListModal(false);
+    openDetail(member, "menu");
   }
 
   async function addSchedule() {
@@ -1208,6 +1215,11 @@ export default function Page() {
     setShowAllPtModal(false);
     setShowAllAttendanceModal(false);
     setShowAllInbodyModal(false);
+
+    if (returnToMemberListAfterDetail) {
+      setShowMemberListModal(true);
+      setReturnToMemberListAfterDetail(false);
+    }
   }
 
   async function cancelAttendance(log) {
@@ -2029,7 +2041,7 @@ export default function Page() {
             </div>
           </div>
         ) : (
-          <div onClick={() => { closeMemberListModal(); openDetail(member, "menu"); }} style={styles.memberMain}>
+          <div onClick={() => openDetailFromMemberList(member)} style={styles.memberMain}>
             <div style={styles.compactTop}>
               <h3 style={styles.memberNameSmall}>{member.name}</h3>
               <div
