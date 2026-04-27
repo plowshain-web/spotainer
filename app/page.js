@@ -2685,59 +2685,6 @@ export default function Page() {
         </button>
       </header>
 
-      <section style={styles.summaryBox}>
-        <div style={styles.summaryCardWithIcon}>
-          <button onClick={() => setSummaryModal("rejoin")} style={styles.summaryMainButton}>
-            <span style={{ ...styles.summaryIcon, ...styles.summaryIconYellow }}>👤</span>
-            <span style={styles.summaryTextWrap}>
-              <strong>재등록 상담</strong>
-              <p>{summaryGroups.rejoin.length}명</p>
-            </span>
-          </button>
-
-          <button
-            onClick={() => sendGroupSMS("rejoin", summaryGroups.rejoin)}
-            style={styles.summarySmsButton}
-          >
-            문자
-          </button>
-        </div>
-
-        <div style={styles.summaryCardWithIcon}>
-          <button onClick={() => setSummaryModal("urgent")} style={styles.summaryMainButton}>
-            <span style={{ ...styles.summaryIcon, ...styles.summaryIconRed }}>⚠</span>
-            <span style={styles.summaryTextWrap}>
-              <strong>강한 경고</strong>
-              <p>{summaryGroups.urgent.length}명</p>
-            </span>
-          </button>
-
-          <button
-            onClick={() => sendGroupSMS("urgent", summaryGroups.urgent)}
-            style={styles.summarySmsButton}
-          >
-            문자
-          </button>
-        </div>
-
-        <div style={styles.summaryCardWithIcon}>
-          <button onClick={() => setSummaryModal("dormant")} style={styles.summaryMainButton}>
-            <span style={{ ...styles.summaryIcon, ...styles.summaryIconGreen }}>☎</span>
-            <span style={styles.summaryTextWrap}>
-              <strong>연락 필요</strong>
-              <p>{summaryGroups.dormant.length}명</p>
-            </span>
-          </button>
-
-          <button
-            onClick={() => sendGroupSMS("dormant", summaryGroups.dormant)}
-            style={styles.summarySmsButton}
-          >
-            문자
-          </button>
-        </div>
-      </section>
-
       <section style={styles.salesBox}>
         <div style={styles.salesCard}>
           <p style={styles.salesLabel}>이번달 매출</p>
