@@ -1226,6 +1226,21 @@ export default function Page() {
       return score(a) - score(b);
     });
 
+  const attentionCounts = {
+    rejoin: attentionList.filter((m) => m.ptStatus === "재등록 상담").length,
+    urgent: attentionList.filter((m) => m.ptStatus === "강한 경고").length,
+    dormant: attentionList.filter((m) => m.attendanceStatus || m.inbodyStatus).length,
+    vip: attentionList.filter((m) => m.is_vip || m.member_type === "vip").length,
+  };
+
+  function getContactCardBorderStyle() {
+    if (attentionCounts.urgent > 0) return styles.contactCardRed;
+    if (attentionCounts.rejoin > 0) return styles.contactCardBlue;
+    if (attentionCounts.dormant > 0) return styles.contactCardGreen;
+    if (attentionCounts.vip > 0) return styles.contactCardGold;
+    return styles.contactCardDefault;
+  }
+
   async function addMember() {
     if (!name.trim()) return alert("이름을 입력하세요.");
 
@@ -2702,20 +2717,30 @@ export default function Page() {
         </div>
       </section>
 
-      <section style={styles.autoCareBox}>
+      <section style={{ ...styles.autoCareBox, ...getContactCardBorderStyle() }}>
         <button
           type="button"
           onClick={() => setShowContactListModal(true)}
           style={styles.contactListOpenButton}
         >
-          <span>
+          <span style={styles.contactIconCircle}>☎</span>
+
+          <span style={styles.contactCardText}>
             <strong>오늘 연락 필요 회원</strong>
-            <p>연락 결과에 따라 다음 연락일이 자동으로 잡힙니다.</p>
+            <p>연락 대상 회원을 확인하고 바로 처리하세요.</p>
           </span>
 
           <span style={styles.contactListCount}>{attentionList.length}명</span>
           <span style={styles.actionCardArrow}>›</span>
         </button>
+      </section>
+
+      <section style={styles.contactLegendBox}>
+        <strong>테두리 색상 안내</strong>
+        <span style={styles.legendItem}><i style={styles.legendBlue}></i>재등록 상담</span>
+        <span style={styles.legendItem}><i style={styles.legendRed}></i>강한 경고</span>
+        <span style={styles.legendItem}><i style={styles.legendGreen}></i>연락 필요</span>
+        <span style={styles.legendItem}><i style={styles.legendGold}></i>VIP 연락</span>
       </section>
 
       <section style={styles.incompleteBox}>
@@ -3012,13 +3037,23 @@ export default function Page() {
 
                     <div style={styles.contactListActions}>
                       {normalizePhone(m.phone) ? (
-                        <a href={`tel:${normalizePhone(m.phone)}`} style={styles.summaryPhoneButton}>
-                          전화
-                        </a>
+                        <>
+                          <a href={`tel:${normalizePhone(m.phone)}`} style={styles.summaryPhoneButton}>
+                            전화
+                          </a>
+                          <a href={`sms:${normalizePhone(m.phone)}`} style={styles.contactSmsButton}>
+                            문자
+                          </a>
+                        </>
                       ) : (
-                        <button onClick={() => alert("전화번호가 없습니다.")} style={styles.summaryPhoneButton}>
-                          전화
-                        </button>
+                        <>
+                          <button onClick={() => alert("전화번호가 없습니다.")} style={styles.summaryPhoneButton}>
+                            전화
+                          </button>
+                          <button onClick={() => alert("전화번호가 없습니다.")} style={styles.contactSmsButton}>
+                            문자
+                          </button>
+                        </>
                       )}
 
                       <button onClick={() => openContactModal(m)} style={styles.autoCareDoneButton}>
@@ -4727,7 +4762,23 @@ const styles = {
     border: "1px solid #272727",
     borderRadius: 24,
     padding: 0,
-    marginBottom: 22,
+    marginBottom: 14,
+    boxShadow: "0 12px 32px rgba(0,0,0,.22)",
+  },
+  contactCardDefault: {
+    border: "1px solid #272727",
+  },
+  contactCardBlue: {
+    border: "2px solid #3b82f6",
+  },
+  contactCardRed: {
+    border: "2px solid #ef4444",
+  },
+  contactCardGreen: {
+    border: "2px solid #22c55e",
+  },
+  contactCardGold: {
+    border: "2px solid #facc15",
   },
   contactListOpenButton: {
     width: "100%",
@@ -4737,8 +4788,75 @@ const styles = {
     padding: 22,
     display: "flex",
     alignItems: "center",
-    gap: 14,
+    gap: 18,
     textAlign: "left",
+  },
+  contactIconCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: 999,
+    background: "#163a24",
+    color: "#4ade80",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 30,
+    fontWeight: 900,
+    flexShrink: 0,
+  },
+  contactCardText: {
+    display: "grid",
+    gap: 6,
+  },
+  contactLegendBox: {
+    background: "#151515",
+    border: "1px solid #272727",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 22,
+    color: "#fff",
+    display: "flex",
+    alignItems: "center",
+    gap: 18,
+    flexWrap: "wrap",
+    fontSize: 14,
+    fontWeight: 900,
+  },
+  legendItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    color: "#bbb",
+    fontSize: 14,
+    fontWeight: 900,
+  },
+  legendBlue: {
+    width: 34,
+    height: 7,
+    borderRadius: 999,
+    background: "#3b82f6",
+    display: "inline-block",
+  },
+  legendRed: {
+    width: 34,
+    height: 7,
+    borderRadius: 999,
+    background: "#ef4444",
+    display: "inline-block",
+  },
+  legendGreen: {
+    width: 34,
+    height: 7,
+    borderRadius: 999,
+    background: "#22c55e",
+    display: "inline-block",
+  },
+  legendGold: {
+    width: 34,
+    height: 7,
+    borderRadius: 999,
+    background: "#facc15",
+    display: "inline-block",
   },
   contactListCount: {
     background: "#facc15",
@@ -5320,6 +5438,17 @@ const styles = {
     background: "#263a36",
     color: "#d7fff3",
     border: "1px solid #3f5f58",
+    borderRadius: 12,
+    padding: "9px 12px",
+    fontWeight: 900,
+    textAlign: "center",
+    textDecoration: "none",
+    fontSize: 14,
+  },
+  contactSmsButton: {
+    background: "#172554",
+    color: "#bfdbfe",
+    border: "1px solid #1d4ed8",
     borderRadius: 12,
     padding: "9px 12px",
     fontWeight: 900,
