@@ -155,7 +155,7 @@ export default function Page() {
     const { data } = await supabase
       .from("members")
       .select(
-        "*, attendance_logs(visited_at,is_cancelled,cancelled_at), pt_logs(type,amount,total_price,is_cancelled,created_at)"
+        "*, attendance_logs(visited_at,is_cancelled,cancelled_at), pt_logs(type,amount,total_price,is_cancelled,created_at), inbody_logs(measured_at)"
       )
       .order("created_at", { ascending: false });
 
@@ -583,32 +583,43 @@ export default function Page() {
   function getActiveSchedulesForDate(list = []) {
     
   // ===== 자동 관리 리스트 =====
-  const today = new Date();
+  const autoCareMembers = activeMembers.map((m) => {
+    const d = daysSince(m.latest_visit);
+    const contacted = isRecentlyContacted(m, 2);
 
-  const needAttentionMembers = members.map((m) => {
-    const lastVisit = m.last_visit ? new Date(m.last_visit) : null;
-    const diffDays = lastVisit ? Math.floor((today - lastVisit) / (1000*60*60*24)) : null;
+    const attendanceStatus =
+      contacted ? null :
+      d === null ? "출석 없음" :
+      d >= 14 ? "14일 미출석" :
+      d >= 7 ? "7일 미출석" :
+      null;
 
-    let attendanceStatus = null;
-    if (!lastVisit) attendanceStatus = "출석 없음";
-    else if (diffDays >= 14) attendanceStatus = "14일 미출석";
-    else if (diffDays >= 7) attendanceStatus = "7일 미출석";
+    const ptStatus =
+      contacted ? null :
+      (m.pt_remaining || 0) <= 2 ? "강한 경고" :
+      (m.pt_remaining || 0) <= 5 ? "재등록 상담" :
+      null;
 
-    const ptStatus = m.pt_remaining <= 3 ? "PT 부족" : null;
+    const latestInbody = (m.inbody_logs || [])
+      .map((log) => log.measured_at)
+      .filter(Boolean)
+      .sort()
+      .reverse()[0];
 
-    const lastInbody = m.last_inbody ? new Date(m.last_inbody) : null;
-    const inbodyDiff = lastInbody ? Math.floor((today - lastInbody) / (1000*60*60*24)) : null;
-    const inbodyStatus = (!lastInbody || inbodyDiff >= 30) ? "인바디 필요" : null;
+    const inbodyDays = latestInbody ? daysSince(latestInbody) : null;
+    const inbodyStatus =
+      contacted ? null :
+      latestInbody ? (inbodyDays >= 30 ? "인바디 필요" : null) : "인바디 없음";
 
     return {
       ...m,
       attendanceStatus,
       ptStatus,
-      inbodyStatus
+      inbodyStatus,
     };
   });
 
-  const attentionList = needAttentionMembers.filter(
+  const attentionList = autoCareMembers.filter(
     (m) => m.attendanceStatus || m.ptStatus || m.inbodyStatus
   );
 
@@ -1015,6 +1026,16 @@ return (list || []).filter((schedule) => schedule.status !== "cancelled");
     );
   }
 
+  function isRecentlyContacted(member, days = 2) {
+    if (!member?.last_contacted_at) return false;
+
+    const contactedAt = new Date(member.last_contacted_at);
+    const now = new Date();
+    const diffDays = (now.getTime() - contactedAt.getTime()) / (1000 * 60 * 60 * 24);
+
+    return diffDays < days;
+  }
+
   function getPtStatus(member) {
     const pt = member.pt_remaining || 0;
     if (pt <= 2) return { text: "강한 경고", style: styles.dangerBadge };
@@ -1034,16 +1055,15 @@ return (list || []).filter((schedule) => schedule.status !== "cancelled");
   const summaryGroups = {
     rejoin: activeMembers.filter((m) => {
       const pt = m.pt_remaining || 0;
-      return pt >= 3 && pt <= 5;
+      return pt >= 3 && pt <= 5 && !isRecentlyContacted(m, 2);
     }),
     urgent: activeMembers.filter((m) => {
       const pt = m.pt_remaining || 0;
-      return pt <= 2;
+      return pt <= 2 && !isRecentlyContacted(m, 2);
     }),
     dormant: activeMembers.filter((m) => {
       const d = daysSince(m.latest_visit);
-      const contactedToday = m.last_contacted_at && isToday(m.last_contacted_at);
-      return (d === null || d >= 14) && !contactedToday;
+      return (d === null || d >= 14) && !isRecentlyContacted(m, 2);
     }),
   };
 
@@ -1486,7 +1506,7 @@ return (list || []).filter((schedule) => schedule.status !== "cancelled");
     }
 
     alert(`${member.name} 연락 완료 처리되었습니다.`);
-    loadMembers();
+    await loadMembers();
   }
 
   function normalizePhone(phone) {
@@ -2500,11 +2520,26 @@ return (list || []).filter((schedule) => schedule.status !== "cancelled");
         {attentionList.map((m) => (
           <div key={m.id} style={{padding:10, marginBottom:8, background:"#1f2937", borderRadius:8}}>
             <div style={{fontWeight:700}}>{m.name}</div>
-            <div style={{fontSize:13, opacity:0.8}}>
+            <div style={{fontSize:13, opacity:0.8, marginBottom:8}}>
               {m.attendanceStatus && `• ${m.attendanceStatus} `}
               {m.ptStatus && `• ${m.ptStatus} `}
               {m.inbodyStatus && `• ${m.inbodyStatus}`}
             </div>
+
+            <button
+              onClick={() => markContacted(m)}
+              style={{
+                width:"100%",
+                padding:"9px 10px",
+                borderRadius:8,
+                border:"1px solid #444",
+                background:"#111",
+                color:"#fff",
+                fontWeight:800
+              }}
+            >
+              완료
+            </button>
           </div>
         ))}
       </div>
