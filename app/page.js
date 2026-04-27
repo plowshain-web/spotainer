@@ -813,8 +813,7 @@ export default function Page() {
     }
 
     if (schedules && schedules.length > 0) {
-      alert("이 회원은 스케줄 기록이 있어 삭제할 수 없습니다.
-실제 운영 회원은 나중에 비활성화 방식으로 관리하는 게 안전합니다.");
+      alert("이 회원은 스케줄 기록이 있어 삭제할 수 없습니다.\n실제 운영 회원은 나중에 비활성화 방식으로 관리하는 게 안전합니다.");
       return;
     }
 
@@ -831,7 +830,7 @@ export default function Page() {
     }
 
     await loadMembers();
-    alert(`${member.name} 회원이 삭제되었습니다.`);
+    await loadSales();
   }
 
   async function minusPt(member) {
@@ -1712,7 +1711,9 @@ export default function Page() {
               >
                 PT {member.pt_remaining}회
               </div>
+            </div>
 
+            <div style={styles.memberCardActionRow}>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -1722,7 +1723,6 @@ export default function Page() {
               >
                 + 이용권
               </button>
-
 
               <button
                 onClick={(e) => {
@@ -4082,8 +4082,13 @@ const styles = {
     fontWeight: 900,
     marginBottom: 16,
   },
+  memberCardActionRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 8,
+    marginBottom: 10,
+  },
   cardPtAddButton: {
-    gridColumn: "1 / 3",
     background: "#f5f5f5",
     color: "#111",
     border: "1px solid #ffffff",
@@ -4091,11 +4096,9 @@ const styles = {
     padding: "10px 12px",
     fontSize: 14,
     fontWeight: 900,
-    marginBottom: 10,
     width: "100%",
   },
   cardDeleteButton: {
-    gridColumn: "1 / 3",
     background: "#3f1111",
     color: "#fca5a5",
     border: "1px solid #7f1d1d",
@@ -4103,7 +4106,6 @@ const styles = {
     padding: "10px 12px",
     fontSize: 14,
     fontWeight: 900,
-    marginBottom: 10,
     width: "100%",
   },
   buttonGrid: {
