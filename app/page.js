@@ -142,18 +142,6 @@ export default function Page() {
   const [scheduleMemo, setScheduleMemo] = useState("");
 
   const isSearching = search.trim().length > 0;
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    function handleResize() {
-      setIsMobile(window.innerWidth < 768);
-    }
-
-    handleResize();
-    window.addEventListener("resize", handleResize);
-
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   useEffect(() => {
     loadMembers();
@@ -1276,28 +1264,6 @@ export default function Page() {
     if (attentionCounts.vip > 0) return styles.contactCardGold;
     return styles.contactCardDefault;
   }
-
-  const responsive = {
-    page: isMobile ? styles.pageMobile : null,
-    header: isMobile ? styles.headerMobile : null,
-    title: isMobile ? styles.titleMobile : null,
-    salesBox: isMobile ? styles.salesBoxMobile : null,
-    contactButton: isMobile ? styles.contactListOpenButtonMobile : null,
-    incompleteItem: isMobile ? styles.incompleteItemMobile : null,
-    incompleteMain: isMobile ? styles.incompleteMainMobile : null,
-    actionGrid: isMobile ? styles.actionSearchGridMobile : null,
-    actionCard: isMobile ? styles.actionBigCardMobile : null,
-    memberModalGrid: isMobile ? styles.memberModalGridMobile : null,
-    contactListRow: isMobile ? styles.contactListRowMobile : null,
-    contactListActions: isMobile ? styles.contactListActionsMobile : null,
-    contactSummaryRow: isMobile ? styles.contactListSummaryRowMobile : null,
-    contactResultGrid: isMobile ? styles.contactResultGridMobile : null,
-    ptOptionGrid: isMobile ? styles.ptOptionGridMobile : null,
-    setRow: isMobile ? styles.setRowMobile : null,
-    editActions: isMobile ? styles.editActionsMobile : null,
-    whiteTwoColumn: isMobile ? styles.whiteTwoColumnMobile : null,
-    scheduleSlotGrid: isMobile ? styles.scheduleSlotGridMobile : null,
-  };
 
   async function addMember() {
     if (!name.trim()) return alert("이름을 입력하세요.");
@@ -2667,7 +2633,7 @@ export default function Page() {
             <label style={styles.label}>트레이너 메모</label>
             <textarea value={editMemo} onChange={(e) => setEditMemo(e.target.value)} style={styles.textarea} />
 
-            <div style={{ ...styles.editActions, ...responsive.editActions }}>
+            <div style={styles.editActions}>
               <button onClick={() => saveEdit(member.id)} style={styles.primaryButton}>
                 저장
               </button>
@@ -2770,10 +2736,10 @@ export default function Page() {
   });
 
   return (
-    <main style={{ ...styles.page, ...responsive.page }}>
-      <header style={{ ...styles.header, ...responsive.header }}>
+    <main style={styles.page}>
+      <header style={styles.header}>
         <div>
-          <h1 style={{ ...styles.title, ...responsive.title }}>Spotainer</h1>
+          <h1 style={styles.title}>Spotainer</h1>
           <p style={styles.subtitle}>여성전용 PT 회원관리</p>
         </div>
         <button onClick={openCenterModal} style={styles.adminBadge}>
@@ -2781,7 +2747,7 @@ export default function Page() {
         </button>
       </header>
 
-      <section style={{ ...styles.salesBox, ...responsive.salesBox }}>
+      <section style={styles.salesBox}>
         <div style={styles.salesCard}>
           <p style={styles.salesLabel}>이번달 매출</p>
           <strong style={styles.salesValue}>{salesData.total.toLocaleString("ko-KR")}원</strong>
@@ -2810,7 +2776,7 @@ export default function Page() {
         <button
           type="button"
           onClick={() => setShowContactListModal(true)}
-          style={{ ...styles.contactListOpenButton, ...responsive.contactButton }}
+          style={styles.contactListOpenButton}
         >
           <span style={styles.contactIconCircle}>☎</span>
 
@@ -2857,8 +2823,8 @@ export default function Page() {
               const isCompleted = schedule.status === "completed" || (attended && ptUsed);
 
               return (
-                <div key={schedule.id} style={{ ...styles.incompleteItem, ...responsive.incompleteItem }}>
-                  <div style={{ ...styles.incompleteMain, ...responsive.incompleteMain }}>
+                <div key={schedule.id} style={styles.incompleteItem}>
+                  <div style={styles.incompleteMain}>
                     <div style={styles.scheduleTime}>{formatTime(schedule.start_time)}</div>
 
                     <div>
@@ -3089,7 +3055,7 @@ export default function Page() {
               </button>
             </div>
 
-            <div style={{ ...styles.contactListSummaryRow, ...responsive.contactSummaryRow }}>
+            <div style={styles.contactListSummaryRow}>
               <div style={styles.contactListSummaryCard}>
                 <strong>{attentionList.length}명</strong>
                 <span>전체</span>
@@ -3113,7 +3079,7 @@ export default function Page() {
             ) : (
               <div style={styles.contactListRows}>
                 {attentionList.map((m) => (
-                  <div key={m.id} style={{ ...styles.contactListRow, ...responsive.contactListRow }}>
+                  <div key={m.id} style={styles.contactListRow}>
                     <div style={styles.contactListMain}>
                       <strong style={styles.contactListName}>{m.name}</strong>
 
@@ -3135,7 +3101,7 @@ export default function Page() {
                       )}
                     </div>
 
-                    <div style={{ ...styles.contactListActions, ...responsive.contactListActions }}>
+                    <div style={styles.contactListActions}>
                       {normalizePhone(m.phone) ? (
                         <>
                           <a href={`tel:${normalizePhone(m.phone)}`} style={styles.summaryPhoneButton}>
@@ -3185,7 +3151,7 @@ export default function Page() {
             </div>
 
             <label style={styles.whiteLabel}>연락 결과</label>
-            <div style={{ ...styles.contactResultGrid, ...responsive.contactResultGrid }}>
+            <div style={styles.contactResultGrid}>
               <button
                 type="button"
                 onClick={() => setContactResult("success")}
@@ -3310,7 +3276,7 @@ export default function Page() {
                 <span>2명 기준</span>
               </div>
 
-              <div style={{ ...styles.scheduleSlotGrid, ...responsive.scheduleSlotGrid }}>
+              <div style={styles.scheduleSlotGrid}>
                 {getTimeOptions().filter((time) => time.endsWith(":00") || time.endsWith(":30")).map((time) => {
                   const count = getSchedulesAtStartTime(scheduleCheckList, time).length;
 
@@ -3633,7 +3599,7 @@ export default function Page() {
               style={styles.textarea}
             />
 
-            <div style={{ ...styles.editActions, ...responsive.editActions }}>
+            <div style={styles.editActions}>
               <button onClick={addSchedule} style={styles.primaryButton}>
                 저장
               </button>
@@ -3688,7 +3654,7 @@ export default function Page() {
             <label style={styles.label}>트레이너 메모</label>
             <textarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="상담 내용, 성향, 관리 포인트" style={styles.textarea} />
 
-            <div style={{ ...styles.editActions, ...responsive.editActions }}>
+            <div style={styles.editActions}>
               <button onClick={addMember} style={styles.primaryButton}>저장</button>
               <button onClick={() => setShowAddModal(false)} style={styles.cancelButton}>취소</button>
             </div>
@@ -3738,7 +3704,7 @@ export default function Page() {
               <option value="vip">VIP</option>
             </select>
 
-            <div style={{ ...styles.whiteTwoColumn, ...responsive.whiteTwoColumn }}>
+            <div style={styles.whiteTwoColumn}>
               <div>
                 <label style={styles.whiteLabel}>나이</label>
                 <input
@@ -4066,7 +4032,7 @@ export default function Page() {
               style={styles.whiteInput}
             />
 
-            <div style={{ ...styles.whiteTwoColumn, ...responsive.whiteTwoColumn }}>
+            <div style={styles.whiteTwoColumn}>
               <div>
                 <label style={styles.whiteLabel}>체중(kg)</label>
                 <input
@@ -4092,7 +4058,7 @@ export default function Page() {
               </div>
             </div>
 
-            <div style={{ ...styles.whiteTwoColumn, ...responsive.whiteTwoColumn }}>
+            <div style={styles.whiteTwoColumn}>
               <div>
                 <label style={styles.whiteLabel}>체지방량(kg)</label>
                 <input
@@ -4118,7 +4084,7 @@ export default function Page() {
               </div>
             </div>
 
-            <div style={{ ...styles.whiteTwoColumn, ...responsive.whiteTwoColumn }}>
+            <div style={styles.whiteTwoColumn}>
               <div>
                 <label style={styles.whiteLabel}>BMI 자동 계산</label>
                 <input
@@ -4375,7 +4341,7 @@ export default function Page() {
                     })()}
 
                     {exercise.sets.map((set, setIndex) => (
-                      <div key={setIndex} style={{ ...styles.setRow, ...responsive.setRow }}>
+                      <div key={setIndex} style={styles.setRow}>
                         <div style={styles.setNumber}>{setIndex + 1}세트</div>
 
                         <input
@@ -4427,7 +4393,7 @@ export default function Page() {
                   style={styles.textarea}
                 />
 
-                <div style={{ ...styles.editActions, ...responsive.editActions }}>
+                <div style={styles.editActions}>
                   <button onClick={saveWorkout} style={styles.primaryButton}>저장</button>
                   <button onClick={() => setWorkoutMode("list")} style={styles.cancelButton}>
                     취소
@@ -4617,7 +4583,7 @@ export default function Page() {
             </div>
 
             <label style={styles.whiteLabel}>추가 회차</label>
-            <div style={{ ...styles.ptOptionGridWhite, ...responsive.ptOptionGrid }}>
+            <div style={styles.ptOptionGridWhite}>
               {ptOptions.map((amount) => (
                 <button
                   key={amount}
@@ -4708,8 +4674,8 @@ export default function Page() {
         </div>
       )}
 
-      <section style={{ ...styles.actionSearchGridThree, ...responsive.actionGrid }}>
-        <button onClick={() => setShowAddModal(true)} style={{ ...styles.actionBigCard, ...responsive.actionCard }}>
+      <section style={styles.actionSearchGridThree}>
+        <button onClick={() => setShowAddModal(true)} style={styles.actionBigCard}>
           <span style={{ ...styles.actionBigIcon, color: "#facc15" }}>👤</span>
           <span>
             <strong>회원 추가</strong>
@@ -4718,7 +4684,7 @@ export default function Page() {
           <span style={styles.actionCardArrow}>›</span>
         </button>
 
-        <button onClick={() => openMemberListModal("회원 목록", true, false)} style={{ ...styles.actionBigCard, ...responsive.actionCard }}>
+        <button onClick={() => openMemberListModal("회원 목록", true, false)} style={styles.actionBigCard}>
           <span style={{ ...styles.actionBigIcon, color: "#38bdf8" }}>☰</span>
           <span>
             <strong>회원 목록 / 검색</strong>
@@ -4782,7 +4748,7 @@ export default function Page() {
                 {isSearching ? "검색 결과가 없습니다." : showInactiveMembers ? "비활성 회원이 없습니다." : "회원이 없습니다."}
               </p>
             ) : (
-              <div style={{ ...styles.memberModalGrid, ...responsive.memberModalGrid }}>
+              <div style={styles.memberModalGrid}>
                 {filteredMembers.map(renderMemberCard)}
               </div>
             )}
@@ -4797,10 +4763,6 @@ export default function Page() {
 const styles = {
   page: {
     minHeight: "100vh",
-    width: "100%",
-    maxWidth: "100vw",
-    overflowX: "hidden",
-    boxSizing: "border-box",
     background: "linear-gradient(180deg, #090909 0%, #111 100%)",
     color: "#fff",
     padding: 24,
@@ -7015,72 +6977,4 @@ const styles = {
     fontSize: 15,
     fontWeight: 800,
   },
-,
-  pageMobile: {
-    padding: 16,
-  },
-  headerMobile: {
-    alignItems: "flex-start",
-    gap: 12,
-  },
-  titleMobile: {
-    fontSize: 40,
-  },
-  salesBoxMobile: {
-    gridTemplateColumns: "1fr",
-  },
-  contactListOpenButtonMobile: {
-    padding: 18,
-    gap: 12,
-  },
-  incompleteItemMobile: {
-    display: "grid",
-    gridTemplateColumns: "1fr",
-    alignItems: "stretch",
-  },
-  incompleteMainMobile: {
-    display: "grid",
-    gridTemplateColumns: "1fr",
-    gap: 8,
-  },
-  actionSearchGridMobile: {
-    gridTemplateColumns: "1fr",
-  },
-  actionBigCardMobile: {
-    minHeight: 88,
-    padding: 18,
-  },
-  memberModalGridMobile: {
-    gridTemplateColumns: "1fr",
-  },
-  contactListSummaryRowMobile: {
-    gridTemplateColumns: "1fr",
-  },
-  contactListRowMobile: {
-    gridTemplateColumns: "1fr",
-    alignItems: "stretch",
-  },
-  contactListActionsMobile: {
-    gridTemplateColumns: "1fr 1fr 1fr",
-    minWidth: "auto",
-  },
-  contactResultGridMobile: {
-    gridTemplateColumns: "1fr 1fr",
-  },
-  ptOptionGridMobile: {
-    gridTemplateColumns: "1fr 1fr",
-  },
-  setRowMobile: {
-    gridTemplateColumns: "1fr",
-  },
-  editActionsMobile: {
-    gridTemplateColumns: "1fr",
-  },
-  whiteTwoColumnMobile: {
-    gridTemplateColumns: "1fr",
-  },
-  scheduleSlotGridMobile: {
-    gridTemplateColumns: "1fr 1fr",
-  },
-
 };
