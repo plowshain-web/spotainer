@@ -581,7 +581,38 @@ export default function Page() {
   }
 
   function getActiveSchedulesForDate(list = []) {
-    return (list || []).filter((schedule) => schedule.status !== "cancelled");
+    
+  // ===== 자동 관리 리스트 =====
+  const today = new Date();
+
+  const needAttentionMembers = members.map((m) => {
+    const lastVisit = m.last_visit ? new Date(m.last_visit) : null;
+    const diffDays = lastVisit ? Math.floor((today - lastVisit) / (1000*60*60*24)) : null;
+
+    let attendanceStatus = null;
+    if (!lastVisit) attendanceStatus = "출석 없음";
+    else if (diffDays >= 14) attendanceStatus = "14일 미출석";
+    else if (diffDays >= 7) attendanceStatus = "7일 미출석";
+
+    const ptStatus = m.pt_remaining <= 3 ? "PT 부족" : null;
+
+    const lastInbody = m.last_inbody ? new Date(m.last_inbody) : null;
+    const inbodyDiff = lastInbody ? Math.floor((today - lastInbody) / (1000*60*60*24)) : null;
+    const inbodyStatus = (!lastInbody || inbodyDiff >= 30) ? "인바디 필요" : null;
+
+    return {
+      ...m,
+      attendanceStatus,
+      ptStatus,
+      inbodyStatus
+    };
+  });
+
+  const attentionList = needAttentionMembers.filter(
+    (m) => m.attendanceStatus || m.ptStatus || m.inbodyStatus
+  );
+
+return (list || []).filter((schedule) => schedule.status !== "cancelled");
   }
 
   function getSchedulesAtStartTime(list = [], startTime) {
@@ -2457,7 +2488,27 @@ export default function Page() {
         <div>
           <h1 style={styles.title}>Spotainer</h1>
           <p style={styles.subtitle}>여성전용 PT 회원관리</p>
-        </div>
+ 
+      {/* 오늘 할 일 */}
+      <div style={{padding:16, marginBottom:20, background:"#111827", borderRadius:12}}>
+        <div style={{fontSize:18, fontWeight:800, marginBottom:10}}>오늘 관리 필요 회원</div>
+
+        {attentionList.length === 0 && (
+          <div style={{opacity:0.6}}>관리 필요 회원 없음</div>
+        )}
+
+        {attentionList.map((m) => (
+          <div key={m.id} style={{padding:10, marginBottom:8, background:"#1f2937", borderRadius:8}}>
+            <div style={{fontWeight:700}}>{m.name}</div>
+            <div style={{fontSize:13, opacity:0.8}}>
+              {m.attendanceStatus && `• ${m.attendanceStatus} `}
+              {m.ptStatus && `• ${m.ptStatus} `}
+              {m.inbodyStatus && `• ${m.inbodyStatus}`}
+            </div>
+          </div>
+        ))}
+      </div>
+       </div>
         <div style={styles.adminBadge}>관리자</div>
       </header>
 
