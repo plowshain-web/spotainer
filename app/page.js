@@ -1081,7 +1081,7 @@ export default function Page() {
   }
 
   function isContactSuccess(member) {
-    return member?.last_contact_result === "success";
+    return member?.last_contact_result === "success" || member?.last_contact_result === "re_register";
   }
 
   function isContactFuture(member) {
@@ -1101,6 +1101,7 @@ export default function Page() {
   }
 
   function getContactResultText(result) {
+    if (result === "re_register") return "재등록 성공";
     if (result === "success") return "성공";
     if (result === "fail") return "실패";
     if (result === "pending") return "보류";
@@ -1232,6 +1233,21 @@ export default function Page() {
     dormant: attentionList.filter((m) => m.attendanceStatus || m.inbodyStatus).length,
     vip: attentionList.filter((m) => m.is_vip || m.member_type === "vip").length,
   };
+
+  const monthStartText = getDateOnlyString(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+
+  const reRegisterStats = {
+    success: activeMembers.filter(
+      (m) => m.re_register_success_at && String(m.re_register_success_at).slice(0, 10) >= monthStartText
+    ).length,
+    converted: activeMembers.filter(
+      (m) => m.re_register_converted_at && String(m.re_register_converted_at).slice(0, 10) >= monthStartText
+    ).length,
+  };
+
+  reRegisterStats.rate = reRegisterStats.success
+    ? Math.round((reRegisterStats.converted / reRegisterStats.success) * 100)
+    : 0;
 
   function getContactCardBorderStyle() {
     if (attentionCounts.urgent > 0) return styles.contactCardRed;
@@ -1476,10 +1492,27 @@ export default function Page() {
     const after = (member.pt_remaining || 0) + amount;
     const totalPrice = Number(onlyNumber(totalPriceValue));
     const pricePerSession = amount && totalPrice ? Math.round(totalPrice / amount) : null;
+    const canConnectReRegister = !!member.re_register_flag && totalPrice > 0;
+    const connectReRegister = canConnectReRegister
+      ? confirm(`${member.name} 회원은 최근 재등록 성공 상태입니다.\n이번 결제와 연결할까요?`)
+      : false;
+
+    const memberUpdate = {
+      pt_remaining: after,
+      member_type:
+        member.member_type === "vip" || member.member_type === "group"
+          ? member.member_type
+          : "pt",
+    };
+
+    if (connectReRegister) {
+      memberUpdate.re_register_flag = false;
+      memberUpdate.re_register_converted_at = new Date().toISOString();
+    }
 
     const { error } = await supabase
       .from("members")
-      .update({ pt_remaining: after })
+      .update(memberUpdate)
       .eq("id", member.id);
 
     if (error) return alert("이용권 추가 실패: " + error.message);
@@ -1496,6 +1529,7 @@ export default function Page() {
 
     const updatedMember = {
       ...member,
+      ...memberUpdate,
       pt_remaining: after,
     };
 
@@ -1651,6 +1685,7 @@ export default function Page() {
 
     const now = new Date().toISOString();
     const nextDate = getNextContactDateByResult(contactResult);
+    const isReRegisterSuccess = contactResult === "re_register";
 
     const { error } = await supabase
       .from("members")
@@ -1659,6 +1694,8 @@ export default function Page() {
         last_contact_result: contactResult,
         next_contact_date: nextDate,
         contact_note: contactNote.trim() || null,
+        re_register_flag: isReRegisterSuccess ? true : contactModalMember.re_register_flag || false,
+        re_register_success_at: isReRegisterSuccess ? now : contactModalMember.re_register_success_at || null,
       })
       .eq("id", contactModalMember.id);
 
@@ -1676,6 +1713,8 @@ export default function Page() {
               last_contact_result: contactResult,
               next_contact_date: nextDate,
               contact_note: contactNote.trim() || null,
+              re_register_flag: isReRegisterSuccess ? true : m.re_register_flag || false,
+              re_register_success_at: isReRegisterSuccess ? now : m.re_register_success_at || null,
             }
           : m
       )
@@ -2715,6 +2754,14 @@ export default function Page() {
           <p style={styles.salesLabel}>객단가</p>
           <strong style={styles.salesValue}>{salesData.average.toLocaleString("ko-KR")}원</strong>
         </div>
+
+        <div style={styles.salesCard}>
+          <p style={styles.salesLabel}>재등록 전환율</p>
+          <strong style={styles.salesValue}>{reRegisterStats.rate}%</strong>
+          <p style={styles.salesMiniText}>
+            {reRegisterStats.converted}/{reRegisterStats.success}명
+          </p>
+        </div>
       </section>
 
       <section style={{ ...styles.autoCareBox, ...getContactCardBorderStyle() }}>
@@ -3027,6 +3074,7 @@ export default function Page() {
 
                       <p style={styles.contactListMeta}>
                         최근 결과: {getContactResultText(m.last_contact_result)}
+                        {m.re_register_flag ? " · 결제 대기" : ""}
                         {m.next_contact_date ? ` · 다음 연락일: ${m.next_contact_date}` : ""}
                       </p>
 
@@ -3095,6 +3143,13 @@ export default function Page() {
               </button>
               <button
                 type="button"
+                onClick={() => setContactResult("re_register")}
+                style={contactResult === "re_register" ? styles.contactResultButtonActive : styles.contactResultButton}
+              >
+                재등록 성공
+              </button>
+              <button
+                type="button"
                 onClick={() => setContactResult("pending")}
                 style={contactResult === "pending" ? styles.contactResultButtonActive : styles.contactResultButton}
               >
@@ -3110,11 +3165,13 @@ export default function Page() {
             </div>
 
             <div style={styles.contactNextBox}>
-              {contactResult === "success"
-                ? "성공으로 저장하면 연락 리스트에서 제외됩니다."
-                : contactResult === "pending"
-                  ? `보류로 저장하면 ${addDaysDateString(3)}에 다시 연락 리스트에 뜹니다.`
-                  : `실패로 저장하면 ${addDaysDateString(7)}에 다시 연락 리스트에 뜹니다.`}
+              {contactResult === "re_register"
+                ? "재등록 성공으로 저장하면 결제 대기 상태가 되고, 이용권 추가 시 실제 결제와 연결할 수 있습니다."
+                : contactResult === "success"
+                  ? "성공으로 저장하면 연락 리스트에서 제외됩니다."
+                  : contactResult === "pending"
+                    ? `보류로 저장하면 ${addDaysDateString(3)}에 다시 연락 리스트에 뜹니다.`
+                    : `실패로 저장하면 ${addDaysDateString(7)}에 다시 연락 리스트에 뜹니다.`}
             </div>
 
             <label style={styles.whiteLabel}>한줄 메모</label>
@@ -4735,7 +4792,7 @@ const styles = {
   },
   salesBox: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr 1fr",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
     gap: 12,
     marginBottom: 22,
   },
@@ -4756,6 +4813,12 @@ const styles = {
     color: "#fff",
     fontSize: 24,
     fontWeight: 900,
+  },
+  salesMiniText: {
+    color: "#aaa",
+    margin: "6px 0 0",
+    fontSize: 12,
+    fontWeight: 800,
   },
   autoCareBox: {
     background: "#151515",
@@ -6495,7 +6558,7 @@ const styles = {
   },
   contactResultGrid: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr 1fr",
+    gridTemplateColumns: "repeat(4, 1fr)",
     gap: 8,
     marginBottom: 14,
   },
