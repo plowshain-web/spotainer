@@ -107,6 +107,7 @@ export default function Page() {
   });
 
   const [schedules, setSchedules] = useState([]);
+  const [selectedDateSchedules, setSelectedDateSchedules] = useState([]);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [actionModalSchedule, setActionModalSchedule] = useState(null);
   const [showMemberListModal, setShowMemberListModal] = useState(false);
@@ -128,6 +129,12 @@ export default function Page() {
     loadSchedules();
     loadSales();
   }, []);
+
+  useEffect(() => {
+    if (showScheduleModal && scheduleDate) {
+      loadSelectedDateSchedules(scheduleDate);
+    }
+  }, [showScheduleModal, scheduleDate]);
 
   async function loadMembers() {
     const { data } = await supabase
@@ -199,6 +206,26 @@ export default function Page() {
     setSchedules(data || []);
   }
 
+  async function loadSelectedDateSchedules(date = scheduleDate) {
+    if (!date) {
+      setSelectedDateSchedules([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("schedules")
+      .select("*, members(*)")
+      .eq("schedule_date", date)
+      .order("start_time", { ascending: true });
+
+    if (error) {
+      alert("선택 날짜 스케줄 불러오기 실패: " + error.message);
+      return;
+    }
+
+    setSelectedDateSchedules(data || []);
+  }
+
   async function loadSales() {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -239,11 +266,13 @@ export default function Page() {
     setScheduleEndTime("");
     setScheduleType("pt");
     setScheduleMemo("");
+    setSelectedDateSchedules([]);
   }
 
   function openScheduleModal() {
     resetScheduleForm();
     setShowScheduleModal(true);
+    loadSelectedDateSchedules(getTodayDateString());
   }
 
   function closeScheduleModal() {
@@ -282,11 +311,51 @@ export default function Page() {
     if (!scheduleDate) return alert("날짜를 선택하세요.");
     if (!scheduleStartTime) return alert("시작 시간을 입력하세요.");
 
+    const startMinutes = timeToMinutes(scheduleStartTime);
+    const endTime = scheduleEndTime || addMinutesToTime(scheduleStartTime, 50);
+    const endMinutes = timeToMinutes(endTime);
+
+    if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+      alert("종료 시간은 시작 시간보다 뒤여야 합니다.");
+      return;
+    }
+
+    const { data: sameDateSchedules, error: checkError } = await supabase
+      .from("schedules")
+      .select("*, members(*)")
+      .eq("schedule_date", scheduleDate)
+      .order("start_time", { ascending: true });
+
+    if (checkError) {
+      alert("중복 확인 실패: " + checkError.message);
+      return;
+    }
+
+    const conflict = (sameDateSchedules || []).find((schedule) => {
+      if (schedule.status === "cancelled") return false;
+
+      const existingStart = timeToMinutes(schedule.start_time);
+      const existingEnd = timeToMinutes(schedule.end_time || addMinutesToTime(schedule.start_time, 50));
+
+      if (existingStart === null || existingEnd === null) return false;
+
+      return existingStart < endMinutes && existingEnd > startMinutes;
+    });
+
+    if (conflict) {
+      const memberName = conflict.members?.name || "기존 회원";
+      alert(
+        `이미 겹치는 스케줄이 있습니다.\n\n${formatTime(conflict.start_time)} ~ ${formatTime(conflict.end_time || addMinutesToTime(conflict.start_time, 50))}\n${memberName}`
+      );
+      await loadSelectedDateSchedules(scheduleDate);
+      return;
+    }
+
     const { error } = await supabase.from("schedules").insert({
       member_id: scheduleMemberId,
       schedule_date: scheduleDate,
       start_time: scheduleStartTime,
-      end_time: scheduleEndTime || null,
+      end_time: endTime,
       type: scheduleType,
       memo: scheduleMemo.trim(),
     });
@@ -312,6 +381,9 @@ export default function Page() {
     }
 
     await loadSchedules(getTodayDateString());
+    if (showScheduleModal) {
+      await loadSelectedDateSchedules(scheduleDate);
+    }
   }
 
   function getScheduleTypeText(type) {
@@ -333,14 +405,47 @@ export default function Page() {
   function getTimeOptions() {
     const options = [];
 
-    for (let hour = 5; hour <= 23; hour += 1) {
-      [0, 30].forEach((minute) => {
+    for (let hour = 11; hour <= 22; hour += 1) {
+      [0, 10, 20, 30, 40, 50].forEach((minute) => {
+        if (hour === 22 && minute > 0) return;
+
         const value = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
         options.push(value);
       });
     }
 
     return options;
+  }
+
+  function timeToMinutes(time) {
+    if (!time) return null;
+
+    const [hourText, minuteText] = String(time).split(":");
+    const hour = Number(hourText);
+    const minute = Number(minuteText || 0);
+
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+
+    return hour * 60 + minute;
+  }
+
+  function formatScheduleRange(schedule) {
+    const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 50);
+    return `${formatTime(schedule.start_time)} ~ ${formatTime(endTime)}`;
+  }
+
+  function getSelectedDateActiveSchedules() {
+    return selectedDateSchedules.filter((schedule) => schedule.status !== "cancelled");
+  }
+
+  function getSchedulePreviewStatus(schedule) {
+    if (schedule.status === "cancelled") return { text: "취소", style: styles.scheduleCancelText };
+    if (schedule.status === "noshow") return { text: "노쇼", style: styles.scheduleNoShowText };
+    if (schedule.status === "completed" || (schedule.attendance_checked && schedule.pt_used)) {
+      return { text: "완료", style: styles.scheduleDoneText };
+    }
+
+    return { text: "예약", style: styles.scheduleWarningText };
   }
 
   function addMinutesToTime(time, minutesToAdd) {
@@ -2441,6 +2546,42 @@ export default function Page() {
               style={styles.input}
             />
 
+            <div style={styles.schedulePreviewBox}>
+              <div style={styles.schedulePreviewTop}>
+                <strong>선택 날짜 예약 현황</strong>
+                <span>{selectedDateSchedules.length}건</span>
+              </div>
+
+              {selectedDateSchedules.length === 0 ? (
+                <p style={styles.schedulePreviewEmpty}>이 날짜에 등록된 스케줄이 없습니다.</p>
+              ) : (
+                <div style={styles.schedulePreviewList}>
+                  {selectedDateSchedules.map((schedule) => {
+                    const status = getSchedulePreviewStatus(schedule);
+
+                    return (
+                      <div key={schedule.id} style={styles.schedulePreviewItem}>
+                        <div>
+                          <strong style={styles.schedulePreviewTime}>{formatScheduleRange(schedule)}</strong>
+                          <p style={styles.schedulePreviewMember}>
+                            {getScheduleTypeText(schedule.type)} · {schedule.members?.name || "회원 정보 없음"}
+                          </p>
+                        </div>
+
+                        <span style={status.style}>{status.text}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {getSelectedDateActiveSchedules().length > 0 && (
+                <p style={styles.schedulePreviewHint}>
+                  겹치는 시간으로 저장하면 자동으로 차단됩니다.
+                </p>
+              )}
+            </div>
+
             <label style={styles.label}>시작 시간</label>
             <select
               value={scheduleStartTime}
@@ -2492,6 +2633,22 @@ export default function Page() {
                 60분 수업
               </button>
             </div>
+
+            {scheduleStartTime &&
+              getSelectedDateActiveSchedules().some((schedule) => {
+                const newStart = timeToMinutes(scheduleStartTime);
+                const newEnd = timeToMinutes(scheduleEndTime || addMinutesToTime(scheduleStartTime, 50));
+                const oldStart = timeToMinutes(schedule.start_time);
+                const oldEnd = timeToMinutes(schedule.end_time || addMinutesToTime(schedule.start_time, 50));
+
+                if (newStart === null || newEnd === null || oldStart === null || oldEnd === null) return false;
+
+                return oldStart < newEnd && oldEnd > newStart;
+              }) && (
+                <div style={styles.scheduleConflictBox}>
+                  선택한 시간이 기존 스케줄과 겹칩니다. 다른 시간을 선택하세요.
+                </div>
+              )}
 
             <label style={styles.label}>구분</label>
             <select
@@ -4424,6 +4581,71 @@ const styles = {
     fontSize: 15,
     lineHeight: 1.5,
     fontWeight: 700,
+  },
+  schedulePreviewBox: {
+    background: "#222",
+    border: "1px solid #333",
+    borderRadius: 18,
+    padding: 14,
+    marginTop: -6,
+    marginBottom: 16,
+  },
+  schedulePreviewTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 10,
+    alignItems: "center",
+    marginBottom: 10,
+    color: "#fff",
+    fontWeight: 900,
+  },
+  schedulePreviewEmpty: {
+    color: "#aaa",
+    margin: 0,
+    fontSize: 14,
+    fontWeight: 700,
+  },
+  schedulePreviewList: {
+    display: "grid",
+    gap: 8,
+  },
+  schedulePreviewItem: {
+    background: "#181818",
+    border: "1px solid #333",
+    borderRadius: 14,
+    padding: 12,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 10,
+  },
+  schedulePreviewTime: {
+    color: "#93c5fd",
+    fontSize: 15,
+    fontWeight: 900,
+  },
+  schedulePreviewMember: {
+    color: "#ddd",
+    margin: "5px 0 0",
+    fontSize: 14,
+    fontWeight: 800,
+  },
+  schedulePreviewHint: {
+    color: "#fde68a",
+    margin: "10px 0 0",
+    fontSize: 13,
+    fontWeight: 800,
+  },
+  scheduleConflictBox: {
+    background: "#3f1111",
+    color: "#fca5a5",
+    border: "1px solid #7f1d1d",
+    borderRadius: 14,
+    padding: 12,
+    marginTop: -6,
+    marginBottom: 16,
+    fontSize: 14,
+    fontWeight: 900,
   },
   timeQuickRow: {
     display: "grid",
