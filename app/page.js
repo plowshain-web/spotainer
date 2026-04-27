@@ -37,6 +37,7 @@ export default function Page() {
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");
   const [summaryModal, setSummaryModal] = useState(null);
+  const [showContactListModal, setShowContactListModal] = useState(false);
   const [contactModalMember, setContactModalMember] = useState(null);
   const [contactResult, setContactResult] = useState("pending");
   const [contactNote, setContactNote] = useState("");
@@ -2681,38 +2682,19 @@ export default function Page() {
       </section>
 
       <section style={styles.autoCareBox}>
-        <div style={styles.todoTop}>
-          <div>
-            <h2 style={styles.todoTitle}>오늘 관리 필요 회원</h2>
-            <p style={styles.todoDesc}>연락 결과에 따라 다음 연락일이 자동으로 잡힙니다.</p>
-          </div>
+        <button
+          type="button"
+          onClick={() => setShowContactListModal(true)}
+          style={styles.contactListOpenButton}
+        >
+          <span>
+            <strong>오늘 연락 필요 회원</strong>
+            <p>연락 결과에 따라 다음 연락일이 자동으로 잡힙니다.</p>
+          </span>
 
-          <div style={styles.incompleteCount}>{attentionList.length}명</div>
-        </div>
-
-        {attentionList.length === 0 ? (
-          <p style={styles.muted}>오늘 관리 필요 회원이 없습니다.</p>
-        ) : (
-          <div style={styles.autoCareList}>
-            {attentionList.map((m) => (
-              <div key={m.id} style={styles.autoCareItem}>
-                <div>
-                  <strong style={styles.autoCareName}>{m.name}</strong>
-                  <div style={styles.autoCareTags}>
-                    {m.followUpStatus && <span style={styles.scheduleDoneText}>{m.followUpStatus}</span>}
-                    {m.attendanceStatus && <span style={styles.scheduleWarningText}>{m.attendanceStatus}</span>}
-                    {m.ptStatus && <span style={styles.dangerBadge}>{m.ptStatus}</span>}
-                    {m.inbodyStatus && <span style={styles.visitBadge}>{m.inbodyStatus}</span>}
-                  </div>
-                </div>
-
-                <button onClick={() => openContactModal(m)} style={styles.autoCareDoneButton}>
-                  기록
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+          <span style={styles.contactListCount}>{attentionList.length}명</span>
+          <span style={styles.actionCardArrow}>›</span>
+        </button>
       </section>
 
       <section style={styles.todoBox}>
@@ -2909,6 +2891,90 @@ export default function Page() {
               <p style={styles.muted}>해당 회원이 없습니다.</p>
             ) : (
               summaryConfig[summaryModal].list.map(renderSummaryMember)
+            )}
+          </section>
+        </div>
+      )}
+
+      {showContactListModal && (
+        <div style={styles.whiteModalOverlay}>
+          <section style={styles.contactListModalBox}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>오늘 연락 필요 회원</h2>
+                <p style={styles.whiteMuted}>
+                  연락해야 할 회원만 모아둔 작업 화면입니다. 기록하면 자동으로 목록이 정리됩니다.
+                </p>
+              </div>
+
+              <button onClick={() => setShowContactListModal(false)} style={styles.whiteCloseButton}>
+                닫기
+              </button>
+            </div>
+
+            <div style={styles.contactListSummaryRow}>
+              <div style={styles.contactListSummaryCard}>
+                <strong>{attentionList.length}명</strong>
+                <span>전체</span>
+              </div>
+
+              <div style={styles.contactListSummaryCard}>
+                <strong>{attentionList.filter((m) => m.ptStatus === "강한 경고").length}명</strong>
+                <span>강한경고</span>
+              </div>
+
+              <div style={styles.contactListSummaryCard}>
+                <strong>{attentionList.filter((m) => m.followUpStatus).length}명</strong>
+                <span>재연락</span>
+              </div>
+            </div>
+
+            {attentionList.length === 0 ? (
+              <div style={styles.scheduleCheckEmpty}>
+                오늘 연락할 회원이 없습니다.
+              </div>
+            ) : (
+              <div style={styles.contactListRows}>
+                {attentionList.map((m) => (
+                  <div key={m.id} style={styles.contactListRow}>
+                    <div style={styles.contactListMain}>
+                      <strong style={styles.contactListName}>{m.name}</strong>
+
+                      <div style={styles.autoCareTags}>
+                        {m.followUpStatus && <span style={styles.scheduleDoneText}>{m.followUpStatus}</span>}
+                        {m.attendanceStatus && <span style={styles.scheduleWarningText}>{m.attendanceStatus}</span>}
+                        {m.ptStatus && <span style={styles.dangerBadge}>{m.ptStatus}</span>}
+                        {m.inbodyStatus && <span style={styles.visitBadge}>{m.inbodyStatus}</span>}
+                      </div>
+
+                      <p style={styles.contactListMeta}>
+                        최근 결과: {getContactResultText(m.last_contact_result)}
+                        {m.next_contact_date ? ` · 다음 연락일: ${m.next_contact_date}` : ""}
+                      </p>
+
+                      {m.contact_note && (
+                        <p style={styles.contactListNote}>메모: {m.contact_note}</p>
+                      )}
+                    </div>
+
+                    <div style={styles.contactListActions}>
+                      {normalizePhone(m.phone) ? (
+                        <a href={`tel:${normalizePhone(m.phone)}`} style={styles.summaryPhoneButton}>
+                          전화
+                        </a>
+                      ) : (
+                        <button onClick={() => alert("전화번호가 없습니다.")} style={styles.summaryPhoneButton}>
+                          전화
+                        </button>
+                      )}
+
+                      <button onClick={() => openContactModal(m)} style={styles.autoCareDoneButton}>
+                        기록
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </section>
         </div>
@@ -4606,8 +4672,97 @@ const styles = {
     background: "#151515",
     border: "1px solid #272727",
     borderRadius: 24,
-    padding: 20,
+    padding: 0,
     marginBottom: 22,
+  },
+  contactListOpenButton: {
+    width: "100%",
+    background: "transparent",
+    color: "#fff",
+    border: "none",
+    padding: 22,
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+    textAlign: "left",
+  },
+  contactListCount: {
+    background: "#facc15",
+    color: "#111",
+    borderRadius: 999,
+    padding: "8px 12px",
+    fontSize: 15,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+    marginLeft: "auto",
+  },
+  contactListModalBox: {
+    width: "100%",
+    maxWidth: 860,
+    maxHeight: "86vh",
+    overflowY: "auto",
+    background: "#ffffff",
+    color: "#111",
+    borderRadius: 28,
+    padding: 24,
+    boxShadow: "0 20px 60px rgba(0,0,0,.45)",
+  },
+  contactListSummaryRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1fr",
+    gap: 10,
+    marginBottom: 16,
+  },
+  contactListSummaryCard: {
+    background: "#f3f3f3",
+    border: "1px solid #e5e5e5",
+    borderRadius: 16,
+    padding: 14,
+    display: "grid",
+    gap: 4,
+    textAlign: "center",
+  },
+  contactListRows: {
+    display: "grid",
+    gap: 10,
+  },
+  contactListRow: {
+    background: "#f3f3f3",
+    border: "1px solid #e5e5e5",
+    borderRadius: 18,
+    padding: 14,
+    display: "grid",
+    gridTemplateColumns: "1fr auto",
+    gap: 12,
+    alignItems: "center",
+  },
+  contactListMain: {
+    minWidth: 0,
+  },
+  contactListName: {
+    color: "#111",
+    fontSize: 18,
+    fontWeight: 900,
+  },
+  contactListMeta: {
+    color: "#555",
+    margin: "8px 0 0",
+    fontSize: 13,
+    fontWeight: 800,
+  },
+  contactListNote: {
+    color: "#333",
+    background: "#fff",
+    borderRadius: 10,
+    padding: "8px 10px",
+    margin: "8px 0 0",
+    fontSize: 13,
+    fontWeight: 800,
+  },
+  contactListActions: {
+    display: "grid",
+    gap: 8,
+    minWidth: 76,
   },
   autoCareList: {
     display: "grid",
