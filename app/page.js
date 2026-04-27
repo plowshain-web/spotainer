@@ -97,6 +97,7 @@ export default function Page() {
   const [ptModalMember, setPtModalMember] = useState(null);
   const [selectedPtAmount, setSelectedPtAmount] = useState("");
   const [ptTotalPrice, setPtTotalPrice] = useState("");
+  const [ptAddType, setPtAddType] = useState("paid");
   const [lastAction, setLastAction] = useState(null);
   const [salesData, setSalesData] = useState({
     total: 0,
@@ -934,12 +935,14 @@ export default function Page() {
     setPtModalMember(member);
     setSelectedPtAmount("");
     setPtTotalPrice("");
+    setPtAddType("paid");
   }
 
   function closePtModal() {
     setPtModalMember(null);
     setSelectedPtAmount("");
     setPtTotalPrice("");
+    setPtAddType("paid");
   }
 
   function onlyNumber(value) {
@@ -1016,12 +1019,12 @@ export default function Page() {
       return;
     }
 
-    if (!totalPrice) {
+    if (ptAddType === "paid" && !totalPrice) {
       alert("결제금액을 입력하세요.");
       return;
     }
 
-    await addPt(ptModalMember, amount, ptTotalPrice);
+    await addPt(ptModalMember, amount, ptAddType === "event" ? "0" : ptTotalPrice);
   }
 
   async function cancelPtUse(log) {
@@ -3442,6 +3445,29 @@ export default function Page() {
               </button>
             </div>
 
+            <label style={styles.whiteLabel}>추가 방식</label>
+            <div style={styles.ptAddTypeGrid}>
+              <button
+                type="button"
+                onClick={() => setPtAddType("paid")}
+                style={ptAddType === "paid" ? styles.ptAddTypeButtonActive : styles.ptAddTypeButton}
+              >
+                유료 결제
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPtAddType("event");
+                  setPtTotalPrice("");
+                  if (!selectedPtAmount) setSelectedPtAmount(1);
+                }}
+                style={ptAddType === "event" ? styles.ptAddTypeButtonActive : styles.ptAddTypeButton}
+              >
+                이벤트 / 서비스
+              </button>
+            </div>
+
             <label style={styles.whiteLabel}>추가 회차</label>
             <div style={styles.ptOptionGridWhite}>
               {ptOptions.map((amount) => (
@@ -3459,33 +3485,44 @@ export default function Page() {
               ))}
             </div>
 
-            <label style={styles.whiteLabel}>결제금액</label>
-            <div style={styles.priceInputWrap}>
-              <input
-                value={ptTotalPrice ? formatWon(ptTotalPrice) : ""}
-                onChange={(e) => setPtTotalPrice(onlyNumber(e.target.value))}
-                placeholder="예: 500000"
-                inputMode="numeric"
-                style={styles.whiteInput}
-              />
-              <span style={styles.priceUnit}>원</span>
-            </div>
+            {ptAddType === "paid" ? (
+              <>
+                <label style={styles.whiteLabel}>결제금액</label>
+                <div style={styles.priceInputWrap}>
+                  <input
+                    value={ptTotalPrice ? formatWon(ptTotalPrice) : ""}
+                    onChange={(e) => setPtTotalPrice(onlyNumber(e.target.value))}
+                    placeholder="예: 500000"
+                    inputMode="numeric"
+                    style={styles.whiteInput}
+                  />
+                  <span style={styles.priceUnit}>원</span>
+                </div>
 
-            <div style={styles.priceSummaryBox}>
-              <p style={styles.priceSummaryTitle}>자동 계산</p>
-              <p style={styles.priceSummaryText}>
-                {selectedPtAmount && Number(onlyNumber(ptTotalPrice)) ? (
-                  <>
-                    총 {Number(selectedPtAmount).toLocaleString("ko-KR")}회 ·{" "}
-                    {Number(onlyNumber(ptTotalPrice)).toLocaleString("ko-KR")}원
-                    <br />
-                    1회당 {getPricePerSession().toLocaleString("ko-KR")}원
-                  </>
-                ) : (
-                  "회차와 금액을 입력하면 1회당 금액이 표시됩니다."
-                )}
-              </p>
-            </div>
+                <div style={styles.priceSummaryBox}>
+                  <p style={styles.priceSummaryTitle}>자동 계산</p>
+                  <p style={styles.priceSummaryText}>
+                    {selectedPtAmount && Number(onlyNumber(ptTotalPrice)) ? (
+                      <>
+                        총 {Number(selectedPtAmount).toLocaleString("ko-KR")}회 ·{" "}
+                        {Number(onlyNumber(ptTotalPrice)).toLocaleString("ko-KR")}원
+                        <br />
+                        1회당 {getPricePerSession().toLocaleString("ko-KR")}원
+                      </>
+                    ) : (
+                      "회차와 금액을 입력하면 1회당 금액이 표시됩니다."
+                    )}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div style={styles.eventPtBox}>
+                <p style={styles.priceSummaryTitle}>이벤트 / 서비스 추가</p>
+                <p style={styles.priceSummaryText}>
+                  결제금액 0원으로 PT 회차만 추가됩니다. 매출에는 잡히지 않습니다.
+                </p>
+              </div>
+            )}
 
             <div style={styles.whiteActionRowFull}>
               <button
@@ -3493,7 +3530,7 @@ export default function Page() {
                 onClick={() => submitPtAdd()}
                 style={styles.whiteSaveLargeButton}
               >
-                저장
+                {ptAddType === "event" ? "서비스 추가" : "저장"}
               </button>
 
               <button
@@ -4301,6 +4338,37 @@ const styles = {
     padding: "16px 10px",
     fontSize: 18,
     fontWeight: 900,
+  },
+  ptAddTypeGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 8,
+    marginBottom: 16,
+  },
+  ptAddTypeButton: {
+    background: "#f3f3f3",
+    color: "#333",
+    border: "1px solid #ddd",
+    borderRadius: 12,
+    padding: "12px 10px",
+    fontSize: 15,
+    fontWeight: 900,
+  },
+  ptAddTypeButtonActive: {
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #111",
+    borderRadius: 12,
+    padding: "12px 10px",
+    fontSize: 15,
+    fontWeight: 900,
+  },
+  eventPtBox: {
+    background: "#f3f3f3",
+    border: "1px solid #e5e5e5",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
   },
   ptOptionGridWhite: {
     display: "grid",
