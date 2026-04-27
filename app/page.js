@@ -506,12 +506,14 @@ export default function Page() {
 
   function getMemberTypeText(type) {
     if (type === "pt") return "PT회원";
+    if (type === "group") return "그룹PT회원";
     if (type === "vip") return "VIP";
     return "일반회원";
   }
 
   function getMemberTypeStyle(type) {
     if (type === "vip") return styles.vipBadge;
+    if (type === "group") return styles.groupMemberBadge;
     if (type === "pt") return styles.ptMemberBadge;
     return styles.generalMemberBadge;
   }
@@ -1202,7 +1204,10 @@ export default function Page() {
       .from("members")
       .update({
         pt_remaining: after,
-        member_type: member.member_type === "vip" ? "vip" : "pt",
+        member_type:
+          member.member_type === "vip" || member.member_type === "group"
+            ? member.member_type
+            : "pt",
       })
       .eq("id", member.id);
 
@@ -3147,6 +3152,7 @@ export default function Page() {
             >
               <option value="general">일반회원</option>
               <option value="pt">PT회원</option>
+              <option value="group">그룹PT회원</option>
               <option value="vip">VIP</option>
             </select>
 
@@ -3211,6 +3217,7 @@ export default function Page() {
             >
               <option value="general">일반회원</option>
               <option value="pt">PT회원</option>
+              <option value="group">그룹PT회원</option>
               <option value="vip">VIP</option>
             </select>
 
@@ -5424,6 +5431,15 @@ const styles = {
     background: "#172554",
     color: "#bfdbfe",
     border: "1px solid #1d4ed8",
+    borderRadius: 999,
+    padding: "5px 9px",
+    fontSize: 12,
+    fontWeight: 900,
+  },
+  groupMemberBadge: {
+    background: "#2a1f3d",
+    color: "#e9d5ff",
+    border: "1px solid #7e22ce",
     borderRadius: 999,
     padding: "5px 9px",
     fontSize: 12,
