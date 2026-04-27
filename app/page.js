@@ -109,6 +109,9 @@ export default function Page() {
   const [schedules, setSchedules] = useState([]);
   const [selectedDateSchedules, setSelectedDateSchedules] = useState([]);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showScheduleCheckModal, setShowScheduleCheckModal] = useState(false);
+  const [scheduleCheckDate, setScheduleCheckDate] = useState(getTodayDateString());
+  const [scheduleCheckList, setScheduleCheckList] = useState([]);
   const [actionModalSchedule, setActionModalSchedule] = useState(null);
   const [showMemberListModal, setShowMemberListModal] = useState(false);
   const [returnToMemberListAfterDetail, setReturnToMemberListAfterDetail] = useState(false);
@@ -135,6 +138,12 @@ export default function Page() {
       loadSelectedDateSchedules(scheduleDate);
     }
   }, [showScheduleModal, scheduleDate]);
+
+  useEffect(() => {
+    if (showScheduleCheckModal && scheduleCheckDate) {
+      loadScheduleCheckList(scheduleCheckDate);
+    }
+  }, [showScheduleCheckModal, scheduleCheckDate]);
 
   async function loadMembers() {
     const { data } = await supabase
@@ -226,6 +235,26 @@ export default function Page() {
     setSelectedDateSchedules(data || []);
   }
 
+  async function loadScheduleCheckList(date = scheduleCheckDate) {
+    if (!date) {
+      setScheduleCheckList([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("schedules")
+      .select("*, members(*)")
+      .eq("schedule_date", date)
+      .order("start_time", { ascending: true });
+
+    if (error) {
+      alert("스케줄 확인 불러오기 실패: " + error.message);
+      return;
+    }
+
+    setScheduleCheckList(data || []);
+  }
+
   async function loadSales() {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -278,6 +307,35 @@ export default function Page() {
   function closeScheduleModal() {
     setShowScheduleModal(false);
     resetScheduleForm();
+  }
+
+  function openScheduleCheckModal() {
+    setScheduleCheckDate(getTodayDateString());
+    setShowScheduleCheckModal(true);
+    loadScheduleCheckList(getTodayDateString());
+  }
+
+  function closeScheduleCheckModal() {
+    setShowScheduleCheckModal(false);
+    setScheduleCheckList([]);
+  }
+
+  function openScheduleAddFromCheck() {
+    resetScheduleForm();
+    setScheduleDate(scheduleCheckDate || getTodayDateString());
+    setShowScheduleModal(true);
+    loadSelectedDateSchedules(scheduleCheckDate || getTodayDateString());
+  }
+
+  function moveScheduleCheckDate(dayAmount) {
+    const base = scheduleCheckDate ? new Date(scheduleCheckDate) : new Date();
+    base.setDate(base.getDate() + dayAmount);
+
+    const year = base.getFullYear();
+    const month = String(base.getMonth() + 1).padStart(2, "0");
+    const day = String(base.getDate()).padStart(2, "0");
+
+    setScheduleCheckDate(`${year}-${month}-${day}`);
   }
 
   function openActionModal(schedule) {
@@ -367,6 +425,10 @@ export default function Page() {
 
     closeScheduleModal();
     await loadSchedules(getTodayDateString());
+    if (showScheduleCheckModal) {
+      await loadScheduleCheckList(scheduleDate);
+      setScheduleCheckDate(scheduleDate);
+    }
     alert("스케줄이 저장되었습니다.");
   }
 
@@ -383,6 +445,9 @@ export default function Page() {
     await loadSchedules(getTodayDateString());
     if (showScheduleModal) {
       await loadSelectedDateSchedules(scheduleDate);
+    }
+    if (showScheduleCheckModal) {
+      await loadScheduleCheckList(scheduleCheckDate);
     }
   }
 
@@ -521,6 +586,12 @@ export default function Page() {
 
       closeActionModal();
       await loadSchedules(getTodayDateString());
+    if (showScheduleCheckModal) {
+      await loadScheduleCheckList(scheduleCheckDate);
+    }
+    if (showScheduleCheckModal) {
+      await loadScheduleCheckList(scheduleCheckDate);
+    }
       alert("이미 출석과 PT 차감이 완료되어 완료 처리만 했습니다.");
       return;
     }
@@ -596,6 +667,9 @@ export default function Page() {
     closeActionModal();
     await loadMembers();
     await loadSchedules(getTodayDateString());
+    if (showScheduleCheckModal) {
+      await loadScheduleCheckList(scheduleCheckDate);
+    }
 
     await openWorkout(member);
     setWorkoutMode("add");
@@ -680,6 +754,12 @@ export default function Page() {
     closeActionModal();
     await loadMembers();
     await loadSchedules(getTodayDateString());
+    if (showScheduleCheckModal) {
+      await loadScheduleCheckList(scheduleCheckDate);
+    }
+    if (showScheduleCheckModal) {
+      await loadScheduleCheckList(scheduleCheckDate);
+    }
   }
 
   async function markScheduleCancelled(schedule) {
@@ -725,6 +805,12 @@ export default function Page() {
 
     closeActionModal();
     await loadSchedules(getTodayDateString());
+    if (showScheduleCheckModal) {
+      await loadScheduleCheckList(scheduleCheckDate);
+    }
+    if (showScheduleCheckModal) {
+      await loadScheduleCheckList(scheduleCheckDate);
+    }
   }
 
   const activeMembers = members.filter((member) => member.is_active !== false);
@@ -2438,10 +2524,16 @@ export default function Page() {
         )}
       </section>
 
-      <section style={styles.scheduleAddWideBox}>
+      <section style={styles.scheduleActionWideGrid}>
         <button onClick={openScheduleModal} style={styles.scheduleAddWideButton}>
           <span style={styles.actionCardIcon}>▣</span>
           <span>스케줄 추가</span>
+          <span style={styles.actionCardArrow}>›</span>
+        </button>
+
+        <button onClick={openScheduleCheckModal} style={styles.scheduleAddWideButton}>
+          <span style={styles.actionCardIcon}>☰</span>
+          <span>스케줄 확인</span>
           <span style={styles.actionCardArrow}>›</span>
         </button>
       </section>
@@ -2509,6 +2601,143 @@ export default function Page() {
               <p style={styles.muted}>해당 회원이 없습니다.</p>
             ) : (
               summaryConfig[summaryModal].list.map(renderSummaryMember)
+            )}
+          </section>
+        </div>
+      )}
+
+      {showScheduleCheckModal && (
+        <div style={styles.whiteModalOverlay}>
+          <section style={styles.scheduleCheckModalBox}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>스케줄 확인</h2>
+                <p style={styles.whiteMuted}>날짜별 예약을 확인하고 바로 추가할 수 있습니다.</p>
+              </div>
+
+              <button onClick={closeScheduleCheckModal} style={styles.whiteCloseButton}>
+                닫기
+              </button>
+            </div>
+
+            <div style={styles.scheduleCheckDateRow}>
+              <button
+                type="button"
+                onClick={() => moveScheduleCheckDate(-1)}
+                style={styles.scheduleCheckMoveButton}
+              >
+                이전날
+              </button>
+
+              <input
+                value={scheduleCheckDate}
+                onChange={(e) => setScheduleCheckDate(e.target.value)}
+                type="date"
+                style={styles.whiteInput}
+              />
+
+              <button
+                type="button"
+                onClick={() => moveScheduleCheckDate(1)}
+                style={styles.scheduleCheckMoveButton}
+              >
+                다음날
+              </button>
+            </div>
+
+            <div style={styles.scheduleCheckTopActions}>
+              <button
+                type="button"
+                onClick={() => setScheduleCheckDate(getTodayDateString())}
+                style={styles.memberSortButton}
+              >
+                오늘
+              </button>
+
+              <button
+                type="button"
+                onClick={openScheduleAddFromCheck}
+                style={styles.whiteSaveLargeButton}
+              >
+                + 이 날짜에 스케줄 추가
+              </button>
+            </div>
+
+            {scheduleCheckList.length === 0 ? (
+              <div style={styles.scheduleCheckEmpty}>
+                이 날짜에 등록된 스케줄이 없습니다.
+              </div>
+            ) : (
+              <div style={styles.scheduleCheckList}>
+                {scheduleCheckList.map((schedule) => {
+                  const member = getScheduleMember(schedule) || schedule.members;
+                  const status = getSchedulePreviewStatus(schedule);
+                  const isDone =
+                    schedule.status === "cancelled" ||
+                    schedule.status === "noshow" ||
+                    schedule.status === "completed" ||
+                    (schedule.attendance_checked && schedule.pt_used);
+
+                  return (
+                    <div key={schedule.id} style={styles.scheduleCheckItem}>
+                      <div style={styles.scheduleCheckMain}>
+                        <strong style={styles.scheduleCheckTime}>
+                          {formatScheduleRange(schedule)}
+                        </strong>
+
+                        <p style={styles.scheduleCheckMember}>
+                          {getScheduleTypeText(schedule.type)} · {member?.name || "회원 정보 없음"}
+                          {member ? ` · PT ${member.pt_remaining || 0}회` : ""}
+                        </p>
+
+                        {schedule.memo && (
+                          <p style={styles.scheduleCheckMemo}>{schedule.memo}</p>
+                        )}
+
+                        <div style={styles.scheduleStatusRow}>
+                          <span style={status.style}>{status.text}</span>
+                          {schedule.attendance_checked ? (
+                            <span style={styles.scheduleDoneText}>출석 완료</span>
+                          ) : (
+                            <span style={styles.scheduleWarningText}>출석 전</span>
+                          )}
+                          {schedule.pt_used ? (
+                            <span style={styles.scheduleDoneText}>차감 완료</span>
+                          ) : (
+                            <span style={styles.scheduleWarningText}>차감 전</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={styles.scheduleCheckButtonGroup}>
+                        {isDone ? (
+                          <button style={styles.scheduleDisabledButton} disabled>
+                            {schedule.status === "cancelled"
+                              ? "취소됨"
+                              : schedule.status === "noshow"
+                                ? "노쇼"
+                                : "완료됨"}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => openActionModal(schedule)}
+                            style={styles.incompleteCompleteButton}
+                          >
+                            처리
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => deleteSchedule(schedule)}
+                          style={styles.whiteDeleteButton}
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </section>
         </div>
@@ -4368,6 +4597,12 @@ const styles = {
   scheduleAddWideBox: {
     marginBottom: 22,
   },
+  scheduleActionWideGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 14,
+    marginBottom: 22,
+  },
   scheduleAddWideButton: {
     width: "100%",
     background: "#151515",
@@ -5253,6 +5488,88 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: "4px 10px",
+  },
+  scheduleCheckModalBox: {
+    width: "100%",
+    maxWidth: 760,
+    maxHeight: "86vh",
+    overflowY: "auto",
+    background: "#ffffff",
+    color: "#111",
+    borderRadius: 28,
+    padding: 24,
+    boxShadow: "0 20px 60px rgba(0,0,0,.45)",
+  },
+  scheduleCheckDateRow: {
+    display: "grid",
+    gridTemplateColumns: "auto 1fr auto",
+    gap: 10,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  scheduleCheckMoveButton: {
+    background: "#111",
+    color: "#fff",
+    border: "none",
+    borderRadius: 12,
+    padding: "12px 14px",
+    fontSize: 14,
+    fontWeight: 900,
+  },
+  scheduleCheckTopActions: {
+    display: "grid",
+    gridTemplateColumns: "120px 1fr",
+    gap: 10,
+    marginBottom: 16,
+  },
+  scheduleCheckEmpty: {
+    background: "#f3f3f3",
+    border: "1px solid #e5e5e5",
+    borderRadius: 18,
+    padding: 18,
+    color: "#555",
+    fontSize: 15,
+    fontWeight: 900,
+    textAlign: "center",
+  },
+  scheduleCheckList: {
+    display: "grid",
+    gap: 10,
+  },
+  scheduleCheckItem: {
+    background: "#f3f3f3",
+    border: "1px solid #e5e5e5",
+    borderRadius: 18,
+    padding: 14,
+    display: "grid",
+    gridTemplateColumns: "1fr auto",
+    gap: 12,
+    alignItems: "center",
+  },
+  scheduleCheckMain: {
+    minWidth: 0,
+  },
+  scheduleCheckTime: {
+    color: "#111",
+    fontSize: 18,
+    fontWeight: 900,
+  },
+  scheduleCheckMember: {
+    color: "#333",
+    margin: "6px 0 0",
+    fontSize: 15,
+    fontWeight: 900,
+  },
+  scheduleCheckMemo: {
+    color: "#666",
+    margin: "5px 0 0",
+    fontSize: 14,
+    fontWeight: 700,
+  },
+  scheduleCheckButtonGroup: {
+    display: "grid",
+    gap: 8,
+    minWidth: 86,
   },
   whiteModalOverlay: {
     position: "fixed",
