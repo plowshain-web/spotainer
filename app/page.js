@@ -801,14 +801,37 @@ export default function Page() {
   async function deleteMember(member) {
     if (!confirm(`${member.name} 회원을 삭제할까요?`)) return;
 
-    await supabase.from("members").delete().eq("id", member.id);
+    const { data: schedules, error: scheduleError } = await supabase
+      .from("schedules")
+      .select("id")
+      .eq("member_id", member.id)
+      .limit(1);
+
+    if (scheduleError) {
+      alert("삭제 가능 여부 확인 실패: " + scheduleError.message);
+      return;
+    }
+
+    if (schedules && schedules.length > 0) {
+      alert("이 회원은 스케줄 기록이 있어 삭제할 수 없습니다.
+실제 운영 회원은 나중에 비활성화 방식으로 관리하는 게 안전합니다.");
+      return;
+    }
+
+    const { error } = await supabase.from("members").delete().eq("id", member.id);
+
+    if (error) {
+      alert("회원 삭제 실패: " + error.message);
+      return;
+    }
 
     if (selectedMember?.id === member.id) {
       setSelectedMember(null);
       setDetailMode(null);
     }
 
-    loadMembers();
+    await loadMembers();
+    alert(`${member.name} 회원이 삭제되었습니다.`);
   }
 
   async function minusPt(member) {
@@ -1698,6 +1721,17 @@ export default function Page() {
                 style={styles.cardPtAddButton}
               >
                 + 이용권
+              </button>
+
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteMember(member);
+                }}
+                style={styles.cardDeleteButton}
+              >
+                삭제
               </button>
             </div>
 
@@ -4053,6 +4087,18 @@ const styles = {
     background: "#f5f5f5",
     color: "#111",
     border: "1px solid #ffffff",
+    borderRadius: 12,
+    padding: "10px 12px",
+    fontSize: 14,
+    fontWeight: 900,
+    marginBottom: 10,
+    width: "100%",
+  },
+  cardDeleteButton: {
+    gridColumn: "1 / 3",
+    background: "#3f1111",
+    color: "#fca5a5",
+    border: "1px solid #7f1d1d",
     borderRadius: 12,
     padding: "10px 12px",
     fontSize: 14,
