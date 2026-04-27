@@ -65,6 +65,19 @@ export default function Page() {
   const [showAllPtModal, setShowAllPtModal] = useState(false);
   const [showAllAttendanceModal, setShowAllAttendanceModal] = useState(false);
 
+  const [inbodyList, setInbodyList] = useState([]);
+  const [showInbodyModal, setShowInbodyModal] = useState(false);
+  const [showAllInbodyModal, setShowAllInbodyModal] = useState(false);
+  const [inbodyMeasuredAt, setInbodyMeasuredAt] = useState(getTodayDateString());
+  const [inbodyWeight, setInbodyWeight] = useState("");
+  const [inbodySkeletalMuscle, setInbodySkeletalMuscle] = useState("");
+  const [inbodyBodyFatMass, setInbodyBodyFatMass] = useState("");
+  const [inbodyBodyFatPercent, setInbodyBodyFatPercent] = useState("");
+  const [inbodyBmi, setInbodyBmi] = useState("");
+  const [inbodyBasalMetabolicRate, setInbodyBasalMetabolicRate] = useState("");
+  const [inbodyVisceralFatLevel, setInbodyVisceralFatLevel] = useState("");
+  const [inbodyMemo, setInbodyMemo] = useState("");
+
   const [workoutMember, setWorkoutMember] = useState(null);
   const [workoutSessions, setWorkoutSessions] = useState([]);
   const [workoutMode, setWorkoutMode] = useState("list");
@@ -1161,6 +1174,7 @@ export default function Page() {
     setDetailMode(mode);
     setShowAllPtModal(false);
     setShowAllAttendanceModal(false);
+    setShowAllInbodyModal(false);
 
     const { data: attendanceData } = await supabase
       .from("attendance_logs")
@@ -1176,6 +1190,7 @@ export default function Page() {
 
     setAttendanceList(attendanceData || []);
     setPtLogList(ptData || []);
+    await loadInbodyLogs(member.id);
   }
 
   function closeDetail() {
@@ -1183,6 +1198,7 @@ export default function Page() {
     setDetailMode(null);
     setShowAllPtModal(false);
     setShowAllAttendanceModal(false);
+    setShowAllInbodyModal(false);
   }
 
   async function cancelAttendance(log) {
@@ -1199,6 +1215,204 @@ export default function Page() {
     if (selectedMember) await openDetail(selectedMember, "attendance");
     loadMembers();
   }
+
+
+  function resetInbodyForm() {
+    setInbodyMeasuredAt(getTodayDateString());
+    setInbodyWeight("");
+    setInbodySkeletalMuscle("");
+    setInbodyBodyFatMass("");
+    setInbodyBodyFatPercent("");
+    setInbodyBmi("");
+    setInbodyBasalMetabolicRate("");
+    setInbodyVisceralFatLevel("");
+    setInbodyMemo("");
+  }
+
+  async function loadInbodyLogs(memberId) {
+    if (!memberId) return;
+
+    const { data, error } = await supabase
+      .from("inbody_logs")
+      .select("*")
+      .eq("member_id", memberId)
+      .order("measured_at", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      alert("인바디 기록 불러오기 실패: " + error.message);
+      return;
+    }
+
+    setInbodyList(data || []);
+  }
+
+  function openInbodyAddModal() {
+    resetInbodyForm();
+    setShowInbodyModal(true);
+  }
+
+  function closeInbodyModal() {
+    setShowInbodyModal(false);
+    resetInbodyForm();
+  }
+
+  function toNumberOrNull(value) {
+    const text = String(value ?? "").trim();
+    if (!text) return null;
+
+    const number = Number(text);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  async function saveInbodyLog() {
+    if (!selectedMember) return;
+    if (!inbodyMeasuredAt) return alert("측정일을 선택하세요.");
+
+    const { error } = await supabase.from("inbody_logs").insert({
+      member_id: selectedMember.id,
+      measured_at: inbodyMeasuredAt,
+      weight: toNumberOrNull(inbodyWeight),
+      skeletal_muscle: toNumberOrNull(inbodySkeletalMuscle),
+      body_fat_mass: toNumberOrNull(inbodyBodyFatMass),
+      body_fat_percent: toNumberOrNull(inbodyBodyFatPercent),
+      bmi: toNumberOrNull(inbodyBmi),
+      basal_metabolic_rate: toNumberOrNull(inbodyBasalMetabolicRate),
+      visceral_fat_level: toNumberOrNull(inbodyVisceralFatLevel),
+      memo: inbodyMemo.trim(),
+    });
+
+    if (error) {
+      alert("인바디 기록 저장 실패: " + error.message);
+      return;
+    }
+
+    closeInbodyModal();
+    await loadInbodyLogs(selectedMember.id);
+    alert(`${selectedMember.name} 인바디 기록이 저장되었습니다.`);
+  }
+
+  async function deleteInbodyLog(log) {
+    if (!confirm("이 인바디 기록을 삭제할까요?")) return;
+
+    const { error } = await supabase.from("inbody_logs").delete().eq("id", log.id);
+
+    if (error) {
+      alert("인바디 기록 삭제 실패: " + error.message);
+      return;
+    }
+
+    if (selectedMember) await loadInbodyLogs(selectedMember.id);
+  }
+
+  function formatMetric(value, unit = "", decimals = 1) {
+    if (value === null || value === undefined || value === "") return "미입력";
+
+    const number = Number(value);
+    if (!Number.isFinite(number)) return "미입력";
+
+    const fixed =
+      Number.isInteger(number) || decimals === 0
+        ? String(Math.round(number))
+        : number.toFixed(decimals).replace(/\.0$/, "");
+
+    return `${fixed}${unit}`;
+  }
+
+  function formatDelta(current, previous, unit = "", decimals = 1, lowerIsBetter = false) {
+    const currentNumber = Number(current);
+    const previousNumber = Number(previous);
+
+    if (!Number.isFinite(currentNumber) || !Number.isFinite(previousNumber)) {
+      return { text: "비교 불가", style: styles.inbodyDeltaNeutral };
+    }
+
+    const diff = currentNumber - previousNumber;
+    const absText =
+      Math.abs(diff) % 1 === 0 || decimals === 0
+        ? String(Math.round(Math.abs(diff)))
+        : Math.abs(diff).toFixed(decimals).replace(/\.0$/, "");
+
+    if (diff === 0) return { text: `변화 없음`, style: styles.inbodyDeltaNeutral };
+
+    const isGood = lowerIsBetter ? diff < 0 : diff > 0;
+
+    return {
+      text: `${diff > 0 ? "+" : "-"}${absText}${unit}`,
+      style: isGood ? styles.inbodyDeltaGood : styles.inbodyDeltaBad,
+    };
+  }
+
+  function getRecentInbodyLogs() {
+    return inbodyList.slice(0, 3);
+  }
+
+  function getLatestInbody() {
+    return inbodyList[0] || null;
+  }
+
+  function getPreviousInbody() {
+    return inbodyList[1] || null;
+  }
+
+  function getFirstInbody() {
+    if (!inbodyList.length) return null;
+    return inbodyList[inbodyList.length - 1];
+  }
+
+  function renderInbodyMetric(label, value, unit, previousValue, firstValue, decimals = 1, lowerIsBetter = false) {
+    const recentDelta = formatDelta(value, previousValue, unit, decimals, lowerIsBetter);
+    const firstDelta = formatDelta(value, firstValue, unit, decimals, lowerIsBetter);
+
+    return (
+      <div style={styles.inbodyMetricCard}>
+        <p style={styles.inbodyMetricLabel}>{label}</p>
+        <strong style={styles.inbodyMetricValue}>{formatMetric(value, unit, decimals)}</strong>
+
+        <div style={styles.inbodyDeltaRow}>
+          <span style={styles.inbodyDeltaCaption}>직전 대비</span>
+          <span style={recentDelta.style}>{recentDelta.text}</span>
+        </div>
+
+        <div style={styles.inbodyDeltaRow}>
+          <span style={styles.inbodyDeltaCaption}>첫 기록 대비</span>
+          <span style={firstDelta.style}>{firstDelta.text}</span>
+        </div>
+      </div>
+    );
+  }
+
+  function renderInbodyRecord(log, showDelete = false) {
+    return (
+      <div key={log.id} style={styles.whiteWorkoutCard}>
+        <div style={styles.whiteSessionTop}>
+          <div>
+            <h3 style={styles.whiteWorkoutDate}>{formatDate(log.measured_at)}</h3>
+            <p style={styles.whiteMuted}>인바디 측정 기록</p>
+          </div>
+
+          {showDelete && (
+            <button onClick={() => deleteInbodyLog(log)} style={styles.whiteDeleteButton}>
+              삭제
+            </button>
+          )}
+        </div>
+
+        <div style={styles.inbodyRecordGrid}>
+          <p style={styles.whiteSetText}>체중 {formatMetric(log.weight, "kg")}</p>
+          <p style={styles.whiteSetText}>골격근량 {formatMetric(log.skeletal_muscle, "kg")}</p>
+          <p style={styles.whiteSetText}>체지방량 {formatMetric(log.body_fat_mass, "kg")}</p>
+          <p style={styles.whiteSetText}>체지방률 {formatMetric(log.body_fat_percent, "%")}</p>
+          <p style={styles.whiteSetText}>BMI {formatMetric(log.bmi, "", 1)}</p>
+          <p style={styles.whiteSetText}>기초대사량 {formatMetric(log.basal_metabolic_rate, "kcal", 0)}</p>
+          <p style={styles.whiteSetText}>내장지방레벨 {formatMetric(log.visceral_fat_level, "레벨", 0)}</p>
+        </div>
+
+        {log.memo && <p style={styles.whiteMemo}>메모: {log.memo}</p>}
+      </div>
+    );
+  }
+
 
   async function openWorkout(member) {
     setWorkoutMember(member);
@@ -2368,6 +2582,9 @@ export default function Page() {
                   >
                     운동 기록
                   </button>
+                  <button onClick={() => setDetailMode("inbody")} style={styles.menuButton}>
+                    인바디 기록
+                  </button>
                 </div>
 
                 <div style={styles.detailActionBox}>
@@ -2408,6 +2625,62 @@ export default function Page() {
                 {renderInfoBlock("목표", selectedMember.goal)}
                 {renderInfoBlock("특이사항", selectedMember.note)}
                 {renderInfoBlock("트레이너 메모", selectedMember.memo)}
+
+                <button onClick={() => setDetailMode("menu")} style={styles.cancelButton}>
+                  뒤로
+                </button>
+              </>
+            )}
+
+            {detailMode === "inbody" && (
+              <>
+                <div style={styles.recordHeader}>
+                  <h3 style={styles.subTitle}>인바디 기록</h3>
+
+                  <button onClick={openInbodyAddModal} style={styles.whiteButton}>
+                    + 인바디 추가
+                  </button>
+                </div>
+
+                {inbodyList.length === 0 ? (
+                  <p style={styles.muted}>아직 인바디 기록이 없습니다.</p>
+                ) : (
+                  <>
+                    {(() => {
+                      const latest = getLatestInbody();
+                      const previous = getPreviousInbody();
+                      const first = getFirstInbody();
+
+                      return (
+                        <>
+                          <p style={styles.detailPt}>
+                            최근 측정일 {formatDate(latest.measured_at)}
+                          </p>
+
+                          <div style={styles.inbodyMetricGrid}>
+                            {renderInbodyMetric("체중", latest.weight, "kg", previous?.weight, first?.weight, 1, true)}
+                            {renderInbodyMetric("골격근량", latest.skeletal_muscle, "kg", previous?.skeletal_muscle, first?.skeletal_muscle, 1, false)}
+                            {renderInbodyMetric("체지방량", latest.body_fat_mass, "kg", previous?.body_fat_mass, first?.body_fat_mass, 1, true)}
+                            {renderInbodyMetric("체지방률", latest.body_fat_percent, "%", previous?.body_fat_percent, first?.body_fat_percent, 1, true)}
+                            {renderInbodyMetric("BMI", latest.bmi, "", previous?.bmi, first?.bmi, 1, true)}
+                            {renderInbodyMetric("기초대사량", latest.basal_metabolic_rate, "kcal", previous?.basal_metabolic_rate, first?.basal_metabolic_rate, 0, false)}
+                            {renderInbodyMetric("내장지방", latest.visceral_fat_level, "레벨", previous?.visceral_fat_level, first?.visceral_fat_level, 0, true)}
+                          </div>
+                        </>
+                      );
+                    })()}
+
+                    <div style={styles.recordHeader}>
+                      <h3 style={styles.subTitle}>최근 인바디 기록</h3>
+
+                      <button onClick={() => setShowAllInbodyModal(true)} style={styles.smallDark}>
+                        전체 인바디 보기
+                      </button>
+                    </div>
+
+                    {getRecentInbodyLogs().map((log) => renderInbodyRecord(log, false))}
+                  </>
+                )}
 
                 <button onClick={() => setDetailMode("menu")} style={styles.cancelButton}>
                   뒤로
@@ -2494,6 +2767,157 @@ export default function Page() {
                   뒤로
                 </button>
               </>
+            )}
+          </section>
+        </div>
+      )}
+
+      {showInbodyModal && selectedMember && (
+        <div style={styles.whiteModalOverlay}>
+          <section style={styles.whiteModalBox}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>{selectedMember.name} 인바디 추가</h2>
+                <p style={styles.whiteMuted}>측정값은 비어 있어도 저장할 수 있습니다.</p>
+              </div>
+
+              <button onClick={closeInbodyModal} style={styles.whiteCloseButton}>
+                닫기
+              </button>
+            </div>
+
+            <label style={styles.whiteLabel}>측정일</label>
+            <input
+              value={inbodyMeasuredAt}
+              onChange={(e) => setInbodyMeasuredAt(e.target.value)}
+              type="date"
+              style={styles.whiteInput}
+            />
+
+            <div style={styles.whiteTwoColumn}>
+              <div>
+                <label style={styles.whiteLabel}>체중(kg)</label>
+                <input
+                  value={inbodyWeight}
+                  onChange={(e) => setInbodyWeight(e.target.value)}
+                  type="number"
+                  step="0.1"
+                  placeholder="예: 58.4"
+                  style={styles.whiteInput}
+                />
+              </div>
+
+              <div>
+                <label style={styles.whiteLabel}>골격근량(kg)</label>
+                <input
+                  value={inbodySkeletalMuscle}
+                  onChange={(e) => setInbodySkeletalMuscle(e.target.value)}
+                  type="number"
+                  step="0.1"
+                  placeholder="예: 22.5"
+                  style={styles.whiteInput}
+                />
+              </div>
+            </div>
+
+            <div style={styles.whiteTwoColumn}>
+              <div>
+                <label style={styles.whiteLabel}>체지방량(kg)</label>
+                <input
+                  value={inbodyBodyFatMass}
+                  onChange={(e) => setInbodyBodyFatMass(e.target.value)}
+                  type="number"
+                  step="0.1"
+                  placeholder="예: 18.2"
+                  style={styles.whiteInput}
+                />
+              </div>
+
+              <div>
+                <label style={styles.whiteLabel}>체지방률(%)</label>
+                <input
+                  value={inbodyBodyFatPercent}
+                  onChange={(e) => setInbodyBodyFatPercent(e.target.value)}
+                  type="number"
+                  step="0.1"
+                  placeholder="예: 28.5"
+                  style={styles.whiteInput}
+                />
+              </div>
+            </div>
+
+            <div style={styles.whiteTwoColumn}>
+              <div>
+                <label style={styles.whiteLabel}>BMI</label>
+                <input
+                  value={inbodyBmi}
+                  onChange={(e) => setInbodyBmi(e.target.value)}
+                  type="number"
+                  step="0.1"
+                  placeholder="예: 22.1"
+                  style={styles.whiteInput}
+                />
+              </div>
+
+              <div>
+                <label style={styles.whiteLabel}>기초대사량(kcal)</label>
+                <input
+                  value={inbodyBasalMetabolicRate}
+                  onChange={(e) => setInbodyBasalMetabolicRate(e.target.value)}
+                  type="number"
+                  placeholder="예: 1280"
+                  style={styles.whiteInput}
+                />
+              </div>
+            </div>
+
+            <label style={styles.whiteLabel}>내장지방레벨</label>
+            <input
+              value={inbodyVisceralFatLevel}
+              onChange={(e) => setInbodyVisceralFatLevel(e.target.value)}
+              type="number"
+              placeholder="예: 5"
+              style={styles.whiteInput}
+            />
+
+            <label style={styles.whiteLabel}>메모</label>
+            <textarea
+              value={inbodyMemo}
+              onChange={(e) => setInbodyMemo(e.target.value)}
+              placeholder="상담 내용, 식단 상태, 컨디션 등"
+              style={styles.whiteTextarea}
+            />
+
+            <div style={styles.whiteActionRowFull}>
+              <button onClick={saveInbodyLog} style={styles.whiteSaveLargeButton}>
+                저장
+              </button>
+              <button onClick={closeInbodyModal} style={styles.whiteCancelLargeButton}>
+                취소
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {showAllInbodyModal && selectedMember && (
+        <div style={styles.whiteModalOverlay}>
+          <section style={styles.whiteModalBox}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>{selectedMember.name} 전체 인바디 기록</h2>
+                <p style={styles.whiteMuted}>측정 기록을 최신순으로 확인합니다.</p>
+              </div>
+
+              <button onClick={() => setShowAllInbodyModal(false)} style={styles.whiteCloseButton}>
+                닫기
+              </button>
+            </div>
+
+            {inbodyList.length === 0 ? (
+              <p style={styles.whiteMuted}>인바디 기록이 없습니다.</p>
+            ) : (
+              inbodyList.map((log) => renderInbodyRecord(log, true))
             )}
           </section>
         </div>
@@ -4345,6 +4769,78 @@ const styles = {
     color: "#ddd",
     fontWeight: 900,
     fontSize: 14,
+  },
+  inbodyMetricGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))",
+    gap: 10,
+    marginBottom: 18,
+  },
+  inbodyMetricCard: {
+    background: "#222",
+    border: "1px solid #333",
+    borderRadius: 16,
+    padding: 14,
+  },
+  inbodyMetricLabel: {
+    color: "#aaa",
+    fontSize: 13,
+    fontWeight: 900,
+    margin: "0 0 8px",
+  },
+  inbodyMetricValue: {
+    display: "block",
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: 900,
+    marginBottom: 10,
+  },
+  inbodyDeltaRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 8,
+    alignItems: "center",
+    marginTop: 6,
+  },
+  inbodyDeltaCaption: {
+    color: "#888",
+    fontSize: 12,
+    fontWeight: 800,
+  },
+  inbodyDeltaGood: {
+    color: "#d7fff3",
+    background: "#263a36",
+    border: "1px solid #3f5f58",
+    borderRadius: 999,
+    padding: "3px 7px",
+    fontSize: 12,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  inbodyDeltaBad: {
+    color: "#fecaca",
+    background: "#3f1111",
+    border: "1px solid #7f1d1d",
+    borderRadius: 999,
+    padding: "3px 7px",
+    fontSize: 12,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  inbodyDeltaNeutral: {
+    color: "#ddd",
+    background: "#333",
+    border: "1px solid #444",
+    borderRadius: 999,
+    padding: "3px 7px",
+    fontSize: 12,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  inbodyRecordGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "4px 10px",
   },
   whiteModalOverlay: {
     position: "fixed",
