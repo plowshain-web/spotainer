@@ -1265,6 +1265,18 @@ export default function Page() {
     return Number.isFinite(number) ? number : null;
   }
 
+  function getCalculatedBmi() {
+    const weight = toNumberOrNull(inbodyWeight);
+    const heightCm = toNumberOrNull(selectedMember?.height);
+
+    if (!weight || !heightCm) return null;
+
+    const heightM = heightCm / 100;
+    const bmi = weight / (heightM * heightM);
+
+    return Math.round(bmi * 10) / 10;
+  }
+
   async function saveInbodyLog() {
     if (!selectedMember) return;
     if (!inbodyMeasuredAt) return alert("측정일을 선택하세요.");
@@ -1276,7 +1288,7 @@ export default function Page() {
       skeletal_muscle: toNumberOrNull(inbodySkeletalMuscle),
       body_fat_mass: toNumberOrNull(inbodyBodyFatMass),
       body_fat_percent: toNumberOrNull(inbodyBodyFatPercent),
-      bmi: toNumberOrNull(inbodyBmi),
+      bmi: getCalculatedBmi() ?? toNumberOrNull(inbodyBmi),
       basal_metabolic_rate: toNumberOrNull(inbodyBasalMetabolicRate),
       visceral_fat_level: toNumberOrNull(inbodyVisceralFatLevel),
       memo: inbodyMemo.trim(),
@@ -1953,6 +1965,7 @@ export default function Page() {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  closeMemberListModal();
                   openPtModal(member);
                 }}
                 style={styles.cardPtAddButton}
@@ -2848,14 +2861,12 @@ export default function Page() {
 
             <div style={styles.whiteTwoColumn}>
               <div>
-                <label style={styles.whiteLabel}>BMI</label>
+                <label style={styles.whiteLabel}>BMI 자동 계산</label>
                 <input
-                  value={inbodyBmi}
-                  onChange={(e) => setInbodyBmi(e.target.value)}
-                  type="number"
-                  step="0.1"
-                  placeholder="예: 22.1"
-                  style={styles.whiteInput}
+                  value={getCalculatedBmi() ?? ""}
+                  readOnly
+                  placeholder="체중과 회원 키로 자동 계산"
+                  style={{ ...styles.whiteInput, background: "#f3f3f3", color: "#111" }}
                 />
               </div>
 
