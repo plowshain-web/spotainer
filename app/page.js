@@ -46,6 +46,7 @@ export default function Page() {
   const [goal, setGoal] = useState("");
   const [note, setNote] = useState("");
   const [memo, setMemo] = useState("");
+  const [memberType, setMemberType] = useState("general");
 
   const [editingId, setEditingId] = useState(null);
   const [editModalMember, setEditModalMember] = useState(null);
@@ -57,6 +58,7 @@ export default function Page() {
   const [editGoal, setEditGoal] = useState("");
   const [editNote, setEditNote] = useState("");
   const [editMemo, setEditMemo] = useState("");
+  const [editMemberType, setEditMemberType] = useState("general");
 
   const [selectedMember, setSelectedMember] = useState(null);
   const [detailMode, setDetailMode] = useState(null);
@@ -187,6 +189,7 @@ export default function Page() {
         pt_used: used,
         pt_total: (m.pt_remaining || 0) + used,
         is_active: m.is_active !== false,
+        member_type: m.member_type || ((m.pt_remaining || 0) > 0 ? "pt" : "general"),
         total_paid: totalPaid,
         payment_count: paymentCount,
         is_vip: totalPaid >= 1000000,
@@ -488,6 +491,18 @@ export default function Page() {
     if (type === "consult") return "상담";
     if (type === "group") return "그룹PT";
     return "PT";
+  }
+
+  function getMemberTypeText(type) {
+    if (type === "pt") return "PT회원";
+    if (type === "vip") return "VIP";
+    return "일반회원";
+  }
+
+  function getMemberTypeStyle(type) {
+    if (type === "vip") return styles.vipBadge;
+    if (type === "pt") return styles.ptMemberBadge;
+    return styles.generalMemberBadge;
   }
 
   function formatTime(time) {
@@ -1031,6 +1046,7 @@ export default function Page() {
       goal: goal.trim(),
       note: note.trim(),
       memo: memo.trim(),
+      member_type: memberType,
       pt_remaining: 0,
       is_active: true,
     });
@@ -1042,6 +1058,7 @@ export default function Page() {
     setGoal("");
     setNote("");
     setMemo("");
+    setMemberType("general");
     setSearch("");
     setShowAddModal(false);
     loadMembers();
@@ -1058,6 +1075,7 @@ export default function Page() {
     setEditGoal(member.goal || "");
     setEditNote(member.note || "");
     setEditMemo(member.memo || "");
+    setEditMemberType(member.member_type || ((member.pt_remaining || 0) > 0 ? "pt" : "general"));
   }
 
   function closeEditModal() {
@@ -1071,6 +1089,7 @@ export default function Page() {
     setEditGoal("");
     setEditNote("");
     setEditMemo("");
+    setEditMemberType("general");
   }
 
   async function saveEdit(id) {
@@ -1090,6 +1109,7 @@ export default function Page() {
         goal: editGoal.trim(),
         note: editNote.trim(),
         memo: editMemo.trim(),
+        member_type: editMemberType,
       })
       .eq("id", id);
 
@@ -1106,6 +1126,7 @@ export default function Page() {
         goal: editGoal.trim(),
         note: editNote.trim(),
         memo: editMemo.trim(),
+        member_type: editMemberType,
       });
     }
 
@@ -1168,7 +1189,10 @@ export default function Page() {
 
     const { error } = await supabase
       .from("members")
-      .update({ pt_remaining: after })
+      .update({
+        pt_remaining: after,
+        member_type: member.member_type === "vip" ? "vip" : "pt",
+      })
       .eq("id", member.id);
 
     if (error) return alert("PT 차감 실패: " + error.message);
@@ -2367,6 +2391,12 @@ export default function Page() {
               )}
             </div>
 
+            <div style={styles.memberTypeRow}>
+              <span style={getMemberTypeStyle(member.member_type)}>
+                {getMemberTypeText(member.member_type)}
+              </span>
+            </div>
+
             <p style={styles.phoneSmall}>
               {member.age ? `${member.age}세 · ` : ""}
               {member.height ? `${member.height}cm · ` : ""}
@@ -2932,7 +2962,7 @@ export default function Page() {
               <option value="">회원을 선택하세요</option>
               {activeMembers.map((member) => (
                 <option key={member.id} value={member.id}>
-                  {member.name} · PT {member.pt_remaining || 0}회
+                  {member.name} · {getMemberTypeText(member.member_type)} · PT {member.pt_remaining || 0}회
                 </option>
               ))}
             </select>
@@ -3098,6 +3128,17 @@ export default function Page() {
             <label style={styles.label}>전화번호</label>
             <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="예: 01012345678" style={styles.input} />
 
+            <label style={styles.label}>회원 구분</label>
+            <select
+              value={memberType}
+              onChange={(e) => setMemberType(e.target.value)}
+              style={styles.input}
+            >
+              <option value="general">일반회원</option>
+              <option value="pt">PT회원</option>
+              <option value="vip">VIP</option>
+            </select>
+
             <label style={styles.label}>나이</label>
             <input value={age} onChange={(e) => setAge(e.target.value)} placeholder="예: 32" type="number" style={styles.input} />
 
@@ -3150,6 +3191,17 @@ export default function Page() {
               onChange={(e) => setEditPhone(e.target.value)}
               style={styles.whiteInput}
             />
+
+            <label style={styles.whiteLabel}>회원 구분</label>
+            <select
+              value={editMemberType}
+              onChange={(e) => setEditMemberType(e.target.value)}
+              style={styles.whiteInput}
+            >
+              <option value="general">일반회원</option>
+              <option value="pt">PT회원</option>
+              <option value="vip">VIP</option>
+            </select>
 
             <div style={styles.whiteTwoColumn}>
               <div>
@@ -3234,6 +3286,9 @@ export default function Page() {
                   {selectedMember.height ? `${selectedMember.height}cm · ` : ""}
                   {selectedMember.phone || "전화번호 없음"}
                 </p>
+                <span style={getMemberTypeStyle(selectedMember.member_type)}>
+                  {getMemberTypeText(selectedMember.member_type)}
+                </span>
               </div>
 
               <button onClick={closeDetail} style={styles.closeButton}>닫기</button>
@@ -5338,6 +5393,30 @@ const styles = {
     fontSize: 16,
     margin: 0,
     marginBottom: 8,
+  },
+  memberTypeRow: {
+    display: "flex",
+    gap: 8,
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  generalMemberBadge: {
+    background: "#262626",
+    color: "#ddd",
+    border: "1px solid #444",
+    borderRadius: 999,
+    padding: "5px 9px",
+    fontSize: 12,
+    fontWeight: 900,
+  },
+  ptMemberBadge: {
+    background: "#172554",
+    color: "#bfdbfe",
+    border: "1px solid #1d4ed8",
+    borderRadius: 999,
+    padding: "5px 9px",
+    fontSize: 12,
+    fontWeight: 900,
   },
   memberSalesRow: {
     display: "flex",
