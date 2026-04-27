@@ -135,6 +135,8 @@ export default function Page() {
   const [memberSortMode, setMemberSortMode] = useState("default");
   const [showInactiveMembers, setShowInactiveMembers] = useState(false);
   const [scheduleMemberId, setScheduleMemberId] = useState("");
+  const [scheduleSecondMemberId, setScheduleSecondMemberId] = useState("");
+  const [editingSchedule, setEditingSchedule] = useState(null);
   const [scheduleDate, setScheduleDate] = useState(getTodayDateString());
   const [scheduleStartTime, setScheduleStartTime] = useState("");
   const [scheduleEndTime, setScheduleEndTime] = useState("");
@@ -387,6 +389,8 @@ export default function Page() {
 
   function resetScheduleForm() {
     setScheduleMemberId("");
+    setScheduleSecondMemberId("");
+    setEditingSchedule(null);
     setScheduleDate(getTodayDateString());
     setScheduleStartTime("");
     setScheduleEndTime("");
@@ -405,6 +409,25 @@ export default function Page() {
     setShowScheduleModal(false);
     setReturnToScheduleCheckAfterAdd(false);
     resetScheduleForm();
+  }
+
+  function startEditSchedule(schedule) {
+    setEditingSchedule(schedule);
+    setScheduleMemberId(schedule.member_id || "");
+    setScheduleSecondMemberId("");
+    setScheduleDate(schedule.schedule_date || getTodayDateString());
+    setScheduleStartTime(normalizeTimeValue(schedule.start_time || ""));
+    setScheduleEndTime(
+      schedule.end_time
+        ? normalizeTimeValue(schedule.end_time)
+        : addMinutesToTime(schedule.start_time, 60)
+    );
+    setScheduleType(schedule.type || "pt");
+    setScheduleMemo(schedule.memo || "");
+    setReturnToScheduleCheckAfterAdd(showScheduleCheckModal);
+    setShowScheduleCheckModal(false);
+    setShowScheduleModal(true);
+    loadSelectedDateSchedules(schedule.schedule_date || getTodayDateString());
   }
 
   function openScheduleCheckModal() {
@@ -470,7 +493,7 @@ export default function Page() {
     openDetail(member, "menu");
   }
 
-  async function saveScheduleRow(row) {
+  async function saveScheduleRow(row, options = {}) {
     const { error } = await supabase.from("schedules").insert(row);
 
     if (error) {
@@ -483,6 +506,10 @@ export default function Page() {
 
       alert("스케줄 저장 실패: " + error.message);
       return false;
+    }
+
+    if (options.skipAfterSave) {
+      return true;
     }
 
     const shouldReturnToScheduleCheck = returnToScheduleCheckAfterAdd;
@@ -502,13 +529,40 @@ export default function Page() {
     return true;
   }
 
+  async function finishScheduleSave(date, message = "스케줄이 저장되었습니다.") {
+    const shouldReturnToScheduleCheck = returnToScheduleCheckAfterAdd;
+
+    closeScheduleModal();
+    closeScheduleConflictModal();
+
+    await loadSchedules(getTodayDateString());
+    await loadScheduleCheckList(date);
+    setScheduleCheckDate(date);
+
+    if (shouldReturnToScheduleCheck) {
+      setShowScheduleCheckModal(true);
+    }
+
+    alert(message);
+  }
+
   async function addSchedule(forceSave = false) {
     if (!scheduleMemberId) return alert("회원을 선택하세요.");
     if (!scheduleDate) return alert("날짜를 선택하세요.");
     if (!scheduleStartTime) return alert("시작 시간을 입력하세요.");
 
+    if (scheduleType === "group" && scheduleSecondMemberId && scheduleSecondMemberId === scheduleMemberId) {
+      alert("그룹PT 두 번째 회원은 첫 번째 회원과 달라야 합니다.");
+      return;
+    }
+
+    if (editingSchedule && scheduleSecondMemberId) {
+      alert("스케줄 수정 시에는 두 번째 회원을 추가할 수 없습니다. 그룹PT 추가는 새 스케줄 등록에서 해주세요.");
+      return;
+    }
+
     const startMinutes = timeToMinutes(scheduleStartTime);
-    const endTime = scheduleEndTime || addMinutesToTime(scheduleStartTime, 50);
+    const endTime = getAutoScheduleEndTime(scheduleStartTime);
     const endMinutes = timeToMinutes(endTime);
 
     if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
@@ -516,15 +570,19 @@ export default function Page() {
       return;
     }
 
-    const row = {
-      member_id: scheduleMemberId,
+    const memberIds = scheduleType === "group" && scheduleSecondMemberId
+      ? [scheduleMemberId, scheduleSecondMemberId]
+      : [scheduleMemberId];
+
+    const rows = memberIds.map((memberId) => ({
+      member_id: memberId,
       schedule_date: scheduleDate,
       start_time: scheduleStartTime,
       end_time: endTime,
       type: scheduleType,
       memo: scheduleMemo.trim(),
       allow_over_capacity: false,
-    };
+    }));
 
     const { data: sameDateSchedules, error: checkError } = await supabase
       .from("schedules")
@@ -539,9 +597,10 @@ export default function Page() {
 
     const conflicts = (sameDateSchedules || []).filter((schedule) => {
       if (schedule.status === "cancelled") return false;
+      if (editingSchedule && schedule.id === editingSchedule.id) return false;
 
       const existingStart = timeToMinutes(schedule.start_time);
-      const existingEnd = timeToMinutes(schedule.end_time || addMinutesToTime(schedule.start_time, 50));
+      const existingEnd = timeToMinutes(schedule.end_time || addMinutesToTime(schedule.start_time, 60));
 
       if (existingStart === null || existingEnd === null) return false;
 
@@ -549,18 +608,106 @@ export default function Page() {
     });
 
     if (conflicts.length > 0 && !forceSave) {
-      setPendingSchedule(row);
+      if (editingSchedule) {
+        setPendingSchedule({
+          ...rows[0],
+          id: editingSchedule.id,
+          __mode: "edit",
+        });
+      } else {
+        setPendingSchedule(
+          rows.length === 1
+            ? rows[0]
+            : {
+                __mode: "group",
+                rows,
+              }
+        );
+      }
+
       setConflictSchedules(conflicts);
       setShowScheduleConflictModal(true);
       await loadSelectedDateSchedules(scheduleDate);
       return;
     }
 
-    await saveScheduleRow(row);
+    if (editingSchedule) {
+      const { error } = await supabase
+        .from("schedules")
+        .update(rows[0])
+        .eq("id", editingSchedule.id);
+
+      if (error) {
+        alert("스케줄 수정 실패: " + error.message);
+        return;
+      }
+
+      closeScheduleModal();
+      await loadSchedules(getTodayDateString());
+      await loadSelectedDateSchedules(scheduleDate);
+
+      if (returnToScheduleCheckAfterAdd) {
+        setShowScheduleCheckModal(true);
+        await loadScheduleCheckList(scheduleDate);
+      }
+
+      alert("스케줄이 수정되었습니다.");
+      return;
+    }
+
+    for (const row of rows) {
+      const ok = await saveScheduleRow(row, { skipAfterSave: true });
+      if (!ok) return;
+    }
+
+    await finishScheduleSave(
+      scheduleDate,
+      rows.length > 1 ? "그룹PT 스케줄이 저장되었습니다." : "스케줄이 저장되었습니다."
+    );
   }
 
   async function forceAddSchedule() {
     if (!pendingSchedule) return;
+
+    if (pendingSchedule.__mode === "edit") {
+      const { __mode, id, ...row } = pendingSchedule;
+
+      const { error } = await supabase
+        .from("schedules")
+        .update({
+          ...row,
+          allow_over_capacity: true,
+        })
+        .eq("id", id);
+
+      if (error) {
+        alert("스케줄 수정 실패: " + error.message);
+        return;
+      }
+
+      setShowScheduleConflictModal(false);
+      setPendingSchedule(null);
+      closeScheduleModal();
+      await loadSchedules(getTodayDateString());
+      await loadScheduleCheckList(row.schedule_date);
+      alert("스케줄이 수정되었습니다.");
+      return;
+    }
+
+    if (pendingSchedule.__mode === "group") {
+      const date = pendingSchedule.rows[0]?.schedule_date || getTodayDateString();
+
+      for (const row of pendingSchedule.rows) {
+        const ok = await saveScheduleRow({
+          ...row,
+          allow_over_capacity: true,
+        }, { skipAfterSave: true });
+        if (!ok) return;
+      }
+
+      await finishScheduleSave(date, "그룹PT 스케줄이 저장되었습니다.");
+      return;
+    }
 
     await saveScheduleRow({
       ...pendingSchedule,
@@ -652,7 +799,7 @@ export default function Page() {
   }
 
   function formatScheduleRange(schedule) {
-    const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 50);
+    const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 60);
     return `${formatTime(schedule.start_time)} ~ ${formatTime(endTime)}`;
   }
 
@@ -674,7 +821,7 @@ export default function Page() {
 
   function addToGoogleCalendar(schedule) {
     const member = getScheduleMember(schedule) || schedule.members;
-    const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 50);
+    const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 60);
 
     const start = formatGoogleCalendarDateTime(schedule.schedule_date, schedule.start_time);
     const end = formatGoogleCalendarDateTime(schedule.schedule_date, endTime);
@@ -711,7 +858,7 @@ export default function Page() {
 
   function addToDeviceCalendar(schedule) {
     const member = getScheduleMember(schedule) || schedule.members;
-    const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 50);
+    const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 60);
 
     const start = formatIcsUtcDateTime(schedule.schedule_date, schedule.start_time);
     const end = formatIcsUtcDateTime(schedule.schedule_date, endTime);
@@ -826,6 +973,10 @@ export default function Page() {
     date.setMinutes(date.getMinutes() + minutesToAdd);
 
     return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  }
+
+  function getAutoScheduleEndTime(startTime) {
+    return startTime ? addMinutesToTime(startTime, 60) : "";
   }
 
   function openScheduleMember(schedule) {
@@ -3004,12 +3155,21 @@ export default function Page() {
                         {isCancelled ? "취소됨" : isNoShow ? "노쇼" : "완료됨"}
                       </button>
                     ) : (
-                      <button
-                        onClick={() => openActionModal(schedule)}
-                        style={styles.incompleteCompleteButton}
-                      >
-                        처리하기
-                      </button>
+                      <>
+                        <button
+                          onClick={() => openActionModal(schedule)}
+                          style={styles.incompleteCompleteButton}
+                        >
+                          처리하기
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => startEditSchedule(schedule)}
+                          style={styles.scheduleEditButton}
+                        >
+                          수정
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -3508,12 +3668,21 @@ export default function Page() {
                                 : "완료됨"}
                           </button>
                         ) : (
-                          <button
-                            onClick={() => openActionModal(schedule)}
-                            style={styles.incompleteCompleteButton}
-                          >
-                            처리
-                          </button>
+                          <>
+                            <button
+                              onClick={() => openActionModal(schedule)}
+                              style={styles.incompleteCompleteButton}
+                            >
+                              처리
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => startEditSchedule(schedule)}
+                              style={styles.scheduleEditButton}
+                            >
+                              수정
+                            </button>
+                          </>
                         )}
 
                         <button
@@ -3595,7 +3764,7 @@ export default function Page() {
         <div style={styles.modalOverlay}>
           <section style={styles.modalBox}>
             <div style={styles.detailTop}>
-              <h2 style={styles.modalTitle}>스케줄 추가</h2>
+              <h2 style={styles.modalTitle}>{editingSchedule ? "스케줄 수정" : "스케줄 추가"}</h2>
               <button onClick={closeScheduleModal} style={styles.closeButton}>
                 닫기
               </button>
@@ -3614,6 +3783,26 @@ export default function Page() {
                 </option>
               ))}
             </select>
+
+            {scheduleType === "group" && !editingSchedule && (
+              <>
+                <label style={styles.label}>두 번째 회원 선택</label>
+                <select
+                  value={scheduleSecondMemberId}
+                  onChange={(e) => setScheduleSecondMemberId(e.target.value)}
+                  style={styles.input}
+                >
+                  <option value="">2:1 그룹PT면 두 번째 회원을 선택하세요</option>
+                  {activeMembers
+                    .filter((member) => member.id !== scheduleMemberId)
+                    .map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name} · {getMemberTypeText(member.member_type)} · PT {member.pt_remaining || 0}회
+                      </option>
+                    ))}
+                </select>
+              </>
+            )}
 
             <label style={styles.label}>날짜</label>
             <input
@@ -3665,10 +3854,7 @@ export default function Page() {
               onChange={(e) => {
                 const value = e.target.value;
                 setScheduleStartTime(value);
-
-                if (value && !scheduleEndTime) {
-                  setScheduleEndTime(addMinutesToTime(value, 50));
-                }
+                setScheduleEndTime(getAutoScheduleEndTime(value));
               }}
               style={styles.input}
             >
@@ -3680,43 +3866,21 @@ export default function Page() {
               ))}
             </select>
 
-            <label style={styles.label}>종료 시간</label>
-            <select
-              value={scheduleEndTime}
-              onChange={(e) => setScheduleEndTime(e.target.value)}
-              style={styles.input}
-            >
-              <option value="">종료 시간 선택 안 함</option>
-              {getTimeOptions().map((time) => (
-                <option key={time} value={time}>
-                  {formatTime(time)}
-                </option>
-              ))}
-            </select>
-
-            <div style={styles.timeQuickRow}>
-              <button
-                type="button"
-                onClick={() => scheduleStartTime && setScheduleEndTime(addMinutesToTime(scheduleStartTime, 50))}
-                style={styles.timeQuickButton}
-              >
-                50분 수업
-              </button>
-              <button
-                type="button"
-                onClick={() => scheduleStartTime && setScheduleEndTime(addMinutesToTime(scheduleStartTime, 60))}
-                style={styles.timeQuickButton}
-              >
-                60분 수업
-              </button>
+            <div style={styles.autoEndTimeBox}>
+              <strong>종료 시간</strong>
+              <p>
+                {scheduleStartTime
+                  ? `${formatTime(scheduleStartTime)} 시작 → ${formatTime(getAutoScheduleEndTime(scheduleStartTime))} 종료`
+                  : "시작 시간을 선택하면 종료 시간이 자동으로 1시간 뒤로 설정됩니다."}
+              </p>
             </div>
 
             {scheduleStartTime &&
               getSelectedDateActiveSchedules().some((schedule) => {
                 const newStart = timeToMinutes(scheduleStartTime);
-                const newEnd = timeToMinutes(scheduleEndTime || addMinutesToTime(scheduleStartTime, 50));
+                const newEnd = timeToMinutes(scheduleEndTime || getAutoScheduleEndTime(scheduleStartTime));
                 const oldStart = timeToMinutes(schedule.start_time);
-                const oldEnd = timeToMinutes(schedule.end_time || addMinutesToTime(schedule.start_time, 50));
+                const oldEnd = timeToMinutes(schedule.end_time || addMinutesToTime(schedule.start_time, 60));
 
                 if (newStart === null || newEnd === null || oldStart === null || oldEnd === null) return false;
 
@@ -3750,7 +3914,7 @@ export default function Page() {
 
             <div style={styles.editActions}>
               <button onClick={addSchedule} style={styles.primaryButton}>
-                저장
+                {editingSchedule ? "수정 저장" : scheduleType === "group" && scheduleSecondMemberId ? "그룹PT 저장" : "저장"}
               </button>
               <button onClick={closeScheduleModal} style={styles.cancelButton}>
                 취소
@@ -6085,6 +6249,24 @@ const styles = {
     marginBottom: 16,
     fontSize: 14,
     fontWeight: 900,
+  },
+  autoEndTimeBox: {
+    background: "#222",
+    border: "1px solid #444",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+    color: "#fff",
+  },
+  scheduleEditButton: {
+    background: "#181818",
+    color: "#f5f5f5",
+    border: "1px solid #444",
+    borderRadius: 12,
+    padding: "10px 12px",
+    fontWeight: 900,
+    fontSize: 14,
+    whiteSpace: "nowrap",
   },
   timeQuickRow: {
     display: "grid",
