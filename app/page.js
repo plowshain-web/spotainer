@@ -3960,9 +3960,7 @@ export default function Page() {
                   </button>
                   <button
                     onClick={() => {
-                      const memberForWorkout = selectedMember;
-                      closeDetail(false);
-                      openWorkout(memberForWorkout);
+                      openWorkout(selectedMember);
                     }}
                     style={styles.menuButton}
                   >
