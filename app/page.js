@@ -1146,12 +1146,6 @@ export default function Page() {
 
   summaryGroups.vipDormant = summaryGroups.dormant.filter((m) => m.is_vip);
 
-  const todayTodoItems = [
-    { key: "rejoin", label: "재등록 상담", count: summaryGroups.rejoin.length, desc: "PT 3~5회 남음" },
-    { key: "urgent", label: "강한 경고", count: summaryGroups.urgent.length, desc: "PT 0~2회 남음" },
-    { key: "dormant", label: "연락 필요", count: summaryGroups.dormant.length, desc: "14일 이상 미출석" },
-    { key: "vipDormant", label: "VIP 연락", count: summaryGroups.vipDormant.length, desc: "고매출 회원 우선" },
-  ];
 
   const summaryConfig = {
     rejoin: {
@@ -2775,41 +2769,6 @@ export default function Page() {
           <span style={styles.contactListCount}>{attentionList.length}명</span>
           <span style={styles.actionCardArrow}>›</span>
         </button>
-      </section>
-
-      <section style={styles.todoBox}>
-        <div style={styles.todoTop}>
-          <div>
-            <h2 style={styles.todoTitle}>오늘 할 일</h2>
-            <p style={styles.todoDesc}>재등록, 이탈 방지, VIP 관리를 한 번에 확인하세요.</p>
-          </div>
-
-          <div
-            style={
-              salesData.todayTotal > 0
-                ? styles.todaySalesGood
-                : styles.todaySalesWarning
-            }
-          >
-            {salesData.todayTotal > 0
-              ? `오늘 매출 ${salesData.todayTotal.toLocaleString("ko-KR")}원`
-              : "오늘 매출 없음"}
-          </div>
-        </div>
-
-        <div style={styles.todoGrid}>
-          {todayTodoItems.map((item) => (
-            <button
-              key={item.key}
-              onClick={() => setSummaryModal(item.key)}
-              style={styles.todoCard}
-            >
-              <span style={styles.todoCardLabel}>{item.label}</span>
-              <strong style={styles.todoCardCount}>{item.count}명</strong>
-              <span style={styles.todoCardDesc}>{item.desc}</span>
-            </button>
-          ))}
-        </div>
       </section>
 
       <section style={styles.incompleteBox}>
