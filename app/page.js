@@ -112,6 +112,9 @@ export default function Page() {
   const [showScheduleCheckModal, setShowScheduleCheckModal] = useState(false);
   const [scheduleCheckDate, setScheduleCheckDate] = useState(getTodayDateString());
   const [scheduleCheckList, setScheduleCheckList] = useState([]);
+  const [showScheduleConflictModal, setShowScheduleConflictModal] = useState(false);
+  const [conflictSchedules, setConflictSchedules] = useState([]);
+  const [pendingSchedule, setPendingSchedule] = useState(null);
   const [actionModalSchedule, setActionModalSchedule] = useState(null);
   const [showMemberListModal, setShowMemberListModal] = useState(false);
   const [returnToMemberListAfterDetail, setReturnToMemberListAfterDetail] = useState(false);
@@ -320,6 +323,12 @@ export default function Page() {
     setScheduleCheckList([]);
   }
 
+  function closeScheduleConflictModal() {
+    setShowScheduleConflictModal(false);
+    setConflictSchedules([]);
+    setPendingSchedule(null);
+  }
+
   function openScheduleAddFromCheck() {
     resetScheduleForm();
     setScheduleDate(scheduleCheckDate || getTodayDateString());
@@ -364,7 +373,29 @@ export default function Page() {
     openDetail(member, "menu");
   }
 
-  async function addSchedule() {
+  async function saveScheduleRow(row) {
+    const { error } = await supabase.from("schedules").insert(row);
+
+    if (error) {
+      alert("스케줄 저장 실패: " + error.message);
+      return false;
+    }
+
+    closeScheduleModal();
+    closeScheduleConflictModal();
+
+    await loadSchedules(getTodayDateString());
+
+    if (showScheduleCheckModal) {
+      await loadScheduleCheckList(row.schedule_date);
+      setScheduleCheckDate(row.schedule_date);
+    }
+
+    alert("스케줄이 저장되었습니다.");
+    return true;
+  }
+
+  async function addSchedule(forceSave = false) {
     if (!scheduleMemberId) return alert("회원을 선택하세요.");
     if (!scheduleDate) return alert("날짜를 선택하세요.");
     if (!scheduleStartTime) return alert("시작 시간을 입력하세요.");
@@ -378,6 +409,15 @@ export default function Page() {
       return;
     }
 
+    const row = {
+      member_id: scheduleMemberId,
+      schedule_date: scheduleDate,
+      start_time: scheduleStartTime,
+      end_time: endTime,
+      type: scheduleType,
+      memo: scheduleMemo.trim(),
+    };
+
     const { data: sameDateSchedules, error: checkError } = await supabase
       .from("schedules")
       .select("*, members(*)")
@@ -389,7 +429,7 @@ export default function Page() {
       return;
     }
 
-    const conflict = (sameDateSchedules || []).find((schedule) => {
+    const conflicts = (sameDateSchedules || []).filter((schedule) => {
       if (schedule.status === "cancelled") return false;
 
       const existingStart = timeToMinutes(schedule.start_time);
@@ -400,36 +440,21 @@ export default function Page() {
       return existingStart < endMinutes && existingEnd > startMinutes;
     });
 
-    if (conflict) {
-      const memberName = conflict.members?.name || "기존 회원";
-      alert(
-        `이미 겹치는 스케줄이 있습니다.\n\n${formatTime(conflict.start_time)} ~ ${formatTime(conflict.end_time || addMinutesToTime(conflict.start_time, 50))}\n${memberName}`
-      );
+    if (conflicts.length > 0 && !forceSave) {
+      setPendingSchedule(row);
+      setConflictSchedules(conflicts);
+      setShowScheduleConflictModal(true);
       await loadSelectedDateSchedules(scheduleDate);
       return;
     }
 
-    const { error } = await supabase.from("schedules").insert({
-      member_id: scheduleMemberId,
-      schedule_date: scheduleDate,
-      start_time: scheduleStartTime,
-      end_time: endTime,
-      type: scheduleType,
-      memo: scheduleMemo.trim(),
-    });
+    await saveScheduleRow(row);
+  }
 
-    if (error) {
-      alert("스케줄 저장 실패: " + error.message);
-      return;
-    }
+  async function forceAddSchedule() {
+    if (!pendingSchedule) return;
 
-    closeScheduleModal();
-    await loadSchedules(getTodayDateString());
-    if (showScheduleCheckModal) {
-      await loadScheduleCheckList(scheduleDate);
-      setScheduleCheckDate(scheduleDate);
-    }
-    alert("스케줄이 저장되었습니다.");
+    await saveScheduleRow(pendingSchedule);
   }
 
   async function deleteSchedule(schedule) {
@@ -454,6 +479,7 @@ export default function Page() {
   function getScheduleTypeText(type) {
     if (type === "ot") return "OT";
     if (type === "consult") return "상담";
+    if (type === "group") return "그룹PT";
     return "PT";
   }
 
@@ -511,6 +537,36 @@ export default function Page() {
     }
 
     return { text: "예약", style: styles.scheduleWarningText };
+  }
+
+  function getActiveSchedulesForDate(list = []) {
+    return (list || []).filter((schedule) => schedule.status !== "cancelled");
+  }
+
+  function getSchedulesAtStartTime(list = [], startTime) {
+    return getActiveSchedulesForDate(list).filter((schedule) => schedule.start_time === startTime);
+  }
+
+  function getSlotLevel(count) {
+    if (count >= 3) return "over";
+    if (count >= 2) return "full";
+    if (count === 1) return "one";
+    return "empty";
+  }
+
+  function getSlotStyle(count) {
+    const level = getSlotLevel(count);
+
+    if (level === "over") return styles.scheduleSlotOver;
+    if (level === "full") return styles.scheduleSlotFull;
+    if (level === "one") return styles.scheduleSlotOne;
+
+    return styles.scheduleSlotEmpty;
+  }
+
+  function getSlotLabel(count) {
+    if (count >= 3) return `${count}/2 초과`;
+    return `${count}/2`;
   }
 
   function addMinutesToTime(time, minutesToAdd) {
@@ -2524,16 +2580,10 @@ export default function Page() {
         )}
       </section>
 
-      <section style={styles.scheduleActionWideGrid}>
-        <button onClick={openScheduleModal} style={styles.scheduleAddWideButton}>
-          <span style={styles.actionCardIcon}>▣</span>
-          <span>스케줄 추가</span>
-          <span style={styles.actionCardArrow}>›</span>
-        </button>
-
+      <section style={styles.scheduleAddWideBox}>
         <button onClick={openScheduleCheckModal} style={styles.scheduleAddWideButton}>
           <span style={styles.actionCardIcon}>☰</span>
-          <span>스케줄 확인</span>
+          <span>스케줄 확인 / 추가</span>
           <span style={styles.actionCardArrow}>›</span>
         </button>
       </section>
@@ -2663,6 +2713,37 @@ export default function Page() {
               </button>
             </div>
 
+            <div style={styles.scheduleSlotBox}>
+              <div style={styles.scheduleSlotTop}>
+                <strong>시간별 예약 현황</strong>
+                <span>2명 기준</span>
+              </div>
+
+              <div style={styles.scheduleSlotGrid}>
+                {getTimeOptions().filter((time) => time.endsWith(":00") || time.endsWith(":30")).map((time) => {
+                  const count = getSchedulesAtStartTime(scheduleCheckList, time).length;
+
+                  return (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => {
+                        setScheduleDate(scheduleCheckDate);
+                        setScheduleStartTime(time);
+                        setScheduleEndTime(addMinutesToTime(time, 50));
+                        setShowScheduleModal(true);
+                        loadSelectedDateSchedules(scheduleCheckDate);
+                      }}
+                      style={{ ...styles.scheduleSlotButton, ...getSlotStyle(count) }}
+                    >
+                      <strong>{formatTime(time)}</strong>
+                      <span>{getSlotLabel(count)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {scheduleCheckList.length === 0 ? (
               <div style={styles.scheduleCheckEmpty}>
                 이 날짜에 등록된 스케줄이 없습니다.
@@ -2739,6 +2820,65 @@ export default function Page() {
                 })}
               </div>
             )}
+          </section>
+        </div>
+      )}
+
+      {showScheduleConflictModal && (
+        <div style={styles.whiteModalOverlay}>
+          <section style={styles.whiteModalBox}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>스케줄 중복 경고</h2>
+                <p style={styles.whiteMuted}>
+                  같은 시간대에 이미 등록된 예약이 있습니다. 그룹PT나 예외 상황이면 그래도 추가할 수 있습니다.
+                </p>
+              </div>
+
+              <button onClick={closeScheduleConflictModal} style={styles.whiteCloseButton}>
+                닫기
+              </button>
+            </div>
+
+            <div style={conflictSchedules.length >= 2 ? styles.conflictStrongBox : styles.conflictWarningBox}>
+              <strong>
+                {conflictSchedules.length >= 2
+                  ? "권장 인원 초과 가능성"
+                  : "시간 겹침 확인"}
+              </strong>
+              <p>
+                현재 겹치는 예약 {conflictSchedules.length}건이 있습니다.
+                {conflictSchedules.length >= 2
+                  ? " 2:1 기준을 넘을 수 있으니 꼭 확인하세요."
+                  : " 그룹PT라면 추가해도 됩니다."}
+              </p>
+            </div>
+
+            <div style={styles.conflictList}>
+              {conflictSchedules.map((schedule) => {
+                const member = schedule.members || getScheduleMember(schedule);
+
+                return (
+                  <div key={schedule.id} style={styles.conflictItem}>
+                    <strong>{formatScheduleRange(schedule)}</strong>
+                    <p>
+                      {getScheduleTypeText(schedule.type)} · {member?.name || "회원 정보 없음"}
+                      {member ? ` · PT ${member.pt_remaining || 0}회` : ""}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={styles.whiteActionRowFull}>
+              <button onClick={closeScheduleConflictModal} style={styles.whiteCancelLargeButton}>
+                취소
+              </button>
+
+              <button onClick={forceAddSchedule} style={styles.whiteSaveLargeButton}>
+                그래도 추가
+              </button>
+            </div>
           </section>
         </div>
       )}
@@ -2875,7 +3015,7 @@ export default function Page() {
                 return oldStart < newEnd && oldEnd > newStart;
               }) && (
                 <div style={styles.scheduleConflictBox}>
-                  선택한 시간이 기존 스케줄과 겹칩니다. 다른 시간을 선택하세요.
+                  선택한 시간이 기존 스케줄과 겹칩니다. 저장 시 기존 예약자를 확인한 뒤 추가 여부를 선택할 수 있습니다.
                 </div>
               )}
 
@@ -2886,6 +3026,7 @@ export default function Page() {
               style={styles.input}
             >
               <option value="pt">PT</option>
+              <option value="group">그룹PT</option>
               <option value="ot">OT</option>
               <option value="consult">상담</option>
             </select>
@@ -4816,6 +4957,84 @@ const styles = {
     fontSize: 15,
     lineHeight: 1.5,
     fontWeight: 700,
+  },
+  scheduleSlotBox: {
+    background: "#f3f3f3",
+    border: "1px solid #e5e5e5",
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 16,
+  },
+  scheduleSlotTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 10,
+    alignItems: "center",
+    marginBottom: 12,
+    color: "#111",
+    fontWeight: 900,
+  },
+  scheduleSlotGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+    gap: 8,
+  },
+  scheduleSlotButton: {
+    borderRadius: 14,
+    padding: "12px 10px",
+    textAlign: "left",
+    display: "grid",
+    gap: 5,
+    fontSize: 14,
+    fontWeight: 900,
+  },
+  scheduleSlotEmpty: {
+    background: "#ffffff",
+    color: "#111",
+    border: "1px solid #e5e5e5",
+  },
+  scheduleSlotOne: {
+    background: "#ecfeff",
+    color: "#155e75",
+    border: "1px solid #67e8f9",
+  },
+  scheduleSlotFull: {
+    background: "#fef3c7",
+    color: "#92400e",
+    border: "1px solid #facc15",
+  },
+  scheduleSlotOver: {
+    background: "#fee2e2",
+    color: "#991b1b",
+    border: "1px solid #fecaca",
+  },
+  conflictWarningBox: {
+    background: "#fef3c7",
+    color: "#92400e",
+    border: "1px solid #facc15",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+  },
+  conflictStrongBox: {
+    background: "#fee2e2",
+    color: "#991b1b",
+    border: "1px solid #fecaca",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+  },
+  conflictList: {
+    display: "grid",
+    gap: 10,
+    marginBottom: 14,
+  },
+  conflictItem: {
+    background: "#f3f3f3",
+    border: "1px solid #e5e5e5",
+    borderRadius: 16,
+    padding: 14,
+    color: "#111",
   },
   schedulePreviewBox: {
     background: "#222",
