@@ -68,6 +68,7 @@ export default function Page() {
   const [inbodyList, setInbodyList] = useState([]);
   const [showInbodyModal, setShowInbodyModal] = useState(false);
   const [showAllInbodyModal, setShowAllInbodyModal] = useState(false);
+  const [editingInbodyLog, setEditingInbodyLog] = useState(null);
   const [inbodyMeasuredAt, setInbodyMeasuredAt] = useState(getTodayDateString());
   const [inbodyWeight, setInbodyWeight] = useState("");
   const [inbodySkeletalMuscle, setInbodySkeletalMuscle] = useState("");
@@ -1227,6 +1228,7 @@ export default function Page() {
     setInbodyBasalMetabolicRate("");
     setInbodyVisceralFatLevel("");
     setInbodyMemo("");
+    setEditingInbodyLog(null);
   }
 
   async function loadInbodyLogs(memberId) {
@@ -1249,6 +1251,20 @@ export default function Page() {
 
   function openInbodyAddModal() {
     resetInbodyForm();
+    setShowInbodyModal(true);
+  }
+
+  function openInbodyEditModal(log) {
+    setEditingInbodyLog(log);
+    setInbodyMeasuredAt(log.measured_at || getTodayDateString());
+    setInbodyWeight(log.weight ?? "");
+    setInbodySkeletalMuscle(log.skeletal_muscle ?? "");
+    setInbodyBodyFatMass(log.body_fat_mass ?? "");
+    setInbodyBodyFatPercent(log.body_fat_percent ?? "");
+    setInbodyBmi(log.bmi ?? "");
+    setInbodyBasalMetabolicRate(log.basal_metabolic_rate ?? "");
+    setInbodyVisceralFatLevel(log.visceral_fat_level ?? "");
+    setInbodyMemo(log.memo || "");
     setShowInbodyModal(true);
   }
 
@@ -1277,11 +1293,52 @@ export default function Page() {
     return Math.round(bmi * 10) / 10;
   }
 
+  function getRecommendedCaloriesFromBmr(bmrValue) {
+    const bmr = toNumberOrNull(bmrValue);
+
+    if (!bmr) {
+      return {
+        diet: null,
+        maintain: null,
+        gain: null,
+      };
+    }
+
+    const maintain = Math.round(bmr * 1.35);
+    const diet = Math.round(maintain * 0.8);
+    const gain = Math.round(maintain * 1.1);
+
+    return { diet, maintain, gain };
+  }
+
+  function renderRecommendedCalories(bmrValue, lightMode = false) {
+    const calories = getRecommendedCaloriesFromBmr(bmrValue);
+    const textStyle = lightMode ? styles.recommendCalorieTextLight : styles.recommendCalorieText;
+
+    if (!calories.maintain) {
+      return (
+        <div style={lightMode ? styles.recommendCalorieBoxLight : styles.recommendCalorieBox}>
+          <strong>권장섭취열량</strong>
+          <p style={textStyle}>기초대사량을 입력하면 자동 계산됩니다.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div style={lightMode ? styles.recommendCalorieBoxLight : styles.recommendCalorieBox}>
+        <strong>권장섭취열량</strong>
+        <p style={textStyle}>감량 목표 {calories.diet.toLocaleString("ko-KR")}kcal</p>
+        <p style={textStyle}>유지 목표 {calories.maintain.toLocaleString("ko-KR")}kcal</p>
+        <p style={textStyle}>근육 증가 {calories.gain.toLocaleString("ko-KR")}kcal</p>
+      </div>
+    );
+  }
+
   async function saveInbodyLog() {
     if (!selectedMember) return;
     if (!inbodyMeasuredAt) return alert("측정일을 선택하세요.");
 
-    const { error } = await supabase.from("inbody_logs").insert({
+    const row = {
       member_id: selectedMember.id,
       measured_at: inbodyMeasuredAt,
       weight: toNumberOrNull(inbodyWeight),
@@ -1292,7 +1349,13 @@ export default function Page() {
       basal_metabolic_rate: toNumberOrNull(inbodyBasalMetabolicRate),
       visceral_fat_level: toNumberOrNull(inbodyVisceralFatLevel),
       memo: inbodyMemo.trim(),
-    });
+    };
+
+    const request = editingInbodyLog
+      ? supabase.from("inbody_logs").update(row).eq("id", editingInbodyLog.id)
+      : supabase.from("inbody_logs").insert(row);
+
+    const { error } = await request;
 
     if (error) {
       alert("인바디 기록 저장 실패: " + error.message);
@@ -1301,7 +1364,7 @@ export default function Page() {
 
     closeInbodyModal();
     await loadInbodyLogs(selectedMember.id);
-    alert(`${selectedMember.name} 인바디 기록이 저장되었습니다.`);
+    alert(`${selectedMember.name} 인바디 기록이 ${editingInbodyLog ? "수정" : "저장"}되었습니다.`);
   }
 
   async function deleteInbodyLog(log) {
@@ -1404,9 +1467,14 @@ export default function Page() {
           </div>
 
           {showDelete && (
-            <button onClick={() => deleteInbodyLog(log)} style={styles.whiteDeleteButton}>
-              삭제
-            </button>
+            <div style={styles.whiteActionRow}>
+              <button onClick={() => openInbodyEditModal(log)} style={styles.whiteEditButton}>
+                수정
+              </button>
+              <button onClick={() => deleteInbodyLog(log)} style={styles.whiteDeleteButton}>
+                삭제
+              </button>
+            </div>
           )}
         </div>
 
@@ -1419,6 +1487,8 @@ export default function Page() {
           <p style={styles.whiteSetText}>기초대사량 {formatMetric(log.basal_metabolic_rate, "kcal", 0)}</p>
           <p style={styles.whiteSetText}>내장지방레벨 {formatMetric(log.visceral_fat_level, "레벨", 0)}</p>
         </div>
+
+        {renderRecommendedCalories(log.basal_metabolic_rate, true)}
 
         {log.memo && <p style={styles.whiteMemo}>메모: {log.memo}</p>}
       </div>
@@ -2679,6 +2749,8 @@ export default function Page() {
                             {renderInbodyMetric("기초대사량", latest.basal_metabolic_rate, "kcal", previous?.basal_metabolic_rate, first?.basal_metabolic_rate, 0, false)}
                             {renderInbodyMetric("내장지방", latest.visceral_fat_level, "레벨", previous?.visceral_fat_level, first?.visceral_fat_level, 0, true)}
                           </div>
+
+                          {renderRecommendedCalories(latest.basal_metabolic_rate)}
                         </>
                       );
                     })()}
@@ -2790,8 +2862,8 @@ export default function Page() {
           <section style={styles.whiteModalBox}>
             <div style={styles.whiteModalTop}>
               <div>
-                <h2 style={styles.whiteModalTitle}>{selectedMember.name} 인바디 추가</h2>
-                <p style={styles.whiteMuted}>측정값은 비어 있어도 저장할 수 있습니다.</p>
+                <h2 style={styles.whiteModalTitle}>{selectedMember.name} {editingInbodyLog ? "인바디 수정" : "인바디 추가"}</h2>
+                <p style={styles.whiteMuted}>BMI는 회원 키와 체중으로 자동 계산됩니다.</p>
               </div>
 
               <button onClick={closeInbodyModal} style={styles.whiteCloseButton}>
@@ -2882,6 +2954,8 @@ export default function Page() {
               </div>
             </div>
 
+            {renderRecommendedCalories(inbodyBasalMetabolicRate, true)}
+
             <label style={styles.whiteLabel}>내장지방레벨</label>
             <input
               value={inbodyVisceralFatLevel}
@@ -2901,7 +2975,7 @@ export default function Page() {
 
             <div style={styles.whiteActionRowFull}>
               <button onClick={saveInbodyLog} style={styles.whiteSaveLargeButton}>
-                저장
+                {editingInbodyLog ? "수정 저장" : "저장"}
               </button>
               <button onClick={closeInbodyModal} style={styles.whiteCancelLargeButton}>
                 취소
@@ -5090,5 +5164,35 @@ const styles = {
     marginTop: 10,
     marginBottom: 0,
     fontSize: 15,
+  },
+  recommendCalorieBox: {
+    background: "#202020",
+    border: "1px solid #333",
+    borderRadius: 18,
+    padding: 16,
+    marginTop: 14,
+    marginBottom: 14,
+    color: "#fff",
+  },
+  recommendCalorieBoxLight: {
+    background: "#fff",
+    border: "1px solid #e5e5e5",
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 10,
+    marginBottom: 14,
+    color: "#111",
+  },
+  recommendCalorieText: {
+    color: "#ddd",
+    margin: "7px 0 0",
+    fontSize: 15,
+    fontWeight: 800,
+  },
+  recommendCalorieTextLight: {
+    color: "#333",
+    margin: "7px 0 0",
+    fontSize: 15,
+    fontWeight: 800,
   },
 };
