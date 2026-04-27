@@ -37,6 +37,9 @@ export default function Page() {
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");
   const [summaryModal, setSummaryModal] = useState(null);
+  const [contactModalMember, setContactModalMember] = useState(null);
+  const [contactResult, setContactResult] = useState("pending");
+  const [contactNote, setContactNote] = useState("");
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [name, setName] = useState("");
@@ -984,14 +987,51 @@ export default function Page() {
     );
   }
 
-  function isRecentlyContacted(member, days = 2) {
-    if (!member?.last_contacted_at) return false;
+  function getDateOnlyString(date = new Date()) {
+    const target = new Date(date);
+    const year = target.getFullYear();
+    const month = String(target.getMonth() + 1).padStart(2, "0");
+    const day = String(target.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
 
-    const contactedAt = new Date(member.last_contacted_at);
-    const now = new Date();
-    const diffDays = (now.getTime() - contactedAt.getTime()) / (1000 * 60 * 60 * 24);
+  function addDaysDateString(days) {
+    const target = new Date();
+    target.setDate(target.getDate() + days);
+    return getDateOnlyString(target);
+  }
 
-    return diffDays < days;
+  function isContactSuccess(member) {
+    return member?.last_contact_result === "success";
+  }
+
+  function isContactFuture(member) {
+    if (!member?.next_contact_date) return false;
+    return String(member.next_contact_date) > getDateOnlyString();
+  }
+
+  function isContactDue(member) {
+    if (!member?.next_contact_date) return false;
+    return String(member.next_contact_date) <= getDateOnlyString();
+  }
+
+  function shouldShowForContact(member) {
+    if (isContactSuccess(member)) return false;
+    if (isContactFuture(member)) return false;
+    return true;
+  }
+
+  function getContactResultText(result) {
+    if (result === "success") return "성공";
+    if (result === "fail") return "실패";
+    if (result === "pending") return "보류";
+    return "미기록";
+  }
+
+  function getNextContactDateByResult(result) {
+    if (result === "pending") return addDaysDateString(3);
+    if (result === "fail") return addDaysDateString(7);
+    return null;
   }
 
   function getPtStatus(member) {
@@ -1013,15 +1053,15 @@ export default function Page() {
   const summaryGroups = {
     rejoin: activeMembers.filter((m) => {
       const pt = m.pt_remaining || 0;
-      return pt >= 3 && pt <= 5 && !isRecentlyContacted(m, 2);
+      return pt >= 3 && pt <= 5 && shouldShowForContact(m);
     }),
     urgent: activeMembers.filter((m) => {
       const pt = m.pt_remaining || 0;
-      return pt <= 2 && !isRecentlyContacted(m, 2);
+      return pt <= 2 && shouldShowForContact(m);
     }),
     dormant: activeMembers.filter((m) => {
       const d = daysSince(m.latest_visit);
-      return (d === null || d >= 14) && !isRecentlyContacted(m, 2);
+      return (d === null || d >= 14) && shouldShowForContact(m);
     }),
   };
 
@@ -1059,19 +1099,18 @@ export default function Page() {
 
   const autoCareMembers = activeMembers.map((m) => {
     const d = daysSince(m.latest_visit);
-    const contacted = isRecentlyContacted(m, 2);
+    const canShow = shouldShowForContact(m);
+    const dueFollowUp = isContactDue(m);
 
     const attendanceStatus =
-      contacted ? null :
-      d === null ? "출석 없음" :
-      d >= 14 ? "14일 미출석" :
-      d >= 7 ? "7일 미출석" :
+      canShow && d === null ? "출석 없음" :
+      canShow && d >= 14 ? "14일 미출석" :
+      canShow && d >= 7 ? "7일 미출석" :
       null;
 
     const ptStatus =
-      contacted ? null :
-      (m.pt_remaining || 0) <= 2 ? "강한 경고" :
-      (m.pt_remaining || 0) <= 5 ? "재등록 상담" :
+      canShow && (m.pt_remaining || 0) <= 2 ? "강한 경고" :
+      canShow && (m.pt_remaining || 0) <= 5 ? "재등록 상담" :
       null;
 
     const latestInbody = (m.inbody_logs || [])
@@ -1082,20 +1121,37 @@ export default function Page() {
 
     const inbodyDays = latestInbody ? daysSince(latestInbody) : null;
     const inbodyStatus =
-      contacted ? null :
-      latestInbody ? (inbodyDays >= 30 ? "인바디 필요" : null) : "인바디 없음";
+      canShow && latestInbody ? (inbodyDays >= 30 ? "인바디 필요" : null) :
+      canShow && !latestInbody ? "인바디 없음" :
+      null;
+
+    const followUpStatus =
+      dueFollowUp && !isContactSuccess(m)
+        ? `재연락 · ${getContactResultText(m.last_contact_result)}`
+        : null;
 
     return {
       ...m,
       attendanceStatus,
       ptStatus,
       inbodyStatus,
+      followUpStatus,
     };
   });
 
-  const attentionList = autoCareMembers.filter(
-    (m) => m.attendanceStatus || m.ptStatus || m.inbodyStatus
-  );
+  const attentionList = autoCareMembers
+    .filter((m) => m.attendanceStatus || m.ptStatus || m.inbodyStatus || m.followUpStatus)
+    .sort((a, b) => {
+      const score = (m) => {
+        if (m.ptStatus === "강한 경고") return 0;
+        if (m.followUpStatus) return 1;
+        if (m.ptStatus === "재등록 상담") return 2;
+        if (m.attendanceStatus) return 3;
+        return 4;
+      };
+
+      return score(a) - score(b);
+    });
 
   async function addMember() {
     if (!name.trim()) return alert("이름을 입력하세요.");
@@ -1490,26 +1546,58 @@ export default function Page() {
     }
   }
 
-  async function markContacted(member) {
+  function openContactModal(member, defaultResult = "pending") {
+    setContactModalMember(member);
+    setContactResult(defaultResult);
+    setContactNote("");
+  }
+
+  function closeContactModal() {
+    setContactModalMember(null);
+    setContactResult("pending");
+    setContactNote("");
+  }
+
+  async function saveContactResult() {
+    if (!contactModalMember) return;
+
     const now = new Date().toISOString();
+    const nextDate = getNextContactDateByResult(contactResult);
 
     const { error } = await supabase
       .from("members")
-      .update({ last_contacted_at: now })
-      .eq("id", member.id);
+      .update({
+        last_contacted_at: now,
+        last_contact_result: contactResult,
+        next_contact_date: nextDate,
+        contact_note: contactNote.trim() || null,
+      })
+      .eq("id", contactModalMember.id);
 
     if (error) {
-      alert("연락 완료 저장 실패: " + error.message);
+      alert("연락 결과 저장 실패: " + error.message);
       return;
     }
 
     setMembers((prev) =>
       prev.map((m) =>
-        m.id === member.id ? { ...m, last_contacted_at: now } : m
+        m.id === contactModalMember.id
+          ? {
+              ...m,
+              last_contacted_at: now,
+              last_contact_result: contactResult,
+              next_contact_date: nextDate,
+              contact_note: contactNote.trim() || null,
+            }
+          : m
       )
     );
 
-    alert(`${member.name} 연락 완료 처리되었습니다.`);
+    const resultText = getContactResultText(contactResult);
+    const nextText = nextDate ? `\n다음 연락일: ${nextDate}` : "";
+    alert(`${contactModalMember.name} 연락 결과가 저장되었습니다.\n결과: ${resultText}${nextText}`);
+
+    closeContactModal();
     await loadMembers();
   }
 
@@ -1543,18 +1631,24 @@ export default function Page() {
 
     const phones = validMembers.map((member) => normalizePhone(member.phone)).join(",");
     const now = new Date().toISOString();
+    const nextDate = addDaysDateString(3);
 
     for (const member of validMembers) {
       await supabase
         .from("members")
-        .update({ last_contacted_at: now })
+        .update({
+          last_contacted_at: now,
+          last_contact_result: "pending",
+          next_contact_date: nextDate,
+          contact_note: "단체 문자 발송",
+        })
         .eq("id", member.id);
     }
 
     window.location.href = `sms:${phones}?body=${encodeURIComponent(message)}`;
 
     await loadMembers();
-    alert("연락 완료 처리되었습니다.");
+    alert(`문자 발송 대상은 보류 처리되었고 ${nextDate}에 다시 연락 리스트에 뜹니다.`);
   }
 
 
@@ -2317,8 +2411,8 @@ export default function Page() {
             </button>
           )}
 
-          <button onClick={() => markContacted(member)} style={styles.summaryContactButton}>
-            완료
+          <button onClick={() => openContactModal(member)} style={styles.summaryContactButton}>
+            기록
           </button>
 
           <button
@@ -2590,7 +2684,7 @@ export default function Page() {
         <div style={styles.todoTop}>
           <div>
             <h2 style={styles.todoTitle}>오늘 관리 필요 회원</h2>
-            <p style={styles.todoDesc}>완료 처리한 회원은 2일 동안 이 목록과 경고 목록에서 제외됩니다.</p>
+            <p style={styles.todoDesc}>연락 결과에 따라 다음 연락일이 자동으로 잡힙니다.</p>
           </div>
 
           <div style={styles.incompleteCount}>{attentionList.length}명</div>
@@ -2605,14 +2699,15 @@ export default function Page() {
                 <div>
                   <strong style={styles.autoCareName}>{m.name}</strong>
                   <div style={styles.autoCareTags}>
+                    {m.followUpStatus && <span style={styles.scheduleDoneText}>{m.followUpStatus}</span>}
                     {m.attendanceStatus && <span style={styles.scheduleWarningText}>{m.attendanceStatus}</span>}
                     {m.ptStatus && <span style={styles.dangerBadge}>{m.ptStatus}</span>}
                     {m.inbodyStatus && <span style={styles.visitBadge}>{m.inbodyStatus}</span>}
                   </div>
                 </div>
 
-                <button onClick={() => markContacted(m)} style={styles.autoCareDoneButton}>
-                  완료
+                <button onClick={() => openContactModal(m)} style={styles.autoCareDoneButton}>
+                  기록
                 </button>
               </div>
             ))}
@@ -2815,6 +2910,76 @@ export default function Page() {
             ) : (
               summaryConfig[summaryModal].list.map(renderSummaryMember)
             )}
+          </section>
+        </div>
+      )}
+
+      {contactModalMember && (
+        <div style={styles.whiteModalOverlay}>
+          <section style={styles.whiteModalBox}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>연락 결과 기록</h2>
+                <p style={styles.whiteMuted}>
+                  {contactModalMember.name} 회원의 연락 결과를 남기면 다음 연락일이 자동 설정됩니다.
+                </p>
+              </div>
+
+              <button onClick={closeContactModal} style={styles.whiteCloseButton}>
+                닫기
+              </button>
+            </div>
+
+            <label style={styles.whiteLabel}>연락 결과</label>
+            <div style={styles.contactResultGrid}>
+              <button
+                type="button"
+                onClick={() => setContactResult("success")}
+                style={contactResult === "success" ? styles.contactResultButtonActive : styles.contactResultButton}
+              >
+                성공
+              </button>
+              <button
+                type="button"
+                onClick={() => setContactResult("pending")}
+                style={contactResult === "pending" ? styles.contactResultButtonActive : styles.contactResultButton}
+              >
+                보류
+              </button>
+              <button
+                type="button"
+                onClick={() => setContactResult("fail")}
+                style={contactResult === "fail" ? styles.contactResultButtonActive : styles.contactResultButton}
+              >
+                실패
+              </button>
+            </div>
+
+            <div style={styles.contactNextBox}>
+              {contactResult === "success"
+                ? "성공으로 저장하면 연락 리스트에서 제외됩니다."
+                : contactResult === "pending"
+                  ? `보류로 저장하면 ${addDaysDateString(3)}에 다시 연락 리스트에 뜹니다.`
+                  : `실패로 저장하면 ${addDaysDateString(7)}에 다시 연락 리스트에 뜹니다.`}
+            </div>
+
+            <label style={styles.whiteLabel}>한줄 메모</label>
+            <input
+              value={contactNote}
+              onChange={(e) => setContactNote(e.target.value)}
+              placeholder="예: 다음주 생각해본다고 함"
+              style={styles.whiteInput}
+            />
+
+            <div style={styles.whiteActionRowFull}>
+              <button onClick={saveContactResult} style={styles.whiteSaveLargeButton}>
+                저장
+              </button>
+
+              <button onClick={closeContactModal} style={styles.whiteCancelLargeButton}>
+                취소
+              </button>
+            </div>
           </section>
         </div>
       )}
@@ -5981,6 +6146,40 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: "4px 10px",
+  },
+  contactResultGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1fr",
+    gap: 8,
+    marginBottom: 14,
+  },
+  contactResultButton: {
+    background: "#f3f3f3",
+    color: "#333",
+    border: "1px solid #ddd",
+    borderRadius: 12,
+    padding: "12px 10px",
+    fontSize: 15,
+    fontWeight: 900,
+  },
+  contactResultButtonActive: {
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #111",
+    borderRadius: 12,
+    padding: "12px 10px",
+    fontSize: 15,
+    fontWeight: 900,
+  },
+  contactNextBox: {
+    background: "#fef3c7",
+    color: "#92400e",
+    border: "1px solid #facc15",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 14,
+    fontSize: 14,
+    fontWeight: 900,
   },
   scheduleCheckModalBox: {
     width: "100%",
