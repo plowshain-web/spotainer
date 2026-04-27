@@ -350,6 +350,14 @@ export default function Page() {
     setShowCenterModal(false);
   }
 
+  function openInactiveMembersFromAdmin() {
+    setShowCenterModal(false);
+
+    setTimeout(() => {
+      openMemberListModal("비활성 회원", true, true);
+    }, 0);
+  }
+
   async function saveCenterInfo() {
     const row = {
       name: centerName.trim(),
@@ -3002,6 +3010,16 @@ export default function Page() {
               </button>
             </div>
 
+            <div style={styles.adminMenuBox}>
+              <button
+                type="button"
+                onClick={openInactiveMembersFromAdmin}
+                style={styles.adminMenuButton}
+              >
+                비활성 회원 관리
+              </button>
+            </div>
+
             <label style={styles.whiteLabel}>센터명</label>
             <input
               value={centerName}
@@ -3033,19 +3051,6 @@ export default function Page() {
               placeholder="예: 운영시간, 주차 안내"
               style={styles.whiteInput}
             />
-
-            <div style={styles.adminMenuBox}>
-              <button
-                type="button"
-                onClick={() => {
-                  closeCenterModal();
-                  openMemberListModal("비활성 회원", true, true);
-                }}
-                style={styles.adminMenuButton}
-              >
-                비활성 회원 관리
-              </button>
-            </div>
 
             <div style={styles.centerPreviewBox}>
               <strong>저장 미리보기</strong>
@@ -6596,7 +6601,7 @@ const styles = {
     border: "1px solid #e5e5e5",
     borderRadius: 16,
     padding: 12,
-    marginBottom: 14,
+    marginBottom: 18,
   },
   adminMenuButton: {
     width: "100%",
@@ -6604,9 +6609,9 @@ const styles = {
     color: "#fff",
     border: "none",
     borderRadius: 14,
-    padding: "14px 12px",
+    padding: "16px 12px",
     fontWeight: 900,
-    fontSize: 16,
+    fontSize: 17,
   },
   centerPreviewBox: {
     background: "#f3f3f3",
