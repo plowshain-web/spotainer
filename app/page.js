@@ -663,6 +663,15 @@ export default function Page() {
     return `${year}${month}${day}T${hour}${minute}00`;
   }
 
+  function formatIcsUtcDateTime(dateText, timeText) {
+    const [year, month, day] = String(dateText || getTodayDateString()).split("-").map(Number);
+    const [hour, minute] = normalizeTimeValue(timeText || "00:00").split(":").map(Number);
+
+    const date = new Date(year, month - 1, day, hour, minute, 0);
+
+    return date.toISOString().replace(/[-:]|\.\d{3}/g, "");
+  }
+
   function addToGoogleCalendar(schedule) {
     const member = getScheduleMember(schedule) || schedule.members;
     const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 50);
@@ -704,8 +713,8 @@ export default function Page() {
     const member = getScheduleMember(schedule) || schedule.members;
     const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 50);
 
-    const start = formatGoogleCalendarDateTime(schedule.schedule_date, schedule.start_time);
-    const end = formatGoogleCalendarDateTime(schedule.schedule_date, endTime);
+    const start = formatIcsUtcDateTime(schedule.schedule_date, schedule.start_time);
+    const end = formatIcsUtcDateTime(schedule.schedule_date, endTime);
     const nowStamp = new Date().toISOString().replace(/[-:]|\.\d{3}/g, "");
 
     const title = `${getScheduleTypeText(schedule.type)} · ${member?.name || "회원"}`;
@@ -716,13 +725,15 @@ export default function Page() {
       schedule.memo ? `메모: ${schedule.memo}` : "",
     ]
       .filter(Boolean)
-      .join("\\n");
+      .join("\n");
 
     const location = centerAddress || centerName || "";
 
     const icsContent = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
       "PRODID:-//Spotainer//Schedule//KO",
       "BEGIN:VEVENT",
       `UID:${schedule.id || Date.now()}@spotainer`,
@@ -739,9 +750,9 @@ export default function Page() {
       "END:VALARM",
       "END:VEVENT",
       "END:VCALENDAR",
-    ].join("\\r\\n");
+    ].join("\r\n");
 
-    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+    const blob = new Blob([icsContent], { type: "text/calendar" });
     const url = URL.createObjectURL(blob);
 
     const fileName = `${getScheduleTypeText(schedule.type)}_${member?.name || "회원"}_${schedule.schedule_date}.ics`
