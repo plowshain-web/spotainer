@@ -692,6 +692,72 @@ export default function Page() {
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
+  function escapeIcsText(value) {
+    return String(value || "")
+      .replace(/\\/g, "\\\\")
+      .replace(/\n/g, "\\n")
+      .replace(/,/g, "\\,")
+      .replace(/;/g, "\\;");
+  }
+
+  function addToDeviceCalendar(schedule) {
+    const member = getScheduleMember(schedule) || schedule.members;
+    const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 50);
+
+    const start = formatGoogleCalendarDateTime(schedule.schedule_date, schedule.start_time);
+    const end = formatGoogleCalendarDateTime(schedule.schedule_date, endTime);
+    const nowStamp = new Date().toISOString().replace(/[-:]|\.\d{3}/g, "");
+
+    const title = `${getScheduleTypeText(schedule.type)} · ${member?.name || "회원"}`;
+    const details = [
+      "Spotainer 스케줄",
+      member ? `회원: ${member.name}` : "",
+      member ? `PT 잔여: ${member.pt_remaining || 0}회` : "",
+      schedule.memo ? `메모: ${schedule.memo}` : "",
+    ]
+      .filter(Boolean)
+      .join("\\n");
+
+    const location = centerAddress || centerName || "";
+
+    const icsContent = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Spotainer//Schedule//KO",
+      "BEGIN:VEVENT",
+      `UID:${schedule.id || Date.now()}@spotainer`,
+      `DTSTAMP:${nowStamp}`,
+      `SUMMARY:${escapeIcsText(title)}`,
+      `DESCRIPTION:${escapeIcsText(details)}`,
+      `LOCATION:${escapeIcsText(location)}`,
+      `DTSTART:${start}`,
+      `DTEND:${end}`,
+      "BEGIN:VALARM",
+      "TRIGGER:-PT10M",
+      "ACTION:DISPLAY",
+      `DESCRIPTION:${escapeIcsText(title)} 10분 전`,
+      "END:VALARM",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\\r\\n");
+
+    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    const fileName = `${getScheduleTypeText(schedule.type)}_${member?.name || "회원"}_${schedule.schedule_date}.ics`
+      .replace(/[\\/:*?"<>|]/g, "_");
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+  }
+
+
   function getSelectedDateActiveSchedules() {
     return selectedDateSchedules.filter((schedule) => schedule.status !== "cancelled");
   }
@@ -2908,10 +2974,18 @@ export default function Page() {
                   <div style={styles.incompleteButtonGroup}>
                     <button
                       type="button"
-                      onClick={() => addToGoogleCalendar(schedule)}
+                      onClick={() => addToDeviceCalendar(schedule)}
                       style={styles.calendarButton}
                     >
-                      캘린더
+                      기본캘린더
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => addToGoogleCalendar(schedule)}
+                      style={styles.googleCalendarButton}
+                    >
+                      구글캘린더
                     </button>
 
                     {isNoShow || isCancelled || isCompleted ? (
@@ -3400,10 +3474,18 @@ export default function Page() {
                       <div style={styles.scheduleCheckButtonGroup}>
                         <button
                           type="button"
-                          onClick={() => addToGoogleCalendar(schedule)}
+                          onClick={() => addToDeviceCalendar(schedule)}
                           style={styles.calendarButton}
                         >
-                          캘린더
+                          기본캘린더
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => addToGoogleCalendar(schedule)}
+                          style={styles.googleCalendarButton}
+                        >
+                          구글캘린더
                         </button>
 
                         {isDone ? (
@@ -5513,6 +5595,16 @@ const styles = {
     background: "#172554",
     color: "#bfdbfe",
     border: "1px solid #1d4ed8",
+    borderRadius: 12,
+    padding: "10px 12px",
+    fontWeight: 900,
+    fontSize: 14,
+    whiteSpace: "nowrap",
+  },
+  googleCalendarButton: {
+    background: "#263a36",
+    color: "#d7fff3",
+    border: "1px solid #3f5f58",
     borderRadius: 12,
     padding: "10px 12px",
     fontWeight: 900,
