@@ -53,6 +53,7 @@ export default function Page() {
   const [editPhone, setEditPhone] = useState("");
   const [editAge, setEditAge] = useState("");
   const [editHeight, setEditHeight] = useState("");
+  const [editPtRemaining, setEditPtRemaining] = useState("");
   const [editGoal, setEditGoal] = useState("");
   const [editNote, setEditNote] = useState("");
   const [editMemo, setEditMemo] = useState("");
@@ -770,6 +771,7 @@ export default function Page() {
     setEditPhone(member.phone || "");
     setEditAge(member.age || "");
     setEditHeight(member.height || "");
+    setEditPtRemaining(member.pt_remaining ?? 0);
     setEditGoal(member.goal || "");
     setEditNote(member.note || "");
     setEditMemo(member.memo || "");
@@ -782,6 +784,7 @@ export default function Page() {
     setEditPhone("");
     setEditAge("");
     setEditHeight("");
+    setEditPtRemaining("");
     setEditGoal("");
     setEditNote("");
     setEditMemo("");
@@ -789,6 +792,9 @@ export default function Page() {
 
   async function saveEdit(id) {
     if (!editName.trim()) return alert("이름을 입력하세요.");
+    if (editPtRemaining !== "" && Number(editPtRemaining) < 0) {
+      return alert("PT 잔여 횟수는 0 이상으로 입력하세요.");
+    }
 
     await supabase
       .from("members")
@@ -797,6 +803,7 @@ export default function Page() {
         phone: editPhone.trim(),
         age: editAge ? Number(editAge) : null,
         height: editHeight ? Number(editHeight) : null,
+        pt_remaining: editPtRemaining === "" ? 0 : Number(editPtRemaining),
         goal: editGoal.trim(),
         note: editNote.trim(),
         memo: editMemo.trim(),
@@ -812,6 +819,7 @@ export default function Page() {
         phone: editPhone.trim(),
         age: editAge ? Number(editAge) : null,
         height: editHeight ? Number(editHeight) : null,
+        pt_remaining: editPtRemaining === "" ? 0 : Number(editPtRemaining),
         goal: editGoal.trim(),
         note: editNote.trim(),
         memo: editMemo.trim(),
@@ -1999,6 +2007,9 @@ export default function Page() {
             <label style={styles.label}>키(cm)</label>
             <input value={editHeight} onChange={(e) => setEditHeight(e.target.value)} type="number" style={styles.input} />
 
+            <label style={styles.label}>남은 PT 횟수</label>
+            <input value={editPtRemaining} onChange={(e) => setEditPtRemaining(e.target.value)} type="number" min="0" style={styles.input} />
+
             <label style={styles.label}>목표</label>
             <input value={editGoal} onChange={(e) => setEditGoal(e.target.value)} style={styles.input} />
 
@@ -2588,6 +2599,19 @@ export default function Page() {
                 />
               </div>
             </div>
+
+            <label style={styles.whiteLabel}>남은 PT 횟수</label>
+            <input
+              value={editPtRemaining}
+              onChange={(e) => setEditPtRemaining(e.target.value)}
+              type="number"
+              min="0"
+              style={styles.whiteInput}
+            />
+
+            <p style={styles.whiteMuted}>
+              기존 회원의 잔여 PT가 실제와 다를 때만 직접 수정하세요.
+            </p>
 
             <label style={styles.whiteLabel}>목표</label>
             <input
@@ -3385,7 +3409,7 @@ export default function Page() {
       )}
 
       {ptModalMember && (
-        <div style={styles.whiteModalOverlay}>
+        <div style={styles.ptModalOverlay}>
           <section style={styles.whiteModalBox}>
             <div style={styles.whiteModalTop}>
               <div>
@@ -4642,16 +4666,17 @@ const styles = {
   },
   memberCardActionRow: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 8,
-    marginBottom: 10,
+    gridTemplateColumns: "1.2fr 0.8fr",
+    gap: 14,
+    marginTop: 8,
+    marginBottom: 14,
   },
   cardPtAddButton: {
     background: "#f5f5f5",
     color: "#111",
     border: "1px solid #ffffff",
     borderRadius: 12,
-    padding: "10px 12px",
+    padding: "9px 12px",
     fontSize: 14,
     fontWeight: 900,
     width: "100%",
@@ -4661,8 +4686,8 @@ const styles = {
     color: "#fca5a5",
     border: "1px solid #7f1d1d",
     borderRadius: 12,
-    padding: "10px 12px",
-    fontSize: 14,
+    padding: "9px 10px",
+    fontSize: 13,
     fontWeight: 900,
     width: "100%",
   },
@@ -4671,8 +4696,8 @@ const styles = {
     color: "#d7fff3",
     border: "1px solid #3f5f58",
     borderRadius: 12,
-    padding: "10px 12px",
-    fontSize: 14,
+    padding: "9px 10px",
+    fontSize: 13,
     fontWeight: 900,
     width: "100%",
   },
@@ -4935,6 +4960,16 @@ const styles = {
     justifyContent: "center",
     alignItems: "center",
     zIndex: 5000,
+    padding: 20,
+  },
+  ptModalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,.72)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 9000,
     padding: 20,
   },
   whiteModalBox: {
