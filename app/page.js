@@ -115,6 +115,7 @@ export default function Page() {
   const [showScheduleConflictModal, setShowScheduleConflictModal] = useState(false);
   const [conflictSchedules, setConflictSchedules] = useState([]);
   const [pendingSchedule, setPendingSchedule] = useState(null);
+  const [returnToScheduleCheckAfterAdd, setReturnToScheduleCheckAfterAdd] = useState(false);
   const [actionModalSchedule, setActionModalSchedule] = useState(null);
   const [showMemberListModal, setShowMemberListModal] = useState(false);
   const [returnToMemberListAfterDetail, setReturnToMemberListAfterDetail] = useState(false);
@@ -309,6 +310,7 @@ export default function Page() {
 
   function closeScheduleModal() {
     setShowScheduleModal(false);
+    setReturnToScheduleCheckAfterAdd(false);
     resetScheduleForm();
   }
 
@@ -332,6 +334,8 @@ export default function Page() {
   function openScheduleAddFromCheck() {
     resetScheduleForm();
     setScheduleDate(scheduleCheckDate || getTodayDateString());
+    setReturnToScheduleCheckAfterAdd(true);
+    setShowScheduleCheckModal(false);
     setShowScheduleModal(true);
     loadSelectedDateSchedules(scheduleCheckDate || getTodayDateString());
   }
@@ -381,14 +385,17 @@ export default function Page() {
       return false;
     }
 
+    const shouldReturnToScheduleCheck = returnToScheduleCheckAfterAdd;
+
     closeScheduleModal();
     closeScheduleConflictModal();
 
     await loadSchedules(getTodayDateString());
+    await loadScheduleCheckList(row.schedule_date);
+    setScheduleCheckDate(row.schedule_date);
 
-    if (showScheduleCheckModal) {
-      await loadScheduleCheckList(row.schedule_date);
-      setScheduleCheckDate(row.schedule_date);
+    if (shouldReturnToScheduleCheck) {
+      setShowScheduleCheckModal(true);
     }
 
     alert("스케줄이 저장되었습니다.");
@@ -508,10 +515,16 @@ export default function Page() {
     return options;
   }
 
+  function normalizeTimeValue(time) {
+    if (!time) return "";
+    const [hourText, minuteText] = String(time).split(":");
+    return `${String(hourText).padStart(2, "0")}:${String(minuteText || "00").padStart(2, "0")}`;
+  }
+
   function timeToMinutes(time) {
     if (!time) return null;
 
-    const [hourText, minuteText] = String(time).split(":");
+    const [hourText, minuteText] = normalizeTimeValue(time).split(":");
     const hour = Number(hourText);
     const minute = Number(minuteText || 0);
 
@@ -544,7 +557,11 @@ export default function Page() {
   }
 
   function getSchedulesAtStartTime(list = [], startTime) {
-    return getActiveSchedulesForDate(list).filter((schedule) => schedule.start_time === startTime);
+    const target = normalizeTimeValue(startTime);
+
+    return getActiveSchedulesForDate(list).filter(
+      (schedule) => normalizeTimeValue(schedule.start_time) === target
+    );
   }
 
   function getSlotLevel(count) {
@@ -614,6 +631,8 @@ export default function Page() {
     const member = getScheduleMember(schedule);
     if (!member) return alert("연결된 회원 정보를 찾을 수 없습니다.");
 
+    const shouldUsePt = schedule.type === "pt" || schedule.type === "group";
+
     if (schedule.status === "completed") {
       alert("이미 완료 처리된 스케줄입니다.");
       return;
@@ -629,7 +648,7 @@ export default function Page() {
       return;
     }
 
-    if (schedule.attendance_checked && schedule.pt_used) {
+    if (schedule.attendance_checked && (schedule.pt_used || !shouldUsePt)) {
       const { error } = await supabase
         .from("schedules")
         .update({ status: "completed" })
@@ -654,7 +673,9 @@ export default function Page() {
 
     if (
       !confirm(
-        `${member.name} 수업을 완료 처리할까요?\n출석 체크와 PT 1회 차감이 함께 진행됩니다.`
+        shouldUsePt
+          ? `${member.name} 수업을 완료 처리할까요?\n출석 체크와 PT 1회 차감이 함께 진행됩니다.`
+          : `${member.name} ${getScheduleTypeText(schedule.type)} 일정을 완료 처리할까요?\n출석 체크만 진행되고 PT는 차감하지 않습니다.`
       )
     ) {
       return;
@@ -671,7 +692,7 @@ export default function Page() {
       }
     }
 
-    if (!schedule.pt_used) {
+    if (shouldUsePt && !schedule.pt_used) {
       if ((member.pt_remaining || 0) <= 0) {
         alert("남은 PT가 없습니다.");
         return;
@@ -711,7 +732,7 @@ export default function Page() {
       .update({
         status: "completed",
         attendance_checked: true,
-        pt_used: true,
+        pt_used: shouldUsePt ? true : false,
       })
       .eq("id", schedule.id);
 
@@ -734,6 +755,13 @@ export default function Page() {
   async function markScheduleNoShow(schedule) {
     const member = getScheduleMember(schedule);
     if (!member) return alert("연결된 회원 정보를 찾을 수 없습니다.");
+
+    const shouldUsePt = schedule.type === "pt" || schedule.type === "group";
+
+    if (!shouldUsePt) {
+      alert(`${getScheduleTypeText(schedule.type)} 일정은 PT 차감이 없어서 노쇼 처리하지 않습니다. 취소 또는 완료로 처리하세요.`);
+      return;
+    }
 
     if (schedule.status === "completed") {
       alert("이미 수업 완료 처리된 스케줄입니다.");
@@ -2731,6 +2759,8 @@ export default function Page() {
                         setScheduleDate(scheduleCheckDate);
                         setScheduleStartTime(time);
                         setScheduleEndTime(addMinutesToTime(time, 50));
+                        setReturnToScheduleCheckAfterAdd(true);
+                        setShowScheduleCheckModal(false);
                         setShowScheduleModal(true);
                         loadSelectedDateSchedules(scheduleCheckDate);
                       }}
@@ -3020,6 +3050,7 @@ export default function Page() {
               )}
 
             <label style={styles.label}>구분</label>
+            <p style={styles.scheduleFormHint}>OT/상담은 PT가 0회인 일반 회원도 등록할 수 있고, 완료해도 PT가 차감되지 않습니다.</p>
             <select
               value={scheduleType}
               onChange={(e) => setScheduleType(e.target.value)}
@@ -5087,6 +5118,12 @@ const styles = {
   schedulePreviewHint: {
     color: "#fde68a",
     margin: "10px 0 0",
+    fontSize: 13,
+    fontWeight: 800,
+  },
+  scheduleFormHint: {
+    color: "#aaa",
+    margin: "-4px 0 10px",
     fontSize: 13,
     fontWeight: 800,
   },
