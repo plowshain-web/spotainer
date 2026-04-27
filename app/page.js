@@ -5714,7 +5714,7 @@ const styles = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 999,
+    zIndex: 10000,
     padding: 20,
   },
   modalBox: {
