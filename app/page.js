@@ -3034,6 +3034,19 @@ export default function Page() {
               style={styles.whiteInput}
             />
 
+            <div style={styles.adminMenuBox}>
+              <button
+                type="button"
+                onClick={() => {
+                  closeCenterModal();
+                  openMemberListModal("비활성 회원", true, true);
+                }}
+                style={styles.adminMenuButton}
+              >
+                비활성 회원 관리
+              </button>
+            </div>
+
             <div style={styles.centerPreviewBox}>
               <strong>저장 미리보기</strong>
               <p>{centerName || "센터명 미입력"}</p>
@@ -4709,14 +4722,6 @@ export default function Page() {
           <span style={styles.actionCardArrow}>›</span>
         </button>
 
-        <button onClick={() => openMemberListModal("비활성 회원", true, true)} style={{ ...styles.actionBigCard, ...responsive.actionCard }}>
-          <span style={{ ...styles.actionBigIcon, color: "#a3a3a3" }}>↩</span>
-          <span>
-            <strong>비활성 회원</strong>
-            <p>숨김 처리한 회원을 복구합니다</p>
-          </span>
-          <span style={styles.actionCardArrow}>›</span>
-        </button>
       </section>
 
       {showMemberListModal && (
@@ -5599,7 +5604,7 @@ const styles = {
   },
   actionSearchGridThree: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gridTemplateColumns: "1fr 1fr",
     gap: 16,
     marginBottom: 34,
   },
@@ -6585,6 +6590,23 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: "4px 10px",
+  },
+  adminMenuBox: {
+    background: "#f7f7f7",
+    border: "1px solid #e5e5e5",
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 14,
+  },
+  adminMenuButton: {
+    width: "100%",
+    background: "#111",
+    color: "#fff",
+    border: "none",
+    borderRadius: 14,
+    padding: "14px 12px",
+    fontWeight: 900,
+    fontSize: 16,
   },
   centerPreviewBox: {
     background: "#f3f3f3",
