@@ -2583,6 +2583,7 @@ export default function Page() {
       .from("workout_sessions")
       .insert({
         member_id: workoutMember.id,
+        workout_date: getTodayDateString(),
         memo: workoutMemo.trim(),
       })
       .select()
@@ -2625,7 +2626,9 @@ export default function Page() {
   }
 
   function getVisibleWorkouts() {
-    return workoutSessions.filter((session) => isToday(session.workout_date));
+    return workoutSessions.filter(
+      (session) => isToday(session.workout_date) || (!session.workout_date && isToday(session.created_at))
+    );
   }
 
   function groupWorkoutSets(sets = []) {
@@ -4718,7 +4721,7 @@ export default function Page() {
       )}
 
       {showAllWorkoutModal && workoutMember && (
-        <div style={styles.whiteModalOverlay}>
+        <div style={styles.workoutHistoryOverlay}>
           <section style={styles.whiteModalBox}>
             <div style={styles.whiteModalTop}>
               <div>
@@ -7057,6 +7060,16 @@ const styles = {
     justifyContent: "center",
     alignItems: "center",
     zIndex: 5000,
+    padding: 20,
+  },
+  workoutHistoryOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,.72)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 13000,
     padding: 20,
   },
   editModalOverlay: {
