@@ -3812,7 +3812,7 @@ export default function Page() {
       )}
 
       {editModalMember && (
-        <div style={styles.whiteModalOverlay}>
+        <div style={styles.editModalOverlay}>
           <section style={styles.whiteModalBox}>
             <div style={styles.whiteModalTop}>
               <div>
@@ -6877,6 +6877,16 @@ const styles = {
     justifyContent: "center",
     alignItems: "center",
     zIndex: 5000,
+    padding: 20,
+  },
+  editModalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,.72)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 12000,
     padding: 20,
   },
   ptModalOverlay: {
