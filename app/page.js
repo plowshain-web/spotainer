@@ -581,49 +581,7 @@ export default function Page() {
   }
 
   function getActiveSchedulesForDate(list = []) {
-    
-  // ===== 자동 관리 리스트 =====
-  const autoCareMembers = activeMembers.map((m) => {
-    const d = daysSince(m.latest_visit);
-    const contacted = isRecentlyContacted(m, 2);
-
-    const attendanceStatus =
-      contacted ? null :
-      d === null ? "출석 없음" :
-      d >= 14 ? "14일 미출석" :
-      d >= 7 ? "7일 미출석" :
-      null;
-
-    const ptStatus =
-      contacted ? null :
-      (m.pt_remaining || 0) <= 2 ? "강한 경고" :
-      (m.pt_remaining || 0) <= 5 ? "재등록 상담" :
-      null;
-
-    const latestInbody = (m.inbody_logs || [])
-      .map((log) => log.measured_at)
-      .filter(Boolean)
-      .sort()
-      .reverse()[0];
-
-    const inbodyDays = latestInbody ? daysSince(latestInbody) : null;
-    const inbodyStatus =
-      contacted ? null :
-      latestInbody ? (inbodyDays >= 30 ? "인바디 필요" : null) : "인바디 없음";
-
-    return {
-      ...m,
-      attendanceStatus,
-      ptStatus,
-      inbodyStatus,
-    };
-  });
-
-  const attentionList = autoCareMembers.filter(
-    (m) => m.attendanceStatus || m.ptStatus || m.inbodyStatus
-  );
-
-return (list || []).filter((schedule) => schedule.status !== "cancelled");
+    return (list || []).filter((schedule) => schedule.status !== "cancelled");
   }
 
   function getSchedulesAtStartTime(list = [], startTime) {
@@ -1099,6 +1057,46 @@ return (list || []).filter((schedule) => schedule.status !== "cancelled");
     },
   };
 
+  const autoCareMembers = activeMembers.map((m) => {
+    const d = daysSince(m.latest_visit);
+    const contacted = isRecentlyContacted(m, 2);
+
+    const attendanceStatus =
+      contacted ? null :
+      d === null ? "출석 없음" :
+      d >= 14 ? "14일 미출석" :
+      d >= 7 ? "7일 미출석" :
+      null;
+
+    const ptStatus =
+      contacted ? null :
+      (m.pt_remaining || 0) <= 2 ? "강한 경고" :
+      (m.pt_remaining || 0) <= 5 ? "재등록 상담" :
+      null;
+
+    const latestInbody = (m.inbody_logs || [])
+      .map((log) => log.measured_at)
+      .filter(Boolean)
+      .sort()
+      .reverse()[0];
+
+    const inbodyDays = latestInbody ? daysSince(latestInbody) : null;
+    const inbodyStatus =
+      contacted ? null :
+      latestInbody ? (inbodyDays >= 30 ? "인바디 필요" : null) : "인바디 없음";
+
+    return {
+      ...m,
+      attendanceStatus,
+      ptStatus,
+      inbodyStatus,
+    };
+  });
+
+  const attentionList = autoCareMembers.filter(
+    (m) => m.attendanceStatus || m.ptStatus || m.inbodyStatus
+  );
+
   async function addMember() {
     if (!name.trim()) return alert("이름을 입력하세요.");
 
@@ -1504,6 +1502,12 @@ return (list || []).filter((schedule) => schedule.status !== "cancelled");
       alert("연락 완료 저장 실패: " + error.message);
       return;
     }
+
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === member.id ? { ...m, last_contacted_at: now } : m
+      )
+    );
 
     alert(`${member.name} 연락 완료 처리되었습니다.`);
     await loadMembers();
@@ -2508,42 +2512,7 @@ return (list || []).filter((schedule) => schedule.status !== "cancelled");
         <div>
           <h1 style={styles.title}>Spotainer</h1>
           <p style={styles.subtitle}>여성전용 PT 회원관리</p>
- 
-      {/* 오늘 할 일 */}
-      <div style={{padding:16, marginBottom:20, background:"#111827", borderRadius:12}}>
-        <div style={{fontSize:18, fontWeight:800, marginBottom:10}}>오늘 관리 필요 회원</div>
-
-        {attentionList.length === 0 && (
-          <div style={{opacity:0.6}}>관리 필요 회원 없음</div>
-        )}
-
-        {attentionList.map((m) => (
-          <div key={m.id} style={{padding:10, marginBottom:8, background:"#1f2937", borderRadius:8}}>
-            <div style={{fontWeight:700}}>{m.name}</div>
-            <div style={{fontSize:13, opacity:0.8, marginBottom:8}}>
-              {m.attendanceStatus && `• ${m.attendanceStatus} `}
-              {m.ptStatus && `• ${m.ptStatus} `}
-              {m.inbodyStatus && `• ${m.inbodyStatus}`}
-            </div>
-
-            <button
-              onClick={() => markContacted(m)}
-              style={{
-                width:"100%",
-                padding:"9px 10px",
-                borderRadius:8,
-                border:"1px solid #444",
-                background:"#111",
-                color:"#fff",
-                fontWeight:800
-              }}
-            >
-              완료
-            </button>
-          </div>
-        ))}
-      </div>
-       </div>
+        </div>
         <div style={styles.adminBadge}>관리자</div>
       </header>
 
@@ -2615,6 +2584,40 @@ return (list || []).filter((schedule) => schedule.status !== "cancelled");
           <p style={styles.salesLabel}>객단가</p>
           <strong style={styles.salesValue}>{salesData.average.toLocaleString("ko-KR")}원</strong>
         </div>
+      </section>
+
+      <section style={styles.autoCareBox}>
+        <div style={styles.todoTop}>
+          <div>
+            <h2 style={styles.todoTitle}>오늘 관리 필요 회원</h2>
+            <p style={styles.todoDesc}>완료 처리한 회원은 2일 동안 이 목록과 경고 목록에서 제외됩니다.</p>
+          </div>
+
+          <div style={styles.incompleteCount}>{attentionList.length}명</div>
+        </div>
+
+        {attentionList.length === 0 ? (
+          <p style={styles.muted}>오늘 관리 필요 회원이 없습니다.</p>
+        ) : (
+          <div style={styles.autoCareList}>
+            {attentionList.map((m) => (
+              <div key={m.id} style={styles.autoCareItem}>
+                <div>
+                  <strong style={styles.autoCareName}>{m.name}</strong>
+                  <div style={styles.autoCareTags}>
+                    {m.attendanceStatus && <span style={styles.scheduleWarningText}>{m.attendanceStatus}</span>}
+                    {m.ptStatus && <span style={styles.dangerBadge}>{m.ptStatus}</span>}
+                    {m.inbodyStatus && <span style={styles.visitBadge}>{m.inbodyStatus}</span>}
+                  </div>
+                </div>
+
+                <button onClick={() => markContacted(m)} style={styles.autoCareDoneButton}>
+                  완료
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section style={styles.todoBox}>
@@ -4433,6 +4436,48 @@ const styles = {
     color: "#fff",
     fontSize: 24,
     fontWeight: 900,
+  },
+  autoCareBox: {
+    background: "#151515",
+    border: "1px solid #272727",
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 22,
+  },
+  autoCareList: {
+    display: "grid",
+    gap: 10,
+  },
+  autoCareItem: {
+    background: "#202020",
+    border: "1px solid #333",
+    borderRadius: 18,
+    padding: 14,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  autoCareName: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: 900,
+  },
+  autoCareTags: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 8,
+  },
+  autoCareDoneButton: {
+    background: "#f5f5f5",
+    color: "#111",
+    border: "1px solid #ffffff",
+    borderRadius: 12,
+    padding: "10px 14px",
+    fontWeight: 900,
+    fontSize: 14,
+    whiteSpace: "nowrap",
   },
   todoBox: {
     background: "#151515",
