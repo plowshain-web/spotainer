@@ -96,6 +96,7 @@ export default function Page() {
   const [showMemberListModal, setShowMemberListModal] = useState(false);
   const [memberListTitle, setMemberListTitle] = useState("회원 목록");
   const [memberSortMode, setMemberSortMode] = useState("default");
+  const [showInactiveMembers, setShowInactiveMembers] = useState(false);
   const [scheduleMemberId, setScheduleMemberId] = useState("");
   const [scheduleDate, setScheduleDate] = useState(getTodayDateString());
   const [scheduleStartTime, setScheduleStartTime] = useState("");
@@ -148,6 +149,7 @@ export default function Page() {
         latest_pt: latestPt || null,
         pt_used: used,
         pt_total: (m.pt_remaining || 0) + used,
+        is_active: m.is_active !== false,
         total_paid: totalPaid,
         payment_count: paymentCount,
         is_vip: totalPaid >= 1000000,
@@ -240,10 +242,11 @@ export default function Page() {
     setActionModalSchedule(null);
   }
 
-  function openMemberListModal(title = "회원 목록", resetSearch = false) {
+  function openMemberListModal(title = "회원 목록", resetSearch = false, inactiveMode = false) {
     if (resetSearch) setSearch("");
     setMemberSortMode("default");
-    setMemberListTitle(title);
+    setShowInactiveMembers(inactiveMode);
+    setMemberListTitle(inactiveMode ? "비활성 회원" : title);
     setShowMemberListModal(true);
   }
 
@@ -596,7 +599,13 @@ export default function Page() {
     await loadSchedules(getTodayDateString());
   }
 
-  const filteredMembers = members
+  const activeMembers = members.filter((member) => member.is_active !== false);
+
+  const visibleMembers = members.filter((member) =>
+    showInactiveMembers ? member.is_active === false : member.is_active !== false
+  );
+
+  const filteredMembers = visibleMembers
     .filter((member) => {
       const q = search.trim().toLowerCase();
       if (!q) return true;
@@ -666,15 +675,15 @@ export default function Page() {
   }
 
   const summaryGroups = {
-    rejoin: members.filter((m) => {
+    rejoin: activeMembers.filter((m) => {
       const pt = m.pt_remaining || 0;
       return pt >= 3 && pt <= 5;
     }),
-    urgent: members.filter((m) => {
+    urgent: activeMembers.filter((m) => {
       const pt = m.pt_remaining || 0;
       return pt <= 2;
     }),
-    dormant: members.filter((m) => {
+    dormant: activeMembers.filter((m) => {
       const d = daysSince(m.latest_visit);
       const contactedToday = m.last_contacted_at && isToday(m.last_contacted_at);
       return (d === null || d >= 14) && !contactedToday;
@@ -725,6 +734,7 @@ export default function Page() {
       note: note.trim(),
       memo: memo.trim(),
       pt_remaining: 0,
+      is_active: true,
     });
 
     setName("");
@@ -798,29 +808,22 @@ export default function Page() {
     loadMembers();
   }
 
-  async function deleteMember(member) {
-    if (!confirm(`${member.name} 회원을 삭제할까요?`)) return;
-
-    const { data: schedules, error: scheduleError } = await supabase
-      .from("schedules")
-      .select("id")
-      .eq("member_id", member.id)
-      .limit(1);
-
-    if (scheduleError) {
-      alert("삭제 가능 여부 확인 실패: " + scheduleError.message);
+  async function deactivateMember(member) {
+    if (
+      !confirm(
+        `${member.name} 회원을 비활성화할까요?\n회원 기록, PT 기록, 매출 기록은 삭제되지 않고 보존됩니다.`
+      )
+    ) {
       return;
     }
 
-    if (schedules && schedules.length > 0) {
-      alert("이 회원은 스케줄 기록이 있어 삭제할 수 없습니다.\n실제 운영 회원은 나중에 비활성화 방식으로 관리하는 게 안전합니다.");
-      return;
-    }
-
-    const { error } = await supabase.from("members").delete().eq("id", member.id);
+    const { error } = await supabase
+      .from("members")
+      .update({ is_active: false })
+      .eq("id", member.id);
 
     if (error) {
-      alert("회원 삭제 실패: " + error.message);
+      alert("회원 비활성화 실패: " + error.message);
       return;
     }
 
@@ -831,6 +834,25 @@ export default function Page() {
 
     await loadMembers();
     await loadSales();
+    alert(`${member.name} 회원이 비활성화되었습니다.`);
+  }
+
+  async function reactivateMember(member) {
+    if (!confirm(`${member.name} 회원을 다시 활성화할까요?`)) return;
+
+    const { error } = await supabase
+      .from("members")
+      .update({ is_active: true })
+      .eq("id", member.id);
+
+    if (error) {
+      alert("회원 복구 실패: " + error.message);
+      return;
+    }
+
+    await loadMembers();
+    await loadSales();
+    alert(`${member.name} 회원이 다시 활성화되었습니다.`);
   }
 
   async function minusPt(member) {
@@ -1724,15 +1746,27 @@ export default function Page() {
                 + 이용권
               </button>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteMember(member);
-                }}
-                style={styles.cardDeleteButton}
-              >
-                삭제
-              </button>
+              {member.is_active === false ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    reactivateMember(member);
+                  }}
+                  style={styles.cardRestoreButton}
+                >
+                  복구
+                </button>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deactivateMember(member);
+                  }}
+                  style={styles.cardDeactivateButton}
+                >
+                  비활성
+                </button>
+              )}
             </div>
 
             <p style={styles.phoneSmall}>
@@ -2069,7 +2103,7 @@ export default function Page() {
               style={styles.input}
             >
               <option value="">회원을 선택하세요</option>
-              {members.map((member) => (
+              {activeMembers.map((member) => (
                 <option key={member.id} value={member.id}>
                   {member.name} · PT {member.pt_remaining || 0}회
                 </option>
@@ -2944,7 +2978,7 @@ export default function Page() {
         </div>
       )}
 
-      <section style={styles.actionSearchGridTwo}>
+      <section style={styles.actionSearchGridThree}>
         <button onClick={() => setShowAddModal(true)} style={styles.actionBigCard}>
           <span style={{ ...styles.actionBigIcon, color: "#facc15" }}>👤</span>
           <span>
@@ -2954,11 +2988,20 @@ export default function Page() {
           <span style={styles.actionCardArrow}>›</span>
         </button>
 
-        <button onClick={() => openMemberListModal("회원 목록", true)} style={styles.actionBigCard}>
+        <button onClick={() => openMemberListModal("회원 목록", true, false)} style={styles.actionBigCard}>
           <span style={{ ...styles.actionBigIcon, color: "#38bdf8" }}>☰</span>
           <span>
             <strong>회원 목록 / 검색</strong>
-            <p>전체 회원을 보고 바로 검색합니다</p>
+            <p>활성 회원을 보고 바로 검색합니다</p>
+          </span>
+          <span style={styles.actionCardArrow}>›</span>
+        </button>
+
+        <button onClick={() => openMemberListModal("비활성 회원", true, true)} style={styles.actionBigCard}>
+          <span style={{ ...styles.actionBigIcon, color: "#a3a3a3" }}>↩</span>
+          <span>
+            <strong>비활성 회원</strong>
+            <p>숨김 처리한 회원을 복구합니다</p>
           </span>
           <span style={styles.actionCardArrow}>›</span>
         </button>
@@ -2970,7 +3013,7 @@ export default function Page() {
             <div style={styles.whiteModalTop}>
               <div>
                 <h2 style={styles.whiteModalTitle}>{memberListTitle}</h2>
-                <p style={styles.whiteMuted}>회원을 검색하고 카드를 누르면 상세보기로 바로 이동합니다.</p>
+                <p style={styles.whiteMuted}>{showInactiveMembers ? "비활성 회원은 복구 후 다시 운영 목록에 표시됩니다." : "회원을 검색하고 카드를 누르면 상세보기로 바로 이동합니다."}</p>
               </div>
 
               <button onClick={closeMemberListModal} style={styles.whiteCloseButton}>
@@ -3014,7 +3057,7 @@ export default function Page() {
 
             {filteredMembers.length === 0 ? (
               <p style={styles.whiteMuted}>
-                {isSearching ? "검색 결과가 없습니다." : "회원이 없습니다."}
+                {isSearching ? "검색 결과가 없습니다." : showInactiveMembers ? "비활성 회원이 없습니다." : "회원이 없습니다."}
               </p>
             ) : (
               <div style={styles.memberModalGrid}>
@@ -3600,6 +3643,12 @@ const styles = {
     fontWeight: 900,
     textAlign: "left",
   },
+  actionSearchGridThree: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1fr",
+    gap: 16,
+    marginBottom: 34,
+  },
   actionSearchGridTwo: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
@@ -4098,10 +4147,20 @@ const styles = {
     fontWeight: 900,
     width: "100%",
   },
-  cardDeleteButton: {
+  cardDeactivateButton: {
     background: "#3f1111",
     color: "#fca5a5",
     border: "1px solid #7f1d1d",
+    borderRadius: 12,
+    padding: "10px 12px",
+    fontSize: 14,
+    fontWeight: 900,
+    width: "100%",
+  },
+  cardRestoreButton: {
+    background: "#263a36",
+    color: "#d7fff3",
+    border: "1px solid #3f5f58",
     borderRadius: 12,
     padding: "10px 12px",
     fontSize: 14,
