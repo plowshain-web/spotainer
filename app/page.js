@@ -384,6 +384,13 @@ export default function Page() {
     const { error } = await supabase.from("schedules").insert(row);
 
     if (error) {
+      const message = String(error.message || "");
+
+      if (message.includes("SCHEDULE_CAPACITY_EXCEEDED")) {
+        alert("이미 해당 시간대 예약 인원이 2명입니다.\n그래도 추가가 필요한 경우 중복 경고창에서 '그래도 추가'를 눌러주세요.");
+        return false;
+      }
+
       alert("스케줄 저장 실패: " + error.message);
       return false;
     }
@@ -426,6 +433,7 @@ export default function Page() {
       end_time: endTime,
       type: scheduleType,
       memo: scheduleMemo.trim(),
+      allow_over_capacity: false,
     };
 
     const { data: sameDateSchedules, error: checkError } = await supabase
@@ -464,7 +472,10 @@ export default function Page() {
   async function forceAddSchedule() {
     if (!pendingSchedule) return;
 
-    await saveScheduleRow(pendingSchedule);
+    await saveScheduleRow({
+      ...pendingSchedule,
+      allow_over_capacity: true,
+    });
   }
 
   async function deleteSchedule(schedule) {
