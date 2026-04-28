@@ -312,7 +312,145 @@ function getFilteredScheduleCheckList() {
     });
   }
 
-  async function loadSales() {
+  function getScheduleTimelineGroups() {
+    const groups = {};
+
+    getFilteredScheduleCheckList().forEach((schedule) => {
+      const member = getScheduleMember(schedule) || schedule.members;
+      const key = member?.id || schedule.member_id || "unknown";
+
+      if (!groups[key]) {
+        groups[key] = {
+          key,
+          member,
+          schedules: [],
+        };
+      }
+
+      groups[key].schedules.push(schedule);
+    });
+
+    return Object.values(groups).map((group) => ({
+      ...group,
+      schedules: group.schedules.sort((a, b) => {
+        const aDate = `${a.schedule_date || ""} ${a.start_time || ""}`;
+        const bDate = `${b.schedule_date || ""} ${b.start_time || ""}`;
+        return aDate.localeCompare(bDate);
+      }),
+    }));
+  }
+
+  function getScheduleRelationText(dateText) {
+    const today = getTodayDateString();
+
+    if (!dateText) return "";
+    if (dateText === today) return "오늘";
+    if (dateText > today) return "예정";
+    return "지난 수업";
+  }
+
+  function renderScheduleCheckItem(schedule, showDate = false) {
+    const member = getScheduleMember(schedule) || schedule.members;
+    const status = getSchedulePreviewStatus(schedule);
+    const isDone =
+      schedule.status === "cancelled" ||
+      schedule.status === "noshow" ||
+      schedule.status === "completed" ||
+      (schedule.attendance_checked && schedule.pt_used);
+
+    return (
+      <div key={schedule.id} style={styles.scheduleCheckItem}>
+        <div style={styles.scheduleCheckMain}>
+          <strong style={styles.scheduleCheckTime}>
+            {showDate ? `${formatDate(schedule.schedule_date)} · ` : ""}
+            {formatScheduleRange(schedule)}
+          </strong>
+
+          <p style={styles.scheduleCheckMember}>
+            {getScheduleTypeText(schedule.type)} · {member?.name || "회원 정보 없음"}
+            {member ? ` · PT ${member.pt_remaining || 0}회` : ""}
+          </p>
+
+          {showDate && (
+            <p style={styles.scheduleTimelineMeta}>
+              {getScheduleRelationText(schedule.schedule_date)}
+            </p>
+          )}
+
+          {schedule.memo && (
+            <p style={styles.scheduleCheckMemo}>{schedule.memo}</p>
+          )}
+
+          <div style={styles.scheduleStatusRow}>
+            <span style={status.style}>{status.text}</span>
+            {schedule.attendance_checked ? (
+              <span style={styles.scheduleDoneText}>출석 완료</span>
+            ) : (
+              <span style={styles.scheduleWarningText}>출석 전</span>
+            )}
+            {schedule.pt_used ? (
+              <span style={styles.scheduleDoneText}>차감 완료</span>
+            ) : (
+              <span style={styles.scheduleWarningText}>차감 전</span>
+            )}
+          </div>
+        </div>
+
+        <div style={styles.scheduleCheckButtonGroup}>
+          <button
+            type="button"
+            onClick={() => addToDeviceCalendar(schedule)}
+            style={styles.calendarButton}
+          >
+            기본캘린더
+          </button>
+
+          <button
+            type="button"
+            onClick={() => addToGoogleCalendar(schedule)}
+            style={styles.googleCalendarButton}
+          >
+            구글캘린더
+          </button>
+
+          {isDone ? (
+            <button style={styles.scheduleDisabledButton} disabled>
+              {schedule.status === "cancelled"
+                ? "취소됨"
+                : schedule.status === "noshow"
+                  ? "노쇼"
+                  : "완료됨"}
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => openActionModal(schedule)}
+                style={styles.incompleteCompleteButton}
+              >
+                처리
+              </button>
+              <button
+                type="button"
+                onClick={() => startEditSchedule(schedule)}
+                style={styles.scheduleEditButton}
+              >
+                수정
+              </button>
+            </>
+          )}
+
+          <button
+            onClick={() => deleteSchedule(schedule)}
+            style={styles.whiteDeleteButton}
+          >
+            삭제
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+    async function loadSales() {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -3716,100 +3854,24 @@ function getFilteredScheduleCheckList() {
               </div>
             ) : (
               <div style={styles.scheduleCheckList}>
-                {getFilteredScheduleCheckList().map((schedule) => {
-                  const member = getScheduleMember(schedule) || schedule.members;
-                  const status = getSchedulePreviewStatus(schedule);
-                  const isDone =
-                    schedule.status === "cancelled" ||
-                    schedule.status === "noshow" ||
-                    schedule.status === "completed" ||
-                    (schedule.attendance_checked && schedule.pt_used);
+                {scheduleSearch.trim()
+                  ? getScheduleTimelineGroups().map((group) => (
+                      <div key={group.key} style={styles.scheduleTimelineGroup}>
+                        <div style={styles.scheduleTimelineHeader}>
+                          <div>
+                            <strong>{group.member?.name || "회원 정보 없음"}</strong>
+                            <p>
+                              {group.member?.phone || "전화번호 없음"} · 총 {group.schedules.length}건
+                            </p>
+                          </div>
+                        </div>
 
-                  return (
-                    <div key={schedule.id} style={styles.scheduleCheckItem}>
-                      <div style={styles.scheduleCheckMain}>
-                        <strong style={styles.scheduleCheckTime}>
-                          {formatScheduleRange(schedule)}
-                        </strong>
-
-                        <p style={styles.scheduleCheckMember}>
-                          {getScheduleTypeText(schedule.type)} · {member?.name || "회원 정보 없음"}
-                          {member ? ` · PT ${member.pt_remaining || 0}회` : ""}
-                        </p>
-
-                        {schedule.memo && (
-                          <p style={styles.scheduleCheckMemo}>{schedule.memo}</p>
-                        )}
-
-                        <div style={styles.scheduleStatusRow}>
-                          <span style={status.style}>{status.text}</span>
-                          {schedule.attendance_checked ? (
-                            <span style={styles.scheduleDoneText}>출석 완료</span>
-                          ) : (
-                            <span style={styles.scheduleWarningText}>출석 전</span>
-                          )}
-                          {schedule.pt_used ? (
-                            <span style={styles.scheduleDoneText}>차감 완료</span>
-                          ) : (
-                            <span style={styles.scheduleWarningText}>차감 전</span>
-                          )}
+                        <div style={styles.scheduleTimelineList}>
+                          {group.schedules.map((schedule) => renderScheduleCheckItem(schedule, true))}
                         </div>
                       </div>
-
-                      <div style={styles.scheduleCheckButtonGroup}>
-                        <button
-                          type="button"
-                          onClick={() => addToDeviceCalendar(schedule)}
-                          style={styles.calendarButton}
-                        >
-                          기본캘린더
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => addToGoogleCalendar(schedule)}
-                          style={styles.googleCalendarButton}
-                        >
-                          구글캘린더
-                        </button>
-
-                        {isDone ? (
-                          <button style={styles.scheduleDisabledButton} disabled>
-                            {schedule.status === "cancelled"
-                              ? "취소됨"
-                              : schedule.status === "noshow"
-                                ? "노쇼"
-                                : "완료됨"}
-                          </button>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => openActionModal(schedule)}
-                              style={styles.incompleteCompleteButton}
-                            >
-                              처리
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => startEditSchedule(schedule)}
-                              style={styles.scheduleEditButton}
-                            >
-                              수정
-                            </button>
-                          </>
-                        )}
-
-                        <button
-                          onClick={() => deleteSchedule(schedule)}
-                          style={styles.whiteDeleteButton}
-                        >
-                          삭제
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    ))
+                  : getFilteredScheduleCheckList().map((schedule) => renderScheduleCheckItem(schedule, false))}              </div>
             )}
           </section>
         </div>
@@ -7217,6 +7279,30 @@ const styles = {
     margin: "5px 0 0",
     fontSize: 14,
     fontWeight: 700,
+  },
+  scheduleTimelineGroup: {
+    background: "#ffffff",
+    border: "1px solid #e5e5e5",
+    borderRadius: 20,
+    padding: 12,
+    marginBottom: 12,
+  },
+  scheduleTimelineHeader: {
+    background: "#111",
+    color: "#fff",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+  },
+  scheduleTimelineList: {
+    display: "grid",
+    gap: 10,
+  },
+  scheduleTimelineMeta: {
+    color: "#666",
+    margin: "4px 0 0",
+    fontSize: 13,
+    fontWeight: 900,
   },
   scheduleCheckButtonGroup: {
     display: "grid",
