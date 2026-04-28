@@ -4326,7 +4326,7 @@ export default function Page() {
       )}
 
       {showInbodyModal && selectedMember && (
-        <div style={styles.whiteModalOverlay}>
+        <div style={styles.inbodyModalOverlay}>
           <section style={styles.whiteModalBox}>
             <div style={styles.whiteModalTop}>
               <div>
@@ -7080,6 +7080,16 @@ const styles = {
     justifyContent: "center",
     alignItems: "center",
     zIndex: 12000,
+    padding: 20,
+  },
+  inbodyModalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,.72)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 15000,
     padding: 20,
   },
   ptModalOverlay: {
