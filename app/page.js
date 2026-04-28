@@ -96,6 +96,10 @@ export default function Page() {
   const [workoutSessions, setWorkoutSessions] = useState([]);
   const [workoutMode, setWorkoutMode] = useState("list");
   const [workoutMemo, setWorkoutMemo] = useState("");
+  const [workoutCondition, setWorkoutCondition] = useState("normal");
+  const [workoutIssue, setWorkoutIssue] = useState("");
+  const [workoutNextPlan, setWorkoutNextPlan] = useState("");
+  const [workoutTrainerNote, setWorkoutTrainerNote] = useState("");
   const [workoutExercises, setWorkoutExercises] = useState([
     { name: "", sets: [{ weight: "", reps: "" }] },
   ]);
@@ -2390,6 +2394,10 @@ export default function Page() {
     setWorkoutMember(member);
     setWorkoutMode("list");
     setWorkoutMemo("");
+    setWorkoutCondition("normal");
+    setWorkoutIssue("");
+    setWorkoutNextPlan("");
+    setWorkoutTrainerNote("");
     setWorkoutExercises([{ name: "", sets: [{ weight: "", reps: "" }] }]);
     setShowAllWorkoutModal(false);
     clearWorkoutEdit();
@@ -2402,6 +2410,10 @@ export default function Page() {
     setWorkoutSessions([]);
     setWorkoutMode("list");
     setWorkoutMemo("");
+    setWorkoutCondition("normal");
+    setWorkoutIssue("");
+    setWorkoutNextPlan("");
+    setWorkoutTrainerNote("");
     setWorkoutExercises([{ name: "", sets: [{ weight: "", reps: "" }] }]);
     setShowAllWorkoutModal(false);
     clearWorkoutEdit();
@@ -2585,6 +2597,10 @@ export default function Page() {
         member_id: workoutMember.id,
         workout_date: getTodayDateString(),
         memo: workoutMemo.trim(),
+        condition: workoutCondition,
+        issue: workoutIssue.trim(),
+        next_plan: workoutNextPlan.trim(),
+        trainer_note: workoutTrainerNote.trim(),
       })
       .select()
       .single();
@@ -2618,11 +2634,43 @@ export default function Page() {
     }
 
     setWorkoutMemo("");
+    setWorkoutCondition("normal");
+    setWorkoutIssue("");
+    setWorkoutNextPlan("");
+    setWorkoutTrainerNote("");
     setWorkoutExercises([{ name: "", sets: [{ weight: "", reps: "" }] }]);
     setWorkoutMode("list");
 
     await loadWorkoutSessions(workoutMember.id);
     alert(`${workoutMember.name} 운동기록이 저장되었습니다.`);
+  }
+
+  function getConditionText(condition) {
+    if (condition === "good") return "좋음";
+    if (condition === "bad") return "나쁨";
+    return "보통";
+  }
+
+  function renderTrainerJournal(session, light = false) {
+    const hasJournal = session.condition || session.issue || session.next_plan || session.trainer_note || session.memo;
+
+    if (!hasJournal) return null;
+
+    const textStyle = light ? styles.whiteSetText : styles.summaryMemberInfo;
+
+    return (
+      <div style={light ? styles.trainerJournalBoxLight : styles.trainerJournalBox}>
+        <strong style={light ? styles.trainerJournalTitleLight : styles.trainerJournalTitle}>
+          트레이너 일지
+        </strong>
+
+        <p style={textStyle}>컨디션: {getConditionText(session.condition)}</p>
+        {session.issue && <p style={textStyle}>이슈: {session.issue}</p>}
+        {session.next_plan && <p style={textStyle}>다음 수업: {session.next_plan}</p>}
+        {session.trainer_note && <p style={textStyle}>총평: {session.trainer_note}</p>}
+        {session.memo && <p style={textStyle}>메모: {session.memo}</p>}
+      </div>
+    );
   }
 
   function getVisibleWorkouts() {
@@ -2861,7 +2909,7 @@ export default function Page() {
             ))
           )}
 
-          {session.memo && <p style={styles.summaryMemberInfo}>메모: {session.memo}</p>}
+          {renderTrainerJournal(session, false)}
         </div>
       </div>
     );
@@ -4700,13 +4748,66 @@ export default function Page() {
                   + 운동 추가
                 </button>
 
-                <label style={styles.label}>메모</label>
-                <textarea
-                  value={workoutMemo}
-                  onChange={(e) => setWorkoutMemo(e.target.value)}
-                  placeholder="컨디션, 자세 피드백, 다음 운동 참고사항"
-                  style={styles.textarea}
-                />
+                <div style={styles.trainerJournalInputBox}>
+                  <h3 style={{ ...styles.subTitle, marginTop: 0 }}>트레이너 일지</h3>
+
+                  <label style={styles.label}>오늘 컨디션</label>
+                  <div style={styles.conditionButtonGrid}>
+                    <button
+                      type="button"
+                      onClick={() => setWorkoutCondition("good")}
+                      style={workoutCondition === "good" ? styles.conditionButtonActive : styles.conditionButton}
+                    >
+                      좋음
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWorkoutCondition("normal")}
+                      style={workoutCondition === "normal" ? styles.conditionButtonActive : styles.conditionButton}
+                    >
+                      보통
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWorkoutCondition("bad")}
+                      style={workoutCondition === "bad" ? styles.conditionButtonActive : styles.conditionButton}
+                    >
+                      나쁨
+                    </button>
+                  </div>
+
+                  <label style={styles.label}>오늘 핵심 이슈</label>
+                  <textarea
+                    value={workoutIssue}
+                    onChange={(e) => setWorkoutIssue(e.target.value)}
+                    placeholder="예: 허리 통증, 어깨 가동성 부족, 집중력 낮음"
+                    style={styles.textarea}
+                  />
+
+                  <label style={styles.label}>다음 수업 포인트</label>
+                  <textarea
+                    value={workoutNextPlan}
+                    onChange={(e) => setWorkoutNextPlan(e.target.value)}
+                    placeholder="예: 하체 위주, 스트레칭 먼저, 중량 줄이고 자세 교정"
+                    style={styles.textarea}
+                  />
+
+                  <label style={styles.label}>한줄 총평</label>
+                  <input
+                    value={workoutTrainerNote}
+                    onChange={(e) => setWorkoutTrainerNote(e.target.value)}
+                    placeholder="예: 폼 무너짐 심함 / 컨디션 안 좋음"
+                    style={styles.input}
+                  />
+
+                  <label style={styles.label}>추가 메모</label>
+                  <textarea
+                    value={workoutMemo}
+                    onChange={(e) => setWorkoutMemo(e.target.value)}
+                    placeholder="그 외 기억할 내용"
+                    style={styles.textarea}
+                  />
+                </div>
 
                 <div style={styles.editActions}>
                   <button onClick={saveWorkout} style={styles.primaryButton}>저장</button>
@@ -4843,7 +4944,7 @@ export default function Page() {
                       ))
                     )}
 
-                    {session.memo && <p style={styles.whiteMemo}>메모: {session.memo}</p>}
+                    {renderTrainerJournal(session, true)}
                   </div>
                 );
               })
@@ -7328,6 +7429,64 @@ const styles = {
     color: "#555",
     marginTop: 10,
     marginBottom: 0,
+    fontSize: 15,
+  },
+  trainerJournalInputBox: {
+    background: "#202020",
+    border: "1px solid #333",
+    borderRadius: 18,
+    padding: 16,
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  conditionButtonGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1fr",
+    gap: 8,
+    marginBottom: 16,
+  },
+  conditionButton: {
+    background: "#222",
+    color: "#fff",
+    border: "1px solid #444",
+    borderRadius: 12,
+    padding: "12px 10px",
+    fontSize: 15,
+    fontWeight: 900,
+  },
+  conditionButtonActive: {
+    background: "#f5f5f5",
+    color: "#111",
+    border: "1px solid #ffffff",
+    borderRadius: 12,
+    padding: "12px 10px",
+    fontSize: 15,
+    fontWeight: 900,
+  },
+  trainerJournalBox: {
+    background: "#181818",
+    border: "1px solid #333",
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 10,
+  },
+  trainerJournalBoxLight: {
+    background: "#fff",
+    border: "1px solid #e5e5e5",
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 10,
+  },
+  trainerJournalTitle: {
+    display: "block",
+    color: "#fff",
+    marginBottom: 6,
+    fontSize: 15,
+  },
+  trainerJournalTitleLight: {
+    display: "block",
+    color: "#111",
+    marginBottom: 6,
     fontSize: 15,
   },
   recommendCalorieBox: {
