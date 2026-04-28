@@ -260,17 +260,24 @@ export default function Page() {
     setSelectedDateSchedules(data || []);
   }
 
-  async function loadScheduleCheckList(date = scheduleCheckDate) {
-    if (!date) {
-      setScheduleCheckList([]);
-      return;
-    }
-
-    const { data, error } = await supabase
+  async function loadScheduleCheckList(date = scheduleCheckDate, search = "") {
+    let query = supabase
       .from("schedules")
       .select("*, members(*)")
-      .eq("schedule_date", date)
+      .order("schedule_date", { ascending: true })
       .order("start_time", { ascending: true });
+
+    if (search && search.trim()) {
+      // 날짜 제한 없이 전체 조회
+    } else {
+      if (!date) {
+        setScheduleCheckList([]);
+        return;
+      }
+      query = query.eq("schedule_date", date);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       alert("스케줄 확인 불러오기 실패: " + error.message);
@@ -280,7 +287,15 @@ export default function Page() {
     setScheduleCheckList(data || []);
   }
 
-  function getFilteredScheduleCheckList() {
+  
+  useEffect(() => {
+    if (scheduleSearch.trim()) {
+      loadScheduleCheckList(null, scheduleSearch);
+    } else {
+      loadScheduleCheckList(scheduleCheckDate);
+    }
+  }, [scheduleSearch, scheduleCheckDate]);
+function getFilteredScheduleCheckList() {
     const q = scheduleSearch.trim().toLowerCase();
 
     if (!q) return scheduleCheckList;
