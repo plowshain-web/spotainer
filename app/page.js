@@ -128,6 +128,7 @@ export default function Page() {
   const [showScheduleCheckModal, setShowScheduleCheckModal] = useState(false);
   const [scheduleCheckDate, setScheduleCheckDate] = useState(getTodayDateString());
   const [scheduleCheckList, setScheduleCheckList] = useState([]);
+  const [scheduleSearch, setScheduleSearch] = useState("");
   const [showScheduleConflictModal, setShowScheduleConflictModal] = useState(false);
   const [conflictSchedules, setConflictSchedules] = useState([]);
   const [pendingSchedule, setPendingSchedule] = useState(null);
@@ -277,6 +278,23 @@ export default function Page() {
     }
 
     setScheduleCheckList(data || []);
+  }
+
+  function getFilteredScheduleCheckList() {
+    const q = scheduleSearch.trim().toLowerCase();
+
+    if (!q) return scheduleCheckList;
+
+    return scheduleCheckList.filter((schedule) => {
+      const member = getScheduleMember(schedule) || schedule.members;
+
+      return (
+        member?.name?.toLowerCase().includes(q) ||
+        member?.phone?.toLowerCase().includes(q) ||
+        getScheduleTypeText(schedule.type).toLowerCase().includes(q) ||
+        String(schedule.memo || "").toLowerCase().includes(q)
+      );
+    });
   }
 
   async function loadSales() {
@@ -436,6 +454,7 @@ export default function Page() {
 
   function openScheduleCheckModal() {
     setScheduleCheckDate(getTodayDateString());
+    setScheduleSearch("");
     setShowScheduleCheckModal(true);
     loadScheduleCheckList(getTodayDateString());
   }
@@ -3614,6 +3633,31 @@ export default function Page() {
               </button>
             </div>
 
+            <div style={styles.scheduleSearchBox}>
+              <input
+                value={scheduleSearch}
+                onChange={(e) => setScheduleSearch(e.target.value)}
+                placeholder="회원 이름, 전화번호, 수업 종류, 메모 검색"
+                style={{ ...styles.whiteInput, marginBottom: 0 }}
+              />
+
+              {scheduleSearch.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setScheduleSearch("")}
+                  style={styles.whiteCancelButton}
+                >
+                  초기화
+                </button>
+              )}
+            </div>
+
+            {scheduleSearch.trim() && (
+              <p style={styles.whiteMuted}>
+                “{scheduleSearch}” 검색 결과 {getFilteredScheduleCheckList().length}건
+              </p>
+            )}
+
             <div style={styles.scheduleSlotBox}>
               <div style={styles.scheduleSlotTop}>
                 <strong>시간별 예약 현황</strong>
@@ -3651,9 +3695,13 @@ export default function Page() {
               <div style={styles.scheduleCheckEmpty}>
                 이 날짜에 등록된 스케줄이 없습니다.
               </div>
+            ) : getFilteredScheduleCheckList().length === 0 ? (
+              <div style={styles.scheduleCheckEmpty}>
+                검색 결과가 없습니다.
+              </div>
             ) : (
               <div style={styles.scheduleCheckList}>
-                {scheduleCheckList.map((schedule) => {
+                {getFilteredScheduleCheckList().map((schedule) => {
                   const member = getScheduleMember(schedule) || schedule.members;
                   const status = getSchedulePreviewStatus(schedule);
                   const isDone =
@@ -7097,6 +7145,13 @@ const styles = {
     padding: "12px 14px",
     fontSize: 14,
     fontWeight: 900,
+  },
+  scheduleSearchBox: {
+    display: "grid",
+    gridTemplateColumns: "1fr auto",
+    gap: 10,
+    alignItems: "center",
+    marginBottom: 14,
   },
   scheduleCheckTopActions: {
     display: "grid",
