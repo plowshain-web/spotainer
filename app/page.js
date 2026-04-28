@@ -7089,7 +7089,7 @@ const styles = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 9000,
+    zIndex: 14000,
     padding: 20,
   },
   whiteModalBox: {
