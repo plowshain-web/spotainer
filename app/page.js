@@ -3725,16 +3725,17 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     function handlePwaBackButton() {
       if (allowBackExitRef.current) return;
 
+      // 뒤로가기로 실제 페이지가 빠져나가지 않도록 항상 현재 위치를 다시 쌓습니다.
       keepInsideApp();
 
+      // 종료 확인창이 이미 떠 있을 때는 자동으로 닫지 않습니다.
+      // 취소/종료 버튼으로만 닫혀야 PWA 뒤로가기 이벤트가 연속으로 들어와도 안정적입니다.
       if (showExitConfirmRef.current) {
-        setShowExitConfirm(false);
-        setExitToast("종료를 취소했습니다");
         return;
       }
 
       if (hasOpenModalRef.current) {
-        setExitToast("화면 안의 닫기 버튼을 사용하세요");
+        setExitToast("닫기 버튼을 사용하세요");
         return;
       }
 
