@@ -199,6 +199,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [scheduleType, setScheduleType] = useState("pt");
   const [scheduleMemo, setScheduleMemo] = useState("");
   const [exitToast, setExitToast] = useState("");
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   const isSearching = search.trim().length > 0;
 
@@ -3614,6 +3615,14 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     setReturnToScheduleCheckAfterAdd(false);
   }
 
+  function openExitConfirm() {
+    setShowExitConfirm(true);
+  }
+
+  function closeExitConfirm() {
+    setShowExitConfirm(false);
+  }
+
   function exitSpotainerApp() {
     setExitToast("Spotainer 앱 종료를 시도합니다");
 
@@ -3650,14 +3659,41 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
         </div>
       )}
 
-      {!hasOpenModal && (
+      {!hasOpenModal && !showExitConfirm && (
         <button
           type="button"
-          onClick={exitSpotainerApp}
+          onClick={openExitConfirm}
           style={styles.safeExitButton}
         >
           앱 종료
         </button>
+      )}
+
+      {showExitConfirm && (
+        <div style={styles.exitConfirmOverlay}>
+          <div style={styles.exitConfirmBox}>
+            <strong style={styles.exitConfirmTitle}>앱을 종료할까요?</strong>
+            <p style={styles.exitConfirmText}>
+              Spotainer를 종료하려면 아래 종료 버튼을 눌러주세요.
+            </p>
+            <div style={styles.exitConfirmButtonRow}>
+              <button
+                type="button"
+                onClick={closeExitConfirm}
+                style={styles.exitCancelButton}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={exitSpotainerApp}
+                style={styles.exitConfirmButton}
+              >
+                종료
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <header style={styles.header}>
@@ -5885,6 +5921,61 @@ const styles = {
     fontSize: 15,
     fontWeight: 1000,
     boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
+  },
+  exitConfirmOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 100001,
+    background: "rgba(0,0,0,0.48)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  exitConfirmBox: {
+    width: "min(360px, 92vw)",
+    background: "#fff",
+    color: "#111",
+    borderRadius: 22,
+    padding: 22,
+    boxShadow: "0 22px 55px rgba(0,0,0,0.42)",
+    border: "1px solid rgba(0,0,0,0.08)",
+  },
+  exitConfirmTitle: {
+    display: "block",
+    fontSize: 20,
+    fontWeight: 1000,
+    marginBottom: 8,
+  },
+  exitConfirmText: {
+    margin: "0 0 18px",
+    color: "#555",
+    fontSize: 14,
+    lineHeight: 1.45,
+    fontWeight: 800,
+  },
+  exitConfirmButtonRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+  },
+  exitCancelButton: {
+    border: "1px solid #ddd",
+    background: "#f4f4f4",
+    color: "#222",
+    borderRadius: 14,
+    padding: "13px 12px",
+    fontSize: 15,
+    fontWeight: 1000,
+  },
+  exitConfirmButton: {
+    border: "1px solid #111",
+    background: "#111",
+    color: "#fff",
+    borderRadius: 14,
+    padding: "13px 12px",
+    fontSize: 15,
+    fontWeight: 1000,
   },
   page: {
     minHeight: "100vh",
