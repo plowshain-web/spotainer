@@ -251,7 +251,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
         return;
       }
 
-      setExitToast("종료는 오른쪽 하단 앱 종료 버튼을 눌러주세요");
+      setExitToast("이미 메인화면입니다");
     }
 
     window.addEventListener("popstate", handleBackButton);
@@ -3720,41 +3720,14 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
         </div>
       )}
 
-      {!hasOpenModal && !showExitConfirm && (
+      {!hasOpenModal && (
         <button
           type="button"
-          onClick={openExitConfirm}
+          onClick={goToMain}
           style={styles.safeExitButton}
         >
-          앱 종료
+          메인으로
         </button>
-      )}
-
-      {showExitConfirm && (
-        <div style={styles.exitConfirmOverlay}>
-          <div style={styles.exitConfirmBox}>
-            <strong style={styles.exitConfirmTitle}>앱을 종료할까요?</strong>
-            <p style={styles.exitConfirmText}>
-              Spotainer를 종료하려면 아래 종료 버튼을 눌러주세요.
-            </p>
-            <div style={styles.exitConfirmButtonRow}>
-              <button
-                type="button"
-                onClick={closeExitConfirm}
-                style={styles.exitCancelButton}
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={exitSpotainerApp}
-                style={styles.exitConfirmButton}
-              >
-                종료
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       <header style={styles.header}>
