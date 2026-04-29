@@ -4145,7 +4145,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
                     >
                       <span style={styles.scheduleMiniDayNumber}>{day.day}</span>
                       {day.count > 0 && (
-                        <span style={styles.scheduleMiniDayCount}>{day.count}건</span>
+                        <span style={day.selected ? styles.scheduleMiniDayCountSelected : styles.scheduleMiniDayCount}>{day.count}건</span>
                       )}
                     </button>
                   )
@@ -5848,7 +5848,7 @@ const styles = {
   },
   salesValue: {
     color: "#fff",
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 900,
   },
   salesMiniText: {
@@ -5971,12 +5971,12 @@ const styles = {
   contactListModalBox: {
     width: "100%",
     maxWidth: 860,
-    maxHeight: "86vh",
+    maxHeight: "88vh",
     overflowY: "auto",
     background: "#ffffff",
     color: "#111",
-    borderRadius: 28,
-    padding: 24,
+    borderRadius: 24,
+    padding: 18,
     boxShadow: "0 20px 60px rgba(0,0,0,.45)",
   },
   contactListSummaryRow: {
@@ -6138,7 +6138,7 @@ const styles = {
   todoCardCount: {
     display: "block",
     color: "#fff",
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 900,
     marginBottom: 6,
   },
@@ -6430,7 +6430,7 @@ const styles = {
     marginBottom: 16,
   },
   incompleteTitle: {
-    fontSize: 24,
+    fontSize: 22,
     margin: 0,
     fontWeight: 900,
     color: "#fde68a",
@@ -6708,8 +6708,8 @@ const styles = {
     overflowY: "auto",
     background: "#181818",
     border: "1px solid #333",
-    borderRadius: 28,
-    padding: 24,
+    borderRadius: 24,
+    padding: 18,
     boxShadow: "0 20px 60px rgba(0,0,0,.45)",
   },
   modalTitle: {
@@ -7181,8 +7181,8 @@ textarea: {
   card: {
     background: "#1c1c1c",
     border: "1px solid #292929",
-    borderRadius: 28,
-    padding: 24,
+    borderRadius: 24,
+    padding: 18,
     marginBottom: 20,
     display: "flex",
     justifyContent: "space-between",
@@ -7204,7 +7204,7 @@ textarea: {
     gap: 10,
   },
   memberNameSmall: {
-    fontSize: 24,
+    fontSize: 22,
     margin: 0,
     marginBottom: 8,
     fontWeight: 900,
@@ -7212,7 +7212,7 @@ textarea: {
     wordBreak: "keep-all",
   },
   ptCountSmall: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 900,
     whiteSpace: "nowrap",
   },
@@ -7544,7 +7544,7 @@ textarea: {
     fontWeight: 900,
   },
   subTitle: {
-    fontSize: 24,
+    fontSize: 22,
     marginTop: 22,
     marginBottom: 14,
   },
@@ -7733,13 +7733,13 @@ textarea: {
   },
   scheduleCheckModalBox: {
     width: "100%",
-    maxWidth: 980,
-    maxHeight: "86vh",
+    maxWidth: 860,
+    maxHeight: "88vh",
     overflowY: "auto",
     background: "#ffffff",
     color: "#111",
-    borderRadius: 28,
-    padding: 24,
+    borderRadius: 24,
+    padding: 18,
     boxShadow: "0 20px 60px rgba(0,0,0,.45)",
   },
   scheduleCheckDateRow: {
@@ -7761,13 +7761,13 @@ textarea: {
   scheduleMiniCalendarBox: {
     background: "#f7f7f7",
     border: "1px solid #e4e4e4",
-    borderRadius: 18,
-    padding: 12,
-    marginBottom: 12,
+    borderRadius: 16,
+    padding: 10,
+    marginBottom: 10,
   },
   scheduleMiniCalendarHeader: {
     display: "grid",
-    gridTemplateColumns: "44px 1fr 44px",
+    gridTemplateColumns: "36px 1fr 36px",
     alignItems: "center",
     gap: 8,
     marginBottom: 10,
@@ -7777,22 +7777,22 @@ textarea: {
     color: "#fff",
     border: "none",
     borderRadius: 12,
-    height: 40,
-    fontSize: 24,
+    height: 34,
+    fontSize: 22,
     fontWeight: 900,
     lineHeight: 1,
   },
   scheduleMiniMonthTitle: {
     color: "#111",
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 900,
     textAlign: "center",
   },
   scheduleMiniWeekRow: {
     display: "grid",
     gridTemplateColumns: "repeat(7, 1fr)",
-    gap: 6,
-    marginBottom: 6,
+    gap: 4,
+    marginBottom: 4,
   },
   scheduleMiniWeekCell: {
     textAlign: "center",
@@ -7803,17 +7803,17 @@ textarea: {
   scheduleMiniCalendarGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(7, 1fr)",
-    gap: 6,
+    gap: 4,
   },
   scheduleMiniEmptyDay: {
-    minHeight: 48,
+    minHeight: 34,
   },
   scheduleMiniDay: {
-    minHeight: 48,
+    minHeight: 34,
     background: "#fff",
     border: "1px solid #e5e5e5",
-    borderRadius: 12,
-    padding: "6px 4px",
+    borderRadius: 10,
+    padding: "4px 3px",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -7822,11 +7822,11 @@ textarea: {
     color: "#111",
   },
   scheduleMiniDayToday: {
-    minHeight: 48,
+    minHeight: 34,
     background: "#fff7d6",
     border: "1px solid #facc15",
-    borderRadius: 12,
-    padding: "6px 4px",
+    borderRadius: 10,
+    padding: "4px 3px",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -7835,11 +7835,11 @@ textarea: {
     color: "#111",
   },
   scheduleMiniDaySelected: {
-    minHeight: 48,
+    minHeight: 34,
     background: "#111",
     border: "1px solid #111",
-    borderRadius: 12,
-    padding: "6px 4px",
+    borderRadius: 10,
+    padding: "4px 3px",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -7848,14 +7848,29 @@ textarea: {
     color: "#fff",
   },
   scheduleMiniDayNumber: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: 900,
     lineHeight: 1,
   },
   scheduleMiniDayCount: {
-    fontSize: 11,
+    color: "#1d4ed8",
+    background: "#dbeafe",
+    border: "1px solid #bfdbfe",
+    borderRadius: 999,
+    padding: "1px 6px",
+    fontSize: 10,
     fontWeight: 900,
-    lineHeight: 1,
+    lineHeight: 1.15,
+  },
+  scheduleMiniDayCountSelected: {
+    color: "#111",
+    background: "#facc15",
+    border: "1px solid #fef08a",
+    borderRadius: 999,
+    padding: "1px 6px",
+    fontSize: 10,
+    fontWeight: 900,
+    lineHeight: 1.15,
   },
   scheduleSearchBox: {
     display: "grid",
@@ -7866,7 +7881,7 @@ textarea: {
   },
   scheduleCheckTopActions: {
     display: "grid",
-    gridTemplateColumns: "120px 1fr",
+    gridTemplateColumns: "100px 1fr",
     gap: 10,
     marginBottom: 16,
   },
@@ -8013,19 +8028,19 @@ textarea: {
     overflowY: "auto",
     background: "#ffffff",
     color: "#111",
-    borderRadius: 28,
-    padding: 24,
+    borderRadius: 24,
+    padding: 18,
     boxShadow: "0 20px 60px rgba(0,0,0,.45)",
   },
   memberListModalBox: {
     width: "100%",
     maxWidth: 1180,
-    maxHeight: "86vh",
+    maxHeight: "88vh",
     overflowY: "auto",
     background: "#ffffff",
     color: "#111",
-    borderRadius: 28,
-    padding: 24,
+    borderRadius: 24,
+    padding: 18,
     boxShadow: "0 20px 60px rgba(0,0,0,.45)",
   },
   memberListSearchBox: {
@@ -8242,8 +8257,8 @@ textarea: {
     overflowY: "auto",
     background: "#181818",
     border: "1px solid #333",
-    borderRadius: 28,
-    padding: 24,
+    borderRadius: 24,
+    padding: 18,
     boxShadow: "0 20px 60px rgba(0,0,0,.45)",
   },
   workoutTypeGrid: {
