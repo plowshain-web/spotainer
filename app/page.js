@@ -17,7 +17,27 @@ const exerciseList = [
   "랫풀다운","시티드 로우","바벨 로우","덤벨 로우","케이블 로우","풀업","페이스풀","리버스 펙덱",
   "체스트 프레스","인클라인 체스트 프레스","덤벨 벤치프레스","푸쉬업","펙덱 플라이","케이블 플라이",
   "덤벨 숄더프레스","머신 숄더프레스","사이드 레터럴 레이즈","프론트 레이즈","리어 델트 레이즈","업라이트 로우",
-  "플랭크","사이드 플랭크","크런치","레그레이즈","데드버그","버드독","러시안 트위스트","케이블 크런치"
+  "플랭크","사이드 플랭크","크런치","레그레이즈","데드버그","버드독","러시안 트위스트","케이블 크런치",
+  "케틀벨 스윙", "덤벨 런지 프레스", "점핑잭", "스쿼트", "하이 니 크런치", "스탠딩 사이드 크런치", "스탠딩 트위스트 크런치", "스텝업 니업", "스텝업 니 드라이브 킥", "스텝업 니킥", "스텝업 덤벨 터치", "점핑 런지"
+];
+
+
+const circuitPrograms = [
+  {
+    name: "서킷 1단계",
+    memo: "전신 서킷 1단계",
+    exercises: ["케틀벨 스윙", "덤벨 런지 프레스", "점핑잭", "스쿼트"],
+  },
+  {
+    name: "서킷 2단계",
+    memo: "전신 서킷 2단계",
+    exercises: ["하이 니 크런치", "스탠딩 사이드 크런치", "스탠딩 트위스트 크런치"],
+  },
+  {
+    name: "서킷 3단계",
+    memo: "전신 서킷 3단계",
+    exercises: ["스텝업 니업", "스텝업 니 드라이브 킥", "스텝업 덤벨 터치", "점핑 런지"],
+  },
 ];
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
@@ -2810,6 +2830,25 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     updateExerciseName(exerciseIndex, name);
   }
 
+  function applyCircuitProgram(program) {
+    const newExercises = program.exercises.map((name) => ({
+      name,
+      sets: [{ weight: "", reps: "" }],
+    }));
+
+    setWorkoutExercises(newExercises);
+    setWorkoutMemo((prev) => {
+      const current = String(prev || "").trim();
+      if (!current) return program.memo;
+      if (current.includes(program.memo)) return current;
+      return `${program.memo}\n${current}`;
+    });
+
+    setExerciseSuggestions([]);
+    setActiveExerciseIndex(null);
+  }
+
+
   function addSet(exerciseIndex) {
     setWorkoutExercises((prev) =>
       prev.map((exercise, index) =>
@@ -4870,6 +4909,24 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
               <>
                 <h3 style={styles.subTitle}>오늘 운동 입력</h3>
 
+                <div style={styles.circuitProgramBox}>
+                  <strong>전신 서킷 자동 입력</strong>
+                  <p>다이어트/체력증가 회원은 단계 버튼을 눌러 운동 목록을 한 번에 불러오세요.</p>
+
+                  <div style={styles.circuitProgramGrid}>
+                    {circuitPrograms.map((program) => (
+                      <button
+                        key={program.name}
+                        type="button"
+                        onClick={() => applyCircuitProgram(program)}
+                        style={styles.circuitProgramButton}
+                      >
+                        {program.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {workoutExercises.map((exercise, exerciseIndex) => (
                   <div key={exerciseIndex} style={styles.infoBlock}>
                     <div style={styles.recordHeader}>
@@ -6734,6 +6791,28 @@ const styles = {
     fontSize: 18,
     boxSizing: "border-box",
     marginBottom: 16,
+  },
+  circuitProgramBox: {
+    background: "#202020",
+    border: "1px solid #333",
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 18,
+  },
+  circuitProgramGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1fr",
+    gap: 8,
+    marginTop: 12,
+  },
+  circuitProgramButton: {
+    background: "#f5f5f5",
+    color: "#111",
+    border: "1px solid #ffffff",
+    borderRadius: 12,
+    padding: "12px 10px",
+    fontSize: 15,
+    fontWeight: 900,
   },
   suggestionBox: {
   background: "#222",
