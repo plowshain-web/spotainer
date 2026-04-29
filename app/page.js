@@ -2893,7 +2893,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
       .map((value, index) => {
         if (!Number.isFinite(value)) return null;
 
-        const x = logs.length <= 1 ? 50 : (index / (logs.length - 1)) * 100;
+        const x = logs.length <= 1 ? 50 : ((index + 0.5) / logs.length) * 100;
         const y = 100 - getTrendPercent(value, values);
 
         return { x, y, value, index };
@@ -2907,29 +2907,31 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
         <div style={styles.inbodyTrendLabel}>{label}</div>
 
         <div style={styles.inbodyTrendLineArea}>
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={styles.inbodyTrendSvg}>
-            {validPoints.length >= 2 && (
-              <polyline
-                points={linePoints}
-                fill="none"
-                stroke="#38bdf8"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            )}
-          </svg>
+          <div style={styles.inbodyTrendPlotArea}>
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={styles.inbodyTrendSvg}>
+              {validPoints.length >= 2 && (
+                <polyline
+                  points={linePoints}
+                  fill="none"
+                  stroke="#22c55e"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+            </svg>
 
-          {validPoints.map((point) => (
-            <span
-              key={`${key}-dot-${point.index}`}
-              style={{
-                ...styles.inbodyTrendDot,
-                left: `${point.x}%`,
-                top: `${point.y}%`,
-              }}
-            />
-          ))}
+            {validPoints.map((point) => (
+              <span
+                key={`${key}-dot-${point.index}`}
+                style={{
+                  ...styles.inbodyTrendDot,
+                  left: `${point.x}%`,
+                  top: `${point.y}%`,
+                }}
+              />
+            ))}
+          </div>
 
           <div
             style={{
@@ -7755,8 +7757,11 @@ textarea: {
   },
   inbodyTrendLineArea: {
     position: "relative",
-    height: 58,
-    paddingTop: 4,
+  },
+  inbodyTrendPlotArea: {
+    position: "relative",
+    height: 38,
+    marginBottom: 6,
   },
   inbodyTrendSvg: {
     position: "absolute",
@@ -7764,26 +7769,22 @@ textarea: {
     right: 0,
     top: 0,
     width: "100%",
-    height: 38,
+    height: "100%",
     overflow: "visible",
     pointerEvents: "none",
   },
   inbodyTrendDot: {
     position: "absolute",
-    width: 12,
-    height: 12,
-    borderRadius: "50%",
-    background: "#38bdf8",
-    border: "2px solid #e0f2fe",
-    boxShadow: "0 0 0 2px #111, 0 0 10px rgba(56, 189, 248, 0.55)",
+    width: 13,
+    height: 13,
+    borderRadius: "999px",
+    background: "#ffffff",
+    border: "3px solid #22c55e",
+    boxShadow: "0 0 0 2px #111, 0 0 8px rgba(34, 197, 94, 0.5)",
     transform: "translate(-50%, -50%)",
     zIndex: 2,
   },
   inbodyTrendValueGrid: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
     display: "grid",
     gap: 8,
     alignItems: "center",
