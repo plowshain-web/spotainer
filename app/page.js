@@ -201,29 +201,16 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
   const isSearching = search.trim().length > 0;
 
-  const topModalKey =
-    showInbodyModal ? "inbodyModal"
-    : showAllInbodyModal ? "allInbodyModal"
-    : showAllWorkoutModal ? "allWorkoutModal"
-    : workoutMember ? "workoutModal"
-    : showScheduleSearchResultModal ? "scheduleSearchResultModal"
-    : showScheduleConflictModal ? "scheduleConflictModal"
-    : actionModalSchedule ? "actionModal"
-    : ptModalMember ? "ptModal"
-    : editModalMember ? "editModal"
-    : selectedMember ? "memberDetailModal"
-    : showScheduleModal ? "scheduleModal"
-    : showScheduleCheckModal ? "scheduleCheckModal"
-    : showMemberListModal ? "memberListModal"
-    : showAddModal ? "addMemberModal"
-    : showAllPtModal ? "allPtModal"
-    : showAllAttendanceModal ? "allAttendanceModal"
-    : "";
-
-  const lastHistoryModalKeyRef = useRef("");
+  const backGuardPushedRef = useRef(false);
+  const allowBrowserBackRef = useRef(false);
 
   useEffect(() => {
     window.history.replaceState({ spotainerMain: true }, "");
+
+    if (!backGuardPushedRef.current) {
+      window.history.pushState({ spotainerBackGuard: true }, "");
+      backGuardPushedRef.current = true;
+    }
   }, []);
 
   useEffect(() => {
@@ -254,128 +241,59 @@ const [workoutExercises, setWorkoutExercises] = useState([
   }, [topModalKey]);
 
   useEffect(() => {
+    function keepAppHistoryGuard() {
+      window.history.pushState({ spotainerBackGuard: true }, "");
+      backGuardPushedRef.current = true;
+    }
+
     function closeTopModal() {
-      if (showInbodyModal) {
-        closeInbodyModal();
-        return true;
-      }
-
-      if (showAllInbodyModal) {
-        setShowAllInbodyModal(false);
-        return true;
-      }
-
-      if (showAllWorkoutModal) {
-        setShowAllWorkoutModal(false);
-        return true;
-      }
-
-      if (workoutMember) {
-        closeWorkout();
-        return true;
-      }
-
-      if (showScheduleSearchResultModal) {
-        setShowScheduleSearchResultModal(false);
-        return true;
-      }
-
-      if (showScheduleConflictModal) {
-        closeScheduleConflictModal();
-        return true;
-      }
-
-      if (actionModalSchedule) {
-        closeActionModal();
-        return true;
-      }
-
-      if (ptModalMember) {
-        closePtModal();
-        return true;
-      }
-
-      if (editModalMember) {
-        closeEditModal();
-        return true;
-      }
-
+      if (contactModalMember) { closeContactModal(); return true; }
+      if (showCenterModal) { closeCenterModal(); return true; }
+      if (summaryModal) { setSummaryModal(null); return true; }
+      if (showContactListModal) { setShowContactListModal(false); return true; }
+      if (showInbodyModal) { closeInbodyModal(); return true; }
+      if (showAllInbodyModal) { setShowAllInbodyModal(false); return true; }
+      if (showAllPtModal) { setShowAllPtModal(false); return true; }
+      if (showAllAttendanceModal) { setShowAllAttendanceModal(false); return true; }
+      if (showAllWorkoutModal) { setShowAllWorkoutModal(false); return true; }
+      if (workoutMember) { closeWorkout(); return true; }
+      if (showScheduleSearchResultModal) { setShowScheduleSearchResultModal(false); return true; }
+      if (showScheduleConflictModal) { closeScheduleConflictModal(); return true; }
+      if (actionModalSchedule) { closeActionModal(); return true; }
+      if (ptModalMember) { closePtModal(); return true; }
+      if (editModalMember) { closeEditModal(); return true; }
       if (selectedMember) {
-        closeDetail();
+        if (detailMode && detailMode !== "menu") {
+          setDetailMode("menu");
+        } else {
+          closeDetail();
+        }
         return true;
       }
-
-      if (showScheduleModal) {
-        closeScheduleModal();
-        return true;
-      }
-
-      if (showScheduleCheckModal) {
-        closeScheduleCheckModal();
-        return true;
-      }
-
-      if (showMemberListModal) {
-        closeMemberListModal();
-        return true;
-      }
-
-      if (showAddModal) {
-        setShowAddModal(false);
-        return true;
-      }
-
-      if (showAllPtModal) {
-        setShowAllPtModal(false);
-        return true;
-      }
-
-      if (showAllAttendanceModal) {
-        setShowAllAttendanceModal(false);
-        return true;
-      }
-
+      if (showScheduleModal) { closeScheduleModal(); return true; }
+      if (showScheduleCheckModal) { closeScheduleCheckModal(); return true; }
+      if (showMemberListModal) { closeMemberListModal(); return true; }
+      if (showAddModal) { setShowAddModal(false); return true; }
       return false;
     }
 
     function handlePopState() {
+      if (allowBrowserBackRef.current) return;
+
       const closed = closeTopModal();
 
       if (closed) {
-        lastHistoryModalKeyRef.current = "";
-
-        setTimeout(() => {
-          const stillHasModal =
-            showInbodyModal ||
-            showAllInbodyModal ||
-            showAllWorkoutModal ||
-            showScheduleSearchResultModal ||
-            showScheduleConflictModal ||
-            actionModalSchedule ||
-            ptModalMember ||
-            editModalMember ||
-            selectedMember ||
-            showScheduleModal ||
-            showScheduleCheckModal ||
-            showMemberListModal ||
-            showAddModal ||
-            showAllPtModal ||
-            showAllAttendanceModal;
-
-          if (!stillHasModal) {
-            window.history.replaceState({ spotainerMain: true }, "");
-          }
-        }, 0);
-
+        keepAppHistoryGuard();
         return;
       }
 
       const shouldExit = window.confirm("앱을 종료할까요?");
 
-      if (!shouldExit) {
-        window.history.pushState({ spotainerMain: true }, "");
-      } else {
+      if (shouldExit) {
+        allowBrowserBackRef.current = true;
         window.history.back();
+      } else {
+        keepAppHistoryGuard();
       }
     }
 
@@ -383,8 +301,15 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     return () => window.removeEventListener("popstate", handlePopState);
   }, [
+    contactModalMember,
+    showCenterModal,
+    summaryModal,
+    showContactListModal,
+    detailMode,
     showInbodyModal,
     showAllInbodyModal,
+    showAllPtModal,
+    showAllAttendanceModal,
     showAllWorkoutModal,
     workoutMember,
     showScheduleSearchResultModal,
@@ -397,8 +322,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
     showScheduleCheckModal,
     showMemberListModal,
     showAddModal,
-    showAllPtModal,
-    showAllAttendanceModal,
   ]);
 
   async function loadMembers() {
