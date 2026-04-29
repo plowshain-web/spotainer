@@ -26,20 +26,33 @@ const circuitPrograms = [
   {
     name: "서킷 1단계",
     memo: "전신 서킷 1단계",
-    exercises: ["케틀벨 스윙", "덤벨 런지 프레스", "점핑잭", "스쿼트"],
+    exercises: [
+      { name: "점핑잭", weight: "", reps: "20" },
+      { name: "케틀벨 스윙", weight: "8", reps: "20" },
+      { name: "덤벨 런지 프레스", weight: "2", reps: "20" },
+      { name: "스쿼트", weight: "", reps: "20" },
+    ],
   },
   {
     name: "서킷 2단계",
     memo: "전신 서킷 2단계",
-    exercises: ["하이 니 크런치", "스탠딩 사이드 크런치", "스탠딩 트위스트 크런치"],
+    exercises: [
+      { name: "하이 니 크런치", weight: "", reps: "20" },
+      { name: "스탠딩 사이드 크런치", weight: "", reps: "20" },
+      { name: "스탠딩 트위스트 크런치", weight: "", reps: "20" },
+    ],
   },
   {
     name: "서킷 3단계",
     memo: "전신 서킷 3단계",
-    exercises: ["스텝업 니업", "스텝업 니 드라이브 킥", "스텝업 덤벨 터치", "점핑 런지"],
+    exercises: [
+      { name: "스텝업 니업", weight: "", reps: "20" },
+      { name: "스텝업 니킥", weight: "", reps: "20" },
+      { name: "스텝업 덤벨 터치", weight: "", reps: "20" },
+      { name: "점핑 런지", weight: "", reps: "20" },
+    ],
   },
-];
-const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
+];const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const commonExercises = [
   "스쿼트",
@@ -230,22 +243,30 @@ const [workoutExercises, setWorkoutExercises] = useState([
     }
 
     function handlePopState() {
-      if (showInbodyModal) return closeInbodyModal();
-      if (showAllInbodyModal) return setShowAllInbodyModal(false);
-      if (showAllWorkoutModal) return setShowAllWorkoutModal(false);
-      if (showScheduleSearchResultModal) return setShowScheduleSearchResultModal(false);
-      if (showScheduleConflictModal) return closeScheduleConflictModal();
-      if (actionModalSchedule) return closeActionModal();
-      if (ptModalMember) return closePtModal();
-      if (editModalMember) return closeEditModal();
-      if (workoutMember) return closeWorkout();
-      if (selectedMember) return closeDetail();
-      if (showScheduleModal) return closeScheduleModal();
-      if (showScheduleCheckModal) return closeScheduleCheckModal();
-      if (showMemberListModal) return closeMemberListModal();
-      if (showAddModal) return setShowAddModal(false);
-      if (showAllPtModal) return setShowAllPtModal(false);
-      if (showAllAttendanceModal) return setShowAllAttendanceModal(false);
+      const closeOneAndStay = (closeFn) => {
+        closeFn();
+
+        setTimeout(() => {
+          window.history.pushState({ spotainerMain: true }, "");
+        }, 0);
+      };
+
+      if (showInbodyModal) return closeOneAndStay(closeInbodyModal);
+      if (showAllInbodyModal) return closeOneAndStay(() => setShowAllInbodyModal(false));
+      if (showAllWorkoutModal) return closeOneAndStay(() => setShowAllWorkoutModal(false));
+      if (showScheduleSearchResultModal) return closeOneAndStay(() => setShowScheduleSearchResultModal(false));
+      if (showScheduleConflictModal) return closeOneAndStay(closeScheduleConflictModal);
+      if (actionModalSchedule) return closeOneAndStay(closeActionModal);
+      if (ptModalMember) return closeOneAndStay(closePtModal);
+      if (editModalMember) return closeOneAndStay(closeEditModal);
+      if (workoutMember) return closeOneAndStay(closeWorkout);
+      if (selectedMember) return closeOneAndStay(closeDetail);
+      if (showScheduleModal) return closeOneAndStay(closeScheduleModal);
+      if (showScheduleCheckModal) return closeOneAndStay(closeScheduleCheckModal);
+      if (showMemberListModal) return closeOneAndStay(closeMemberListModal);
+      if (showAddModal) return closeOneAndStay(() => setShowAddModal(false));
+      if (showAllPtModal) return closeOneAndStay(() => setShowAllPtModal(false));
+      if (showAllAttendanceModal) return closeOneAndStay(() => setShowAllAttendanceModal(false));
 
       const shouldExit = window.confirm("앱을 종료할까요?");
 
@@ -2831,17 +2852,29 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
   }
 
   function applyCircuitProgram(program) {
-    const newExercises = program.exercises.map((name) => ({
-      name,
-      sets: [{ weight: "", reps: "" }],
+    const newExercises = program.exercises.map((exercise) => ({
+      name: exercise.name,
+      sets: [{ weight: exercise.weight || "", reps: exercise.reps || "" }],
     }));
 
-    setWorkoutExercises(newExercises);
+    setWorkoutExercises((prev) => {
+      const cleaned = prev.filter((exercise) => {
+        const hasName = String(exercise.name || "").trim();
+        const hasSet = (exercise.sets || []).some(
+          (set) => String(set.weight || "").trim() || String(set.reps || "").trim()
+        );
+
+        return hasName || hasSet;
+      });
+
+      return [...cleaned, ...newExercises];
+    });
+
     setWorkoutMemo((prev) => {
       const current = String(prev || "").trim();
       if (!current) return program.memo;
       if (current.includes(program.memo)) return current;
-      return `${program.memo}\n${current}`;
+      return `${current}\n${program.memo}`;
     });
 
     setExerciseSuggestions([]);
@@ -4521,7 +4554,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 
                       return (
                         <>
-                          <p style={styles.detailPt}>
+                          <p style={styles.inbodyRecentDate}>
                             최근 측정일 {formatDate(latest.measured_at)}
                           </p>
 
@@ -7260,6 +7293,17 @@ textarea: {
     color: "#ddd",
     fontWeight: 900,
     fontSize: 14,
+  },
+  inbodyRecentDate: {
+    display: "inline-block",
+    background: "#fef3c7",
+    color: "#92400e",
+    border: "1px solid #facc15",
+    borderRadius: 999,
+    padding: "7px 12px",
+    fontSize: 15,
+    fontWeight: 900,
+    margin: "0 0 14px",
   },
   inbodyMetricGrid: {
     display: "grid",
