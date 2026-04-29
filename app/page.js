@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -200,6 +200,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [scheduleMemo, setScheduleMemo] = useState("");
   const [exitToast, setExitToast] = useState("");
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const hasOpenModalRef = useRef(false);
 
   const isSearching = search.trim().length > 0;
 
@@ -219,6 +220,46 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     return () => window.clearTimeout(timer);
   }, [exitToast]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const guardState = { spotainerBackGuard: true };
+
+    function armBackGuard() {
+      try {
+        window.history.pushState(guardState, "", window.location.href);
+      } catch (error) {
+        console.error("뒤로가기 방어 설정 실패", error);
+      }
+    }
+
+    try {
+      window.history.replaceState({ spotainerMain: true }, "", window.location.href);
+    } catch (error) {
+      console.error("메인 히스토리 설정 실패", error);
+    }
+
+    armBackGuard();
+
+    function handleBackButton() {
+      armBackGuard();
+
+      if (hasOpenModalRef.current) {
+        goToMain();
+        setExitToast("메인화면으로 이동했습니다");
+        return;
+      }
+
+      setExitToast("종료는 오른쪽 하단 앱 종료 버튼을 눌러주세요");
+    }
+
+    window.addEventListener("popstate", handleBackButton);
+
+    return () => {
+      window.removeEventListener("popstate", handleBackButton);
+    };
+  }, []);
 
 
   useEffect(() => {
@@ -3582,7 +3623,12 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     contactModalMember ||
     summaryModal;
 
+  useEffect(() => {
+    hasOpenModalRef.current = Boolean(hasOpenModal || showExitConfirm);
+  }, [hasOpenModal, showExitConfirm]);
+
   function goToMain() {
+    setShowExitConfirm(false);
     setSummaryModal(null);
     setShowContactListModal(false);
     setShowCenterModal(false);
@@ -3782,32 +3828,6 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
             {reRegisterStats.converted}/{reRegisterStats.success}명
           </p>
         </div>
-      </section>
-
-      <section style={{ ...styles.autoCareBox, ...getContactCardBorderStyle() }}>
-        <button
-          type="button"
-          onClick={() => setShowContactListModal(true)}
-          style={styles.contactListOpenButton}
-        >
-          <span style={styles.contactIconCircle}>☎</span>
-
-          <span style={styles.contactCardText}>
-            <strong>오늘 연락 필요 회원</strong>
-            <p>연락 대상 회원을 확인하고 바로 처리하세요.</p>
-          </span>
-
-          <span style={styles.contactListCount}>{attentionList.length}명</span>
-          <span style={styles.actionCardArrow}>›</span>
-        </button>
-      </section>
-
-      <section style={styles.contactLegendBox}>
-        <strong>테두리 색상 안내</strong>
-        <span style={styles.legendItem}><i style={styles.legendBlue}></i>재등록 상담</span>
-        <span style={styles.legendItem}><i style={styles.legendRed}></i>강한 경고</span>
-        <span style={styles.legendItem}><i style={styles.legendGreen}></i>연락 필요</span>
-        <span style={styles.legendItem}><i style={styles.legendGold}></i>VIP 연락</span>
       </section>
 
       <section style={styles.incompleteBox}>
