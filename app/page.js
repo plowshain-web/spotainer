@@ -199,7 +199,10 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [scheduleType, setScheduleType] = useState("pt");
   const [scheduleMemo, setScheduleMemo] = useState("");
   const [exitToast, setExitToast] = useState("");
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const hasOpenModalRef = useRef(false);
+  const exitConfirmOpenRef = useRef(false);
+  const allowActualExitRef = useRef(false);
 
   const isSearching = search.trim().length > 0;
 
@@ -3583,6 +3586,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     summaryModal;
 
   function goToMain() {
+    setShowExitConfirm(false);
     setSummaryModal(null);
     setShowContactListModal(false);
     setShowCenterModal(false);
@@ -3620,6 +3624,34 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
   }, [hasOpenModal]);
 
   useEffect(() => {
+    exitConfirmOpenRef.current = Boolean(showExitConfirm);
+  }, [showExitConfirm]);
+
+  function cancelExitApp() {
+    setShowExitConfirm(false);
+    setExitToast("종료를 취소했습니다");
+  }
+
+  function confirmExitApp() {
+    allowActualExitRef.current = true;
+    setShowExitConfirm(false);
+
+    try {
+      window.history.go(-2);
+    } catch (error) {
+      console.error("앱 종료 시도 실패", error);
+    }
+
+    setTimeout(() => {
+      try {
+        window.close();
+      } catch (error) {
+        console.error("window.close 실패", error);
+      }
+    }, 80);
+  }
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
 
     function pushBackGuard() {
@@ -3633,7 +3665,15 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     pushBackGuard();
 
     function handlePwaBackButton() {
+      if (allowActualExitRef.current) {
+        return;
+      }
+
       pushBackGuard();
+
+      if (exitConfirmOpenRef.current) {
+        return;
+      }
 
       if (hasOpenModalRef.current) {
         goToMain();
@@ -3641,7 +3681,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
         return;
       }
 
-      setExitToast("이미 메인화면입니다");
+      setShowExitConfirm(true);
     }
 
     window.addEventListener("popstate", handlePwaBackButton);
@@ -3666,6 +3706,33 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
       {exitToast && (
         <div style={styles.appToast}>
           {exitToast}
+        </div>
+      )}
+
+      {showExitConfirm && (
+        <div style={styles.exitConfirmOverlay}>
+          <div style={styles.exitConfirmBox}>
+            <h2 style={styles.exitConfirmTitle}>앱을 종료할까요?</h2>
+            <p style={styles.exitConfirmText}>
+              종료를 누르면 Spotainer 앱 종료를 시도합니다.
+            </p>
+            <div style={styles.exitConfirmButtonRow}>
+              <button
+                type="button"
+                onClick={cancelExitApp}
+                style={styles.exitCancelButton}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={confirmExitApp}
+                style={styles.exitConfirmButton}
+              >
+                종료
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -5880,6 +5947,63 @@ const styles = {
     boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
     pointerEvents: "none",
     whiteSpace: "nowrap",
+  },
+  exitConfirmOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 200000,
+    background: "rgba(0,0,0,0.55)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  exitConfirmBox: {
+    width: "min(420px, 92vw)",
+    background: "#181818",
+    border: "1px solid rgba(255,255,255,0.16)",
+    borderRadius: 28,
+    padding: 28,
+    color: "#fff",
+    boxShadow: "0 24px 70px rgba(0,0,0,0.45)",
+  },
+  exitConfirmTitle: {
+    margin: 0,
+    marginBottom: 10,
+    fontSize: 28,
+    fontWeight: 1000,
+    letterSpacing: -1,
+  },
+  exitConfirmText: {
+    margin: 0,
+    marginBottom: 24,
+    color: "#cfcfcf",
+    fontSize: 16,
+    lineHeight: 1.5,
+    fontWeight: 700,
+  },
+  exitConfirmButtonRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+  },
+  exitCancelButton: {
+    border: "1px solid #333",
+    background: "#f5f5f5",
+    color: "#111",
+    borderRadius: 18,
+    padding: "16px 12px",
+    fontSize: 17,
+    fontWeight: 1000,
+  },
+  exitConfirmButton: {
+    border: "1px solid #7f1d1d",
+    background: "#7f1d1d",
+    color: "#fff",
+    borderRadius: 18,
+    padding: "16px 12px",
+    fontSize: 17,
+    fontWeight: 1000,
   },
   page: {
     minHeight: "100vh",
