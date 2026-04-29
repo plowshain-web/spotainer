@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -198,6 +198,9 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [scheduleEndTime, setScheduleEndTime] = useState("");
   const [scheduleType, setScheduleType] = useState("pt");
   const [scheduleMemo, setScheduleMemo] = useState("");
+  const [lastBackPressedAt, setLastBackPressedAt] = useState(0);
+  const [exitToast, setExitToast] = useState("");
+  const allowBackExitRef = useRef(false);
 
   const isSearching = search.trim().length > 0;
 
@@ -207,6 +210,16 @@ const [workoutExercises, setWorkoutExercises] = useState([
     loadSales();
     loadCenterInfo();
   }, []);
+
+  useEffect(() => {
+    if (!exitToast) return;
+
+    const timer = window.setTimeout(() => {
+      setExitToast("");
+    }, 1700);
+
+    return () => window.clearTimeout(timer);
+  }, [exitToast]);
 
 
   useEffect(() => {
@@ -3570,6 +3583,46 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     contactModalMember ||
     summaryModal;
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    window.history.pushState({ spotainerMainGuard: true }, "", window.location.href);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    function handleMainBackPress() {
+      if (allowBackExitRef.current) {
+        return;
+      }
+
+      if (hasOpenModal) {
+        window.history.pushState({ spotainerMainGuard: true }, "", window.location.href);
+        setExitToast("닫기 또는 메인으로 버튼을 눌러주세요");
+        return;
+      }
+
+      const now = Date.now();
+
+      if (now - lastBackPressedAt < 2000) {
+        allowBackExitRef.current = true;
+        window.history.back();
+        return;
+      }
+
+      setLastBackPressedAt(now);
+      setExitToast("한 번 더 누르면 종료됩니다");
+      window.history.pushState({ spotainerMainGuard: true }, "", window.location.href);
+    }
+
+    window.addEventListener("popstate", handleMainBackPress);
+
+    return () => {
+      window.removeEventListener("popstate", handleMainBackPress);
+    };
+  }, [hasOpenModal, lastBackPressedAt]);
+
   function goToMain() {
     setSummaryModal(null);
     setShowContactListModal(false);
@@ -3620,6 +3673,13 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
           ← 메인으로
         </button>
       )}
+
+      {exitToast && (
+        <div style={styles.appToast}>
+          {exitToast}
+        </div>
+      )}
+
       <header style={styles.header}>
         <div>
           <h1 style={styles.title}>Spotainer</h1>
@@ -5815,6 +5875,23 @@ const styles = {
     fontSize: 14,
     fontWeight: 900,
     boxShadow: "0 10px 24px rgba(0,0,0,0.22)",
+  },
+  appToast: {
+    position: "fixed",
+    left: "50%",
+    bottom: 28,
+    transform: "translateX(-50%)",
+    zIndex: 100000,
+    background: "rgba(20,20,20,0.96)",
+    color: "#fff",
+    border: "1px solid rgba(255,255,255,0.14)",
+    borderRadius: 999,
+    padding: "12px 18px",
+    fontSize: 15,
+    fontWeight: 900,
+    boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
+    pointerEvents: "none",
+    whiteSpace: "nowrap",
   },
   page: {
     minHeight: "100vh",
