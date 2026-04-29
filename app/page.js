@@ -385,12 +385,29 @@ const [workoutExercises, setWorkoutExercises] = useState([
   ]);
 
   async function loadMembers() {
-    const { data } = await supabase
+    let { data, error } = await supabase
       .from("members")
       .select(
         "*, attendance_logs(visited_at,is_cancelled,cancelled_at), pt_logs(type,amount,total_price,is_cancelled,created_at), inbody_logs(measured_at)"
       )
       .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("회원 상세 불러오기 실패, 기본 회원 목록으로 재시도:", error.message);
+
+      const fallback = await supabase
+        .from("members")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (fallback.error) {
+        alert("회원 목록 불러오기 실패: " + fallback.error.message);
+        setMembers([]);
+        return;
+      }
+
+      data = fallback.data || [];
+    }
 
     const formatted = (data || []).map((m) => {
       const validLogs = (m.attendance_logs || []).filter((l) => !l.is_cancelled);
