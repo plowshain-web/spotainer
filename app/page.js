@@ -232,6 +232,12 @@ const [workoutExercises, setWorkoutExercises] = useState([
   }, []);
 
   useEffect(() => {
+    if (showScheduleCheckModal && scheduleCheckDate) {
+      loadScheduleCheckList(scheduleCheckDate);
+    }
+  }, [showScheduleCheckModal, scheduleCheckDate]);
+
+  useEffect(() => {
     if (!topModalKey) {
       lastHistoryModalKeyRef.current = "";
       return;
@@ -890,8 +896,10 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     const year = base.getFullYear();
     const month = String(base.getMonth() + 1).padStart(2, "0");
     const day = String(base.getDate()).padStart(2, "0");
+    const nextDate = `${year}-${month}-${day}`;
 
-    setScheduleCheckDate(`${year}-${month}-${day}`);
+    setScheduleCheckDate(nextDate);
+    loadScheduleCheckList(nextDate);
   }
 
   function openActionModal(schedule) {
@@ -4043,7 +4051,11 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 
               <input
                 value={scheduleCheckDate}
-                onChange={(e) => setScheduleCheckDate(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setScheduleCheckDate(value);
+                  loadScheduleCheckList(value);
+                }}
                 type="date"
                 style={styles.whiteInput}
               />
@@ -4060,7 +4072,11 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
             <div style={styles.scheduleCheckTopActions}>
               <button
                 type="button"
-                onClick={() => setScheduleCheckDate(getTodayDateString())}
+                onClick={() => {
+                  const today = getTodayDateString();
+                  setScheduleCheckDate(today);
+                  loadScheduleCheckList(today);
+                }}
                 style={styles.memberSortButton}
               >
                 오늘
