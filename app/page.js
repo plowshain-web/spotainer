@@ -199,11 +199,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [scheduleType, setScheduleType] = useState("pt");
   const [scheduleMemo, setScheduleMemo] = useState("");
   const [exitToast, setExitToast] = useState("");
-  const [showExitConfirm, setShowExitConfirm] = useState(false);
-  const allowBackExitRef = useRef(false);
   const hasOpenModalRef = useRef(false);
-  const exitConfirmOpenRef = useRef(false);
-  const backGuardReadyRef = useRef(false);
 
   const isSearching = search.trim().length > 0;
 
@@ -3586,148 +3582,6 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     contactModalMember ||
     summaryModal;
 
-  useEffect(() => {
-    hasOpenModalRef.current = Boolean(hasOpenModal);
-  }, [hasOpenModal]);
-
-  function closeTopModalByBackButton() {
-    if (showInbodyModal) {
-      closeInbodyModal();
-      return true;
-    }
-
-    if (showAllInbodyModal) {
-      setShowAllInbodyModal(false);
-      return true;
-    }
-
-    if (showAllWorkoutModal) {
-      setShowAllWorkoutModal(false);
-      return true;
-    }
-
-    if (workoutMember) {
-      closeWorkout();
-      return true;
-    }
-
-    if (showScheduleSearchResultModal) {
-      setShowScheduleSearchResultModal(false);
-      return true;
-    }
-
-    if (showScheduleConflictModal) {
-      closeScheduleConflictModal();
-      return true;
-    }
-
-    if (actionModalSchedule) {
-      closeActionModal();
-      return true;
-    }
-
-    if (ptModalMember) {
-      closePtModal();
-      return true;
-    }
-
-    if (editModalMember) {
-      closeEditModal();
-      return true;
-    }
-
-    if (selectedMember) {
-      if (detailMode && detailMode !== "menu") {
-        setDetailMode("menu");
-        return true;
-      }
-
-      closeDetail();
-      return true;
-    }
-
-    if (showScheduleModal) {
-      closeScheduleModal();
-      return true;
-    }
-
-    if (showScheduleCheckModal) {
-      closeScheduleCheckModal();
-      return true;
-    }
-
-    if (showMemberListModal) {
-      closeMemberListModal();
-      return true;
-    }
-
-    if (showAddModal) {
-      setShowAddModal(false);
-      return true;
-    }
-
-    if (showAllPtModal) {
-      setShowAllPtModal(false);
-      return true;
-    }
-
-    if (showAllAttendanceModal) {
-      setShowAllAttendanceModal(false);
-      return true;
-    }
-
-    if (contactModalMember) {
-      closeContactModal();
-      return true;
-    }
-
-    if (showContactListModal) {
-      setShowContactListModal(false);
-      return true;
-    }
-
-    if (showCenterModal) {
-      closeCenterModal();
-      return true;
-    }
-
-    if (summaryModal) {
-      setSummaryModal(null);
-      return true;
-    }
-
-    return false;
-  }
-
-  function openExitConfirmFromButton() {
-    setExitToast("");
-    setShowExitConfirm(true);
-  }
-
-  function confirmExitApp() {
-    setShowExitConfirm(false);
-    setExitToast("");
-
-    try {
-      window.close();
-    } catch (error) {
-      console.error("앱 종료 실패:", error);
-    }
-
-    setTimeout(() => {
-      try {
-        window.history.back();
-      } catch (error) {
-        console.error("앱 뒤로가기 종료 실패:", error);
-      }
-    }, 80);
-  }
-
-  function cancelExitApp() {
-    setShowExitConfirm(false);
-    setExitToast("종료를 취소했습니다");
-  }
-
   function goToMain() {
     setSummaryModal(null);
     setShowContactListModal(false);
@@ -3761,6 +3615,42 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     setReturnToScheduleCheckAfterAdd(false);
   }
 
+  useEffect(() => {
+    hasOpenModalRef.current = Boolean(hasOpenModal);
+  }, [hasOpenModal]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    function pushBackGuard() {
+      try {
+        window.history.pushState({ spotainerBackGuard: true }, "", window.location.href);
+      } catch (error) {
+        console.error("뒤로가기 방어 설정 실패", error);
+      }
+    }
+
+    pushBackGuard();
+
+    function handlePwaBackButton() {
+      pushBackGuard();
+
+      if (hasOpenModalRef.current) {
+        goToMain();
+        setExitToast("메인화면으로 이동했습니다");
+        return;
+      }
+
+      setExitToast("이미 메인화면입니다");
+    }
+
+    window.addEventListener("popstate", handlePwaBackButton);
+
+    return () => {
+      window.removeEventListener("popstate", handlePwaBackButton);
+    };
+  }, []);
+
   const incompleteSchedules = schedules.filter((schedule) => {
     if (
       schedule.status === "noshow" ||
@@ -3773,46 +3663,9 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 
   return (
     <main style={styles.page}>
-      {!hasOpenModal && !showExitConfirm && (
-        <button
-          type="button"
-          onClick={openExitConfirmFromButton}
-          style={styles.exitFloatingButton}
-        >
-          앱 종료
-        </button>
-      )}
-
       {exitToast && (
         <div style={styles.appToast}>
           {exitToast}
-        </div>
-      )}
-
-      {showExitConfirm && (
-        <div style={styles.exitConfirmOverlay}>
-          <div style={styles.exitConfirmBox}>
-            <h3 style={styles.exitConfirmTitle}>앱을 종료할까요?</h3>
-            <p style={styles.exitConfirmText}>
-              Spotainer를 종료하려면 종료 버튼을 누르세요.
-            </p>
-            <div style={styles.exitConfirmActions}>
-              <button
-                type="button"
-                onClick={cancelExitApp}
-                style={styles.exitCancelButton}
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={confirmExitApp}
-                style={styles.exitConfirmButton}
-              >
-                종료
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -5998,20 +5851,19 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 }
 
 const styles = {
-  exitFloatingButton: {
+  mainReturnButton: {
     position: "fixed",
-    right: 24,
-    bottom: 24,
-    zIndex: 99990,
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "rgba(23,23,23,0.92)",
+    top: 14,
+    left: 14,
+    zIndex: 99999,
+    background: "#111",
     color: "#fff",
+    border: "1px solid #333",
     borderRadius: 999,
-    padding: "12px 18px",
+    padding: "10px 14px",
     fontSize: 14,
     fontWeight: 900,
-    cursor: "pointer",
-    boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
+    boxShadow: "0 10px 24px rgba(0,0,0,0.22)",
   },
   appToast: {
     position: "fixed",
@@ -6028,61 +5880,6 @@ const styles = {
     boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
     pointerEvents: "none",
     whiteSpace: "nowrap",
-  },
-  exitConfirmOverlay: {
-    position: "fixed",
-    inset: 0,
-    zIndex: 100001,
-    background: "rgba(0,0,0,0.46)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
-  exitConfirmBox: {
-    width: "min(360px, 92vw)",
-    background: "#171717",
-    border: "1px solid rgba(255,255,255,0.14)",
-    borderRadius: 22,
-    padding: 22,
-    boxShadow: "0 24px 70px rgba(0,0,0,0.5)",
-  },
-  exitConfirmTitle: {
-    margin: "0 0 8px",
-    fontSize: 22,
-    fontWeight: 900,
-    color: "#fff",
-  },
-  exitConfirmText: {
-    margin: "0 0 18px",
-    fontSize: 14,
-    lineHeight: 1.5,
-    color: "#cfcfcf",
-  },
-  exitConfirmActions: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-  },
-  exitCancelButton: {
-    border: "1px solid rgba(255,255,255,0.16)",
-    background: "#2a2a2a",
-    color: "#fff",
-    borderRadius: 14,
-    padding: "13px 14px",
-    fontSize: 15,
-    fontWeight: 900,
-    cursor: "pointer",
-  },
-  exitConfirmButton: {
-    border: "none",
-    background: "#ef4444",
-    color: "#fff",
-    borderRadius: 14,
-    padding: "13px 14px",
-    fontSize: 15,
-    fontWeight: 900,
-    cursor: "pointer",
   },
   page: {
     minHeight: "100vh",
