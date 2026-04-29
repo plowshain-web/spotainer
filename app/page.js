@@ -3706,6 +3706,59 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
         </button>
       </header>
 
+
+      <section style={styles.todayDashboardBox}>
+        <div style={styles.todayDashboardTop}>
+          <div>
+            <h2 style={styles.todayDashboardTitle}>오늘 할 일</h2>
+            <p style={styles.todayDashboardDesc}>앱을 켜자마자 바로 처리해야 할 일을 확인하세요.</p>
+          </div>
+          <span style={styles.todayDashboardBadge}>{getTodayDateString()}</span>
+        </div>
+
+        <div style={styles.todayDashboardGrid}>
+          <button
+            type="button"
+            onClick={() => setShowContactListModal(true)}
+            style={styles.todayTaskCard}
+          >
+            <span style={styles.todayTaskLabel}>연락 작업</span>
+            <strong style={styles.todayTaskValue}>{attentionList.length}명</strong>
+            <span style={styles.todayTaskHint}>오늘 처리</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSummaryModal("rejoin")}
+            style={styles.todayTaskCard}
+          >
+            <span style={styles.todayTaskLabel}>재등록 상담</span>
+            <strong style={styles.todayTaskValue}>{summaryGroups.rejoin.length}명</strong>
+            <span style={styles.todayTaskHint}>3~5회 남음</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSummaryModal("urgent")}
+            style={styles.todayTaskCard}
+          >
+            <span style={styles.todayTaskLabel}>강한 경고</span>
+            <strong style={styles.todayTaskValue}>{summaryGroups.urgent.length}명</strong>
+            <span style={styles.todayTaskHint}>0~2회 남음</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={openScheduleCheckModal}
+            style={styles.todayTaskCard}
+          >
+            <span style={styles.todayTaskLabel}>오늘 수업</span>
+            <strong style={styles.todayTaskValue}>{schedules.length}건</strong>
+            <span style={styles.todayTaskHint}>스케줄 확인</span>
+          </button>
+        </div>
+      </section>
+
       <section style={styles.salesBox}>
         <div style={styles.salesCard}>
           <p style={styles.salesLabel}>이번달 매출</p>
@@ -5984,6 +6037,92 @@ const styles = {
     padding: 24,
     fontFamily: "Arial, sans-serif",
   },
+
+  todayDashboardBox: {
+    background: "linear-gradient(135deg, #111827, #1f2937)",
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 16,
+    boxShadow: "0 14px 28px rgba(15, 23, 42, 0.18)",
+  },
+
+  todayDashboardTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 10,
+    marginBottom: 12,
+  },
+
+  todayDashboardTitle: {
+    margin: 0,
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: 900,
+    letterSpacing: "-0.02em",
+  },
+
+  todayDashboardDesc: {
+    margin: "4px 0 0",
+    color: "#cbd5e1",
+    fontSize: 12,
+    lineHeight: 1.35,
+  },
+
+  todayDashboardBadge: {
+    flexShrink: 0,
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
+    color: "#f8fafc",
+    border: "1px solid rgba(255, 255, 255, 0.18)",
+    borderRadius: 999,
+    padding: "6px 10px",
+    fontSize: 11,
+    fontWeight: 800,
+  },
+
+  todayDashboardGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 10,
+  },
+
+  todayTaskCard: {
+    appearance: "none",
+    border: "1px solid rgba(255, 255, 255, 0.16)",
+    backgroundColor: "rgba(255, 255, 255, 0.96)",
+    borderRadius: 16,
+    padding: "12px 10px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 6,
+    minHeight: 92,
+    cursor: "pointer",
+    textAlign: "left",
+    boxShadow: "0 8px 18px rgba(15, 23, 42, 0.12)",
+  },
+
+  todayTaskLabel: {
+    color: "#334155",
+    fontSize: 12,
+    fontWeight: 800,
+  },
+
+  todayTaskValue: {
+    color: "#0f172a",
+    fontSize: 24,
+    fontWeight: 900,
+    letterSpacing: "-0.04em",
+    lineHeight: 1,
+  },
+
+  todayTaskHint: {
+    color: "#64748b",
+    fontSize: 11,
+    fontWeight: 700,
+  },
+
   header: {
     display: "flex",
     justifyContent: "space-between",
