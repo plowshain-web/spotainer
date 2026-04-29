@@ -201,6 +201,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [lastBackPressedAt, setLastBackPressedAt] = useState(0);
   const [exitToast, setExitToast] = useState("");
   const allowBackExitRef = useRef(false);
+  const lastBackPressedRef = useRef(0);
 
   const isSearching = search.trim().length > 0;
 
@@ -3587,6 +3588,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     if (typeof window === "undefined") return;
 
     window.history.pushState({ spotainerMainGuard: true }, "", window.location.href);
+    window.history.pushState({ spotainerMainGuard: true }, "", window.location.href);
   }, []);
 
   useEffect(() => {
@@ -3597,23 +3599,24 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
         return;
       }
 
+      window.history.pushState({ spotainerMainGuard: true }, "", window.location.href);
+
       if (hasOpenModal) {
-        window.history.pushState({ spotainerMainGuard: true }, "", window.location.href);
-        setExitToast("닫기 또는 메인으로 버튼을 눌러주세요");
+        setExitToast("닫기 또는 ← 메인으로 버튼을 눌러주세요");
         return;
       }
 
       const now = Date.now();
 
-      if (now - lastBackPressedAt < 2000) {
+      if (now - lastBackPressedRef.current < 2000) {
         allowBackExitRef.current = true;
-        window.history.back();
+        window.history.go(-2);
         return;
       }
 
+      lastBackPressedRef.current = now;
       setLastBackPressedAt(now);
       setExitToast("한 번 더 누르면 종료됩니다");
-      window.history.pushState({ spotainerMainGuard: true }, "", window.location.href);
     }
 
     window.addEventListener("popstate", handleMainBackPress);
@@ -3621,7 +3624,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     return () => {
       window.removeEventListener("popstate", handleMainBackPress);
     };
-  }, [hasOpenModal, lastBackPressedAt]);
+  }, [hasOpenModal]);
 
   function goToMain() {
     setSummaryModal(null);
@@ -5878,9 +5881,8 @@ const styles = {
   },
   appToast: {
     position: "fixed",
-    left: "50%",
-    bottom: 28,
-    transform: "translateX(-50%)",
+    right: 24,
+    bottom: 24,
     zIndex: 100000,
     background: "rgba(20,20,20,0.96)",
     color: "#fff",
