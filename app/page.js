@@ -198,14 +198,12 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [scheduleEndTime, setScheduleEndTime] = useState("");
   const [scheduleType, setScheduleType] = useState("pt");
   const [scheduleMemo, setScheduleMemo] = useState("");
-  const [lastBackPressedAt, setLastBackPressedAt] = useState(0);
   const [exitToast, setExitToast] = useState("");
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const allowBackExitRef = useRef(false);
   const hasOpenModalRef = useRef(false);
-  const showExitConfirmRef = useRef(false);
-  const lastBackPressedAtRef = useRef(0);
-  const closeTopModalByBackButtonRef = useRef(null);
+  const exitConfirmOpenRef = useRef(false);
+  const backGuardReadyRef = useRef(false);
 
   const isSearching = search.trim().length > 0;
 
@@ -3592,14 +3590,6 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     hasOpenModalRef.current = Boolean(hasOpenModal);
   }, [hasOpenModal]);
 
-  useEffect(() => {
-    showExitConfirmRef.current = showExitConfirm;
-  }, [showExitConfirm]);
-
-  useEffect(() => {
-    lastBackPressedAtRef.current = lastBackPressedAt;
-  }, [lastBackPressedAt]);
-
   function closeTopModalByBackButton() {
     if (showInbodyModal) {
       closeInbodyModal();
@@ -3709,28 +3699,48 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     return false;
   }
 
-  closeTopModalByBackButtonRef.current = closeTopModalByBackButton;
-
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const guardState = { spotainerBackGuard: true };
-    window.history.replaceState({ spotainerBase: true }, "", window.location.href);
-    window.history.pushState(guardState, "", window.location.href);
 
-    function keepInsideApp() {
-      window.history.pushState(guardState, "", window.location.href);
+    function pushBackGuard() {
+      try {
+        window.history.pushState(guardState, "", window.location.href);
+      } catch (error) {
+        console.error("뒤로가기 방어 기록 생성 실패:", error);
+      }
     }
+
+    function openExitConfirmModal() {
+      exitConfirmOpenRef.current = true;
+      setExitToast("");
+      setShowExitConfirm(true);
+
+      // 일부 Android/PWA 환경에서는 popstate가 연속으로 들어오며 렌더가 밀릴 수 있어
+      // 짧은 간격으로 한 번 더 고정합니다. 취소/종료 버튼을 누르기 전에는 닫히지 않습니다.
+      window.setTimeout(() => {
+        if (exitConfirmOpenRef.current) setShowExitConfirm(true);
+      }, 80);
+      window.setTimeout(() => {
+        if (exitConfirmOpenRef.current) setShowExitConfirm(true);
+      }, 220);
+    }
+
+    window.history.replaceState({ spotainerBase: true }, "", window.location.href);
+    pushBackGuard();
+    pushBackGuard();
+    backGuardReadyRef.current = true;
 
     function handlePwaBackButton() {
       if (allowBackExitRef.current) return;
 
-      // 뒤로가기로 실제 페이지가 빠져나가지 않도록 항상 현재 위치를 다시 쌓습니다.
-      keepInsideApp();
+      pushBackGuard();
 
-      // 종료 확인창이 이미 떠 있을 때는 자동으로 닫지 않습니다.
-      // 취소/종료 버튼으로만 닫혀야 PWA 뒤로가기 이벤트가 연속으로 들어와도 안정적입니다.
-      if (showExitConfirmRef.current) {
+      if (!backGuardReadyRef.current) return;
+
+      if (exitConfirmOpenRef.current) {
+        setShowExitConfirm(true);
         return;
       }
 
@@ -3739,8 +3749,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
         return;
       }
 
-      setExitToast("");
-      setShowExitConfirm(true);
+      openExitConfirmModal();
     }
 
     window.addEventListener("popstate", handlePwaBackButton);
@@ -3752,21 +3761,42 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 
   function confirmExitApp() {
     allowBackExitRef.current = true;
+    exitConfirmOpenRef.current = false;
     setShowExitConfirm(false);
     setExitToast("");
 
+    // PWA 환경에서는 window.close가 막힐 수 있어서, 먼저 히스토리를 크게 뒤로 보낸 뒤 종료를 시도합니다.
     setTimeout(() => {
-      window.history.go(-2);
+      try {
+        window.history.go(-10);
+      } catch (error) {
+        console.error("앱 종료 이동 실패:", error);
+      }
 
       setTimeout(() => {
-        window.close();
-      }, 80);
+        try {
+          window.close();
+        } catch (error) {
+          console.error("앱 종료 실패:", error);
+        }
+      }, 120);
     }, 0);
   }
 
   function cancelExitApp() {
+    exitConfirmOpenRef.current = false;
     setShowExitConfirm(false);
     setExitToast("종료를 취소했습니다");
+
+    if (typeof window !== "undefined") {
+      window.setTimeout(() => {
+        try {
+          window.history.pushState({ spotainerBackGuard: true }, "", window.location.href);
+        } catch (error) {
+          console.error("뒤로가기 방어 기록 복구 실패:", error);
+        }
+      }, 0);
+    }
   }
 
   function goToMain() {
