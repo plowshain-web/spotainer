@@ -200,8 +200,10 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [scheduleMemo, setScheduleMemo] = useState("");
   const [lastBackPressedAt, setLastBackPressedAt] = useState(0);
   const [exitToast, setExitToast] = useState("");
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const allowBackExitRef = useRef(false);
   const hasOpenModalRef = useRef(false);
+  const showExitConfirmRef = useRef(false);
   const lastBackPressedAtRef = useRef(0);
   const closeTopModalByBackButtonRef = useRef(null);
 
@@ -3591,6 +3593,10 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
   }, [hasOpenModal]);
 
   useEffect(() => {
+    showExitConfirmRef.current = showExitConfirm;
+  }, [showExitConfirm]);
+
+  useEffect(() => {
     lastBackPressedAtRef.current = lastBackPressedAt;
   }, [lastBackPressedAt]);
 
@@ -3712,33 +3718,28 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     window.history.replaceState({ spotainerBase: true }, "", window.location.href);
     window.history.pushState(guardState, "", window.location.href);
 
+    function keepInsideApp() {
+      window.history.pushState(guardState, "", window.location.href);
+    }
+
     function handlePwaBackButton() {
       if (allowBackExitRef.current) return;
 
+      keepInsideApp();
+
+      if (showExitConfirmRef.current) {
+        setShowExitConfirm(false);
+        setExitToast("종료를 취소했습니다");
+        return;
+      }
+
       if (hasOpenModalRef.current) {
-        const didClose = closeTopModalByBackButtonRef.current?.();
-        setExitToast(didClose ? "이전 화면으로 이동했습니다" : "닫기 버튼을 사용하세요");
-        window.history.pushState(guardState, "", window.location.href);
+        setExitToast("화면 안의 닫기 버튼을 사용하세요");
         return;
       }
 
-      const now = Date.now();
-      const previous = lastBackPressedAtRef.current;
-
-      if (now - previous < 2500) {
-        allowBackExitRef.current = true;
-        setExitToast("");
-
-        setTimeout(() => {
-          window.history.go(-2);
-        }, 0);
-        return;
-      }
-
-      lastBackPressedAtRef.current = now;
-      setLastBackPressedAt(now);
-      setExitToast("한 번 더 누르면 종료됩니다");
-      window.history.pushState(guardState, "", window.location.href);
+      setExitToast("");
+      setShowExitConfirm(true);
     }
 
     window.addEventListener("popstate", handlePwaBackButton);
@@ -3747,6 +3748,25 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
       window.removeEventListener("popstate", handlePwaBackButton);
     };
   }, []);
+
+  function confirmExitApp() {
+    allowBackExitRef.current = true;
+    setShowExitConfirm(false);
+    setExitToast("");
+
+    setTimeout(() => {
+      window.history.go(-2);
+
+      setTimeout(() => {
+        window.close();
+      }, 80);
+    }, 0);
+  }
+
+  function cancelExitApp() {
+    setShowExitConfirm(false);
+    setExitToast("종료를 취소했습니다");
+  }
 
   function goToMain() {
     setSummaryModal(null);
@@ -3796,6 +3816,33 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
       {exitToast && (
         <div style={styles.appToast}>
           {exitToast}
+        </div>
+      )}
+
+      {showExitConfirm && (
+        <div style={styles.exitConfirmOverlay}>
+          <div style={styles.exitConfirmBox}>
+            <h3 style={styles.exitConfirmTitle}>앱을 종료할까요?</h3>
+            <p style={styles.exitConfirmText}>
+              Spotainer를 종료하려면 종료 버튼을 누르세요.
+            </p>
+            <div style={styles.exitConfirmActions}>
+              <button
+                type="button"
+                onClick={cancelExitApp}
+                style={styles.exitCancelButton}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={confirmExitApp}
+                style={styles.exitConfirmButton}
+              >
+                종료
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -5996,6 +6043,61 @@ const styles = {
     boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
     pointerEvents: "none",
     whiteSpace: "nowrap",
+  },
+  exitConfirmOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 100001,
+    background: "rgba(0,0,0,0.46)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  exitConfirmBox: {
+    width: "min(360px, 92vw)",
+    background: "#171717",
+    border: "1px solid rgba(255,255,255,0.14)",
+    borderRadius: 22,
+    padding: 22,
+    boxShadow: "0 24px 70px rgba(0,0,0,0.5)",
+  },
+  exitConfirmTitle: {
+    margin: "0 0 8px",
+    fontSize: 22,
+    fontWeight: 900,
+    color: "#fff",
+  },
+  exitConfirmText: {
+    margin: "0 0 18px",
+    fontSize: 14,
+    lineHeight: 1.5,
+    color: "#cfcfcf",
+  },
+  exitConfirmActions: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+  },
+  exitCancelButton: {
+    border: "1px solid rgba(255,255,255,0.16)",
+    background: "#2a2a2a",
+    color: "#fff",
+    borderRadius: 14,
+    padding: "13px 14px",
+    fontSize: 15,
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+  exitConfirmButton: {
+    border: "none",
+    background: "#ef4444",
+    color: "#fff",
+    borderRadius: 14,
+    padding: "13px 14px",
+    fontSize: 15,
+    fontWeight: 900,
+    cursor: "pointer",
   },
   page: {
     minHeight: "100vh",
