@@ -2889,11 +2889,13 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
   function renderInbodyTrendRow(label, key, unit = "", decimals = 1) {
     const logs = getInbodyTrendLogs();
     const values = logs.map((log) => getTrendValue(log, key));
+    const getColumnX = (index) => (logs.length <= 1 ? 50 : ((index + 0.5) / logs.length) * 100);
+
     const validPoints = values
       .map((value, index) => {
         if (!Number.isFinite(value)) return null;
 
-        const x = logs.length <= 1 ? 50 : ((index + 0.5) / logs.length) * 100;
+        const x = getColumnX(index);
         const y = 100 - getTrendPercent(value, values);
 
         return { x, y, value, index };
@@ -2933,17 +2935,19 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
             ))}
           </div>
 
-          <div
-            style={{
-              ...styles.inbodyTrendValueGrid,
-              gridTemplateColumns: `repeat(${logs.length}, minmax(0, 1fr))`,
-            }}
-          >
+          <div style={styles.inbodyTrendValueLayer}>
             {logs.map((log, index) => {
               const value = getTrendValue(log, key);
+              const x = getColumnX(index);
 
               return (
-                <strong key={`${key}-${log.id || index}`} style={styles.inbodyTrendValue}>
+                <strong
+                  key={`${key}-${log.id || index}`}
+                  style={{
+                    ...styles.inbodyTrendValue,
+                    left: `${x}%`,
+                  }}
+                >
                   {value === null ? "-" : formatMetric(value, unit, decimals)}
                 </strong>
               );
@@ -7789,6 +7793,11 @@ textarea: {
     gap: 8,
     alignItems: "center",
   },
+  inbodyTrendValueLayer: {
+    position: "relative",
+    height: 24,
+    marginTop: 2,
+  },
   inbodyTrendDateRow: {
     display: "grid",
     gridTemplateColumns: "86px repeat(4, minmax(58px, 1fr))",
@@ -7843,9 +7852,14 @@ textarea: {
     borderRadius: 999,
   },
   inbodyTrendValue: {
+    position: "absolute",
+    top: 0,
+    transform: "translateX(-50%)",
     color: "#fff",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
+    lineHeight: "20px",
+    textAlign: "center",
     whiteSpace: "nowrap",
   },
   inbodyRecentDate: {
