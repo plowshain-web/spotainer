@@ -8,6 +8,17 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
+
+
+const exerciseList = [
+  "스미스 스쿼트","바벨 스쿼트","덤벨 스쿼트","불가리안 스플릿 스쿼트","런지","워킹 런지",
+  "레그 프레스","레그 익스텐션","레그 컬","힙 어브덕션","힙 어덕션","힙 쓰러스트",
+  "글루트 브리지","케이블 킥백","스텝업",
+  "랫풀다운","시티드 로우","바벨 로우","덤벨 로우","케이블 로우","풀업","페이스풀","리버스 펙덱",
+  "체스트 프레스","인클라인 체스트 프레스","덤벨 벤치프레스","푸쉬업","펙덱 플라이","케이블 플라이",
+  "덤벨 숄더프레스","머신 숄더프레스","사이드 레터럴 레이즈","프론트 레이즈","리어 델트 레이즈","업라이트 로우",
+  "플랭크","사이드 플랭크","크런치","레그레이즈","데드버그","버드독","러시안 트위스트","케이블 크런치"
+];
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const commonExercises = [
@@ -100,7 +111,9 @@ export default function Page() {
   const [workoutIssue, setWorkoutIssue] = useState("");
   const [workoutNextPlan, setWorkoutNextPlan] = useState("");
   const [workoutTrainerNote, setWorkoutTrainerNote] = useState("");
-  const [workoutExercises, setWorkoutExercises] = useState([
+  const [exerciseSuggestions, setExerciseSuggestions] = useState([]);
+const [activeExerciseIndex, setActiveExerciseIndex] = useState(null);
+const [workoutExercises, setWorkoutExercises] = useState([
     { name: "", sets: [{ weight: "", reps: "" }] },
   ]);
   const [showAllWorkoutModal, setShowAllWorkoutModal] = useState(false);
@@ -6719,7 +6732,19 @@ const styles = {
     boxSizing: "border-box",
     marginBottom: 16,
   },
-  textarea: {
+  suggestionBox: {
+  background: "#222",
+  border: "1px solid #444",
+  borderRadius: 10,
+  marginTop: 6,
+},
+suggestionItem: {
+  padding: 10,
+  borderBottom: "1px solid #333",
+  color: "#fff",
+  cursor: "pointer",
+},
+textarea: {
     width: "100%",
     minHeight: 90,
     padding: 17,
