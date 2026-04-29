@@ -1,14 +1,14 @@
 export default function manifest() {
   return {
-    name: "Spotainer - 여성전용 PT 회원관리",
+    name: "Spotainer",
     short_name: "Spotainer",
-    description: "여성전용 PT 센터 현장용 회원관리 앱",
+    description: "여성전용 PT 회원관리",
     start_url: "/",
     scope: "/",
     display: "standalone",
-    background_color: "#111111",
-    theme_color: "#111111",
-    orientation: "any",
+    background_color: "#090909",
+    theme_color: "#090909",
+    orientation: "landscape",
     icons: [
       {
         src: "/icons/icon-192.png",
