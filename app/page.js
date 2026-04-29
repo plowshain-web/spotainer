@@ -203,6 +203,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const allowBackExitRef = useRef(false);
   const hasOpenModalRef = useRef(false);
   const lastBackPressedAtRef = useRef(0);
+  const closeTopModalByBackButtonRef = useRef(null);
 
   const isSearching = search.trim().length > 0;
 
@@ -3702,6 +3703,8 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     return false;
   }
 
+  closeTopModalByBackButtonRef.current = closeTopModalByBackButton;
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -3713,8 +3716,8 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
       if (allowBackExitRef.current) return;
 
       if (hasOpenModalRef.current) {
-        closeTopModalByBackButton();
-        setExitToast("이전 화면으로 이동했습니다");
+        const didClose = closeTopModalByBackButtonRef.current?.();
+        setExitToast(didClose ? "이전 화면으로 이동했습니다" : "닫기 버튼을 사용하세요");
         window.history.pushState(guardState, "", window.location.href);
         return;
       }
@@ -3722,12 +3725,12 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
       const now = Date.now();
       const previous = lastBackPressedAtRef.current;
 
-      if (now - previous < 2000) {
+      if (now - previous < 2500) {
         allowBackExitRef.current = true;
         setExitToast("");
 
         setTimeout(() => {
-          window.history.back();
+          window.history.go(-2);
         }, 0);
         return;
       }
