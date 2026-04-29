@@ -2855,6 +2855,98 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     );
   }
 
+
+  function getInbodyTrendLogs() {
+    return inbodyList
+      .slice(0, 4)
+      .slice()
+      .reverse();
+  }
+
+  function getShortDateText(dateText) {
+    if (!dateText) return "-";
+    const date = new Date(dateText);
+    if (Number.isNaN(date.getTime())) return String(dateText).slice(5);
+    return `${date.getMonth() + 1}.${date.getDate()}`;
+  }
+
+  function getTrendValue(log, key) {
+    const value = Number(log?.[key]);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  function getTrendPercent(value, values) {
+    const validValues = values.filter((item) => Number.isFinite(item));
+    if (!Number.isFinite(value) || validValues.length === 0) return 0;
+
+    const min = Math.min(...validValues);
+    const max = Math.max(...validValues);
+
+    if (max === min) return 55;
+    return 28 + ((value - min) / (max - min)) * 60;
+  }
+
+  function renderInbodyTrendRow(label, key, unit = "", decimals = 1) {
+    const logs = getInbodyTrendLogs();
+    const values = logs.map((log) => getTrendValue(log, key));
+
+    return (
+      <div style={styles.inbodyTrendRow}>
+        <div style={styles.inbodyTrendLabel}>{label}</div>
+
+        {logs.map((log, index) => {
+          const value = getTrendValue(log, key);
+          const percent = getTrendPercent(value, values);
+
+          return (
+            <div key={`${key}-${log.id || index}`} style={styles.inbodyTrendCell}>
+              <div style={styles.inbodyTrendBarTrack}>
+                <div style={{ ...styles.inbodyTrendBar, height: `${percent}%` }} />
+              </div>
+              <strong style={styles.inbodyTrendValue}>
+                {value === null ? "-" : formatMetric(value, unit, decimals)}
+              </strong>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  function renderInbodyTrendChart() {
+    const logs = getInbodyTrendLogs();
+
+    if (logs.length === 0) return null;
+
+    const hasBodyFatPercent = logs.some((log) => Number.isFinite(Number(log.body_fat_percent)));
+
+    return (
+      <div style={styles.inbodyTrendBox}>
+        <div style={styles.inbodyTrendHeader}>
+          <h3 style={styles.subTitle}>최근 인바디 변화</h3>
+          <button onClick={() => setShowAllInbodyModal(true)} style={styles.smallDark}>
+            전체 인바디 보기
+          </button>
+        </div>
+
+        <div style={styles.inbodyTrendDateRow}>
+          <span />
+          {logs.map((log, index) => (
+            <strong key={log.id || index} style={styles.inbodyTrendDate}>
+              {getShortDateText(log.measured_at)}
+            </strong>
+          ))}
+        </div>
+
+        {renderInbodyTrendRow("체중", "weight", "kg", 1)}
+        {renderInbodyTrendRow("골격근량", "skeletal_muscle", "kg", 1)}
+        {hasBodyFatPercent
+          ? renderInbodyTrendRow("체지방률", "body_fat_percent", "%", 1)
+          : renderInbodyTrendRow("체지방량", "body_fat_mass", "kg", 1)}
+      </div>
+    );
+  }
+
   function renderInbodyRecord(log, showDelete = false) {
     return (
       <div key={log.id} style={styles.whiteWorkoutCard}>
@@ -4782,15 +4874,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
                       );
                     })()}
 
-                    <div style={styles.recordHeader}>
-                      <h3 style={styles.subTitle}>최근 인바디 기록</h3>
-
-                      <button onClick={() => setShowAllInbodyModal(true)} style={styles.smallDark}>
-                        전체 인바디 보기
-                      </button>
-                    </div>
-
-                    {getRecentInbodyLogs().map((log) => renderInbodyRecord(log, false))}
+                    {renderInbodyTrendChart()}
                   </>
                 )}
 
@@ -7588,6 +7672,79 @@ textarea: {
     color: "#ddd",
     fontWeight: 900,
     fontSize: 14,
+  },
+  inbodyTrendBox: {
+    background: "#202020",
+    border: "1px solid #333",
+    borderRadius: 18,
+    padding: 14,
+    margin: "14px 0 18px",
+  },
+  inbodyTrendHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  inbodyTrendDateRow: {
+    display: "grid",
+    gridTemplateColumns: "86px repeat(4, minmax(58px, 1fr))",
+    gap: 8,
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  inbodyTrendDate: {
+    color: "#facc15",
+    fontSize: 13,
+    fontWeight: 900,
+    textAlign: "center",
+    whiteSpace: "nowrap",
+  },
+  inbodyTrendRow: {
+    display: "grid",
+    gridTemplateColumns: "86px repeat(4, minmax(58px, 1fr))",
+    gap: 8,
+    alignItems: "end",
+    padding: "9px 0",
+    borderTop: "1px solid #303030",
+  },
+  inbodyTrendLabel: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: 900,
+    paddingBottom: 10,
+    whiteSpace: "nowrap",
+  },
+  inbodyTrendCell: {
+    minHeight: 82,
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 6,
+  },
+  inbodyTrendBarTrack: {
+    width: "100%",
+    maxWidth: 46,
+    height: 48,
+    background: "#111",
+    border: "1px solid #333",
+    borderRadius: 999,
+    overflow: "hidden",
+    display: "flex",
+    alignItems: "flex-end",
+  },
+  inbodyTrendBar: {
+    width: "100%",
+    background: "#facc15",
+    borderRadius: 999,
+  },
+  inbodyTrendValue: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
   },
   inbodyRecentDate: {
     display: "inline-block",
