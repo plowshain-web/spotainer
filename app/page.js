@@ -225,6 +225,13 @@ const [workoutExercises, setWorkoutExercises] = useState([
   }, []);
 
   useEffect(() => {
+    loadMembers();
+    loadSchedules(getTodayDateString());
+    loadSales();
+    loadCenterInfo();
+  }, []);
+
+  useEffect(() => {
     if (!topModalKey) {
       lastHistoryModalKeyRef.current = "";
       return;
