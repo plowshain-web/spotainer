@@ -3032,11 +3032,17 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
       prev.map((exercise, index) => {
         if (index !== exerciseIndex) return exercise;
 
+        const sets = [...(exercise.sets || [])];
+
+        while (sets.length <= setIndex) {
+          sets.push({ weight: "", reps: "" });
+        }
+
+        sets[setIndex] = { ...sets[setIndex], [key]: value };
+
         return {
           ...exercise,
-          sets: exercise.sets.map((set, i) =>
-            i === setIndex ? { ...set, [key]: value } : set
-          ),
+          sets,
         };
       })
     );
@@ -5089,111 +5095,115 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
                   </div>
                 </div>
 
-                {workoutExercises.map((exercise, exerciseIndex) => (
-                  <div key={exerciseIndex} style={styles.infoBlock}>
-                    <div style={styles.recordHeader}>
-                      <h3 style={{ ...styles.subTitle, marginTop: 0, marginBottom: 0 }}>
-                        {exerciseIndex + 1}번 운동
-                      </h3>
+                <div style={styles.workoutCompactBox}>
+                  <div style={styles.workoutCompactHeader}>
+                    <span>운동</span>
+                    <span>1세트</span>
+                    <span>2세트</span>
+                    <span>3세트</span>
+                    <span>4세트</span>
+                    <span>관리</span>
+                  </div>
 
-                      {workoutExercises.length > 1 && (
-                        <button
-                          onClick={() => removeExercise(exerciseIndex)}
-                          style={styles.smallDanger}
-                        >
-                          운동 삭제
-                        </button>
-                      )}
-                    </div>
+                  {workoutExercises.map((exercise, exerciseIndex) => (
+                    <div key={exerciseIndex} style={styles.workoutCompactRow}>
+                      <div style={styles.workoutNameCell}>
+                        <input
+                          value={exercise.name}
+                          onChange={(e) => updateExerciseName(exerciseIndex, e.target.value)}
+                          placeholder={`${exerciseIndex + 1}. 운동명`}
+                          style={styles.compactNameInput}
+                        />
 
-                    <label style={styles.label}>운동명</label>
-                    <input
-                      value={exercise.name}
-                      onChange={(e) => updateExerciseName(exerciseIndex, e.target.value)}
-                      placeholder="예: 스쿼트, 런지, 랫풀다운"
-                      style={styles.input}
-                    />
-
-                    {getExerciseSuggestions(exercise.name).length > 0 && (
-                      <div style={styles.exerciseSuggestBox}>
-                        {getExerciseSuggestions(exercise.name).map((suggestion) => (
-                          <button
-                            key={suggestion}
-                            type="button"
-                            onClick={() => selectExerciseSuggestion(exerciseIndex, suggestion)}
-                            style={styles.exerciseSuggestButton}
-                          >
-                            {suggestion}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {(() => {
-                      const lastGroup = getLastExerciseGroup(exercise.name);
-
-                      if (!lastGroup) return null;
-
-                      return (
-                        <div style={styles.lastExerciseBox}>
-                          <div>
-                            <strong>지난 기록</strong>
-                            <p>{formatDate(lastGroup.workoutDate)} · {getLastExerciseSummary(lastGroup)}</p>
+                        {getExerciseSuggestions(exercise.name).length > 0 && (
+                          <div style={styles.exerciseSuggestBoxCompact}>
+                            {getExerciseSuggestions(exercise.name).map((suggestion) => (
+                              <button
+                                key={suggestion}
+                                type="button"
+                                onClick={() => selectExerciseSuggestion(exerciseIndex, suggestion)}
+                                style={styles.exerciseSuggestButton}
+                              >
+                                {suggestion}
+                              </button>
+                            ))}
                           </div>
+                        )}
 
+                        {(() => {
+                          const lastGroup = getLastExerciseGroup(exercise.name);
+
+                          if (!lastGroup) return null;
+
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => applyLastExercise(exerciseIndex, lastGroup)}
+                              style={styles.compactLastButton}
+                            >
+                              지난 기록
+                            </button>
+                          );
+                        })()}
+                      </div>
+
+                      {[0, 1, 2, 3].map((setIndex) => {
+                        const set = exercise.sets[setIndex] || { weight: "", reps: "" };
+
+                        return (
+                          <div key={setIndex} style={styles.compactSetCell}>
+                            <input
+                              value={set.weight}
+                              onChange={(e) => {
+                                if (!exercise.sets[setIndex]) {
+                                  addSet(exerciseIndex);
+                                }
+                                updateSetValue(exerciseIndex, setIndex, "weight", e.target.value);
+                              }}
+                              placeholder="kg"
+                              type="number"
+                              style={styles.compactSetInput}
+                            />
+                            <input
+                              value={set.reps}
+                              onChange={(e) => {
+                                if (!exercise.sets[setIndex]) {
+                                  addSet(exerciseIndex);
+                                }
+                                updateSetValue(exerciseIndex, setIndex, "reps", e.target.value);
+                              }}
+                              placeholder="회"
+                              type="number"
+                              style={styles.compactSetInput}
+                            />
+                          </div>
+                        );
+                      })}
+
+                      <div style={styles.compactActionCell}>
+                        <button
+                          type="button"
+                          onClick={() => addSet(exerciseIndex)}
+                          style={styles.compactMiniButton}
+                        >
+                          +세트
+                        </button>
+
+                        {workoutExercises.length > 1 && (
                           <button
                             type="button"
-                            onClick={() => applyLastExercise(exerciseIndex, lastGroup)}
-                            style={styles.lastExerciseButton}
-                          >
-                            불러오기
-                          </button>
-                        </div>
-                      );
-                    })()}
-
-                    {exercise.sets.map((set, setIndex) => (
-                      <div key={setIndex} style={styles.setRow}>
-                        <div style={styles.setNumber}>{setIndex + 1}세트</div>
-
-                        <input
-                          value={set.weight}
-                          onChange={(e) =>
-                            updateSetValue(exerciseIndex, setIndex, "weight", e.target.value)
-                          }
-                          placeholder="중량"
-                          type="number"
-                          style={{ ...styles.input, marginBottom: 0 }}
-                        />
-
-                        <input
-                          value={set.reps}
-                          onChange={(e) =>
-                            updateSetValue(exerciseIndex, setIndex, "reps", e.target.value)
-                          }
-                          placeholder="횟수"
-                          type="number"
-                          style={{ ...styles.input, marginBottom: 0 }}
-                        />
-
-                        {exercise.sets.length > 1 && (
-                          <button
-                            onClick={() => removeSet(exerciseIndex, setIndex)}
-                            style={styles.smallDanger}
+                            onClick={() => removeExercise(exerciseIndex)}
+                            style={styles.compactDangerButton}
                           >
                             삭제
                           </button>
                         )}
                       </div>
-                    ))}
+                    </div>
+                  ))}
+                </div>
 
-                    <button onClick={() => addSet(exerciseIndex)} style={styles.smallDark}>
-                      + 세트 추가
-                    </button>
-                  </div>
-                ))}
-
-                <button onClick={addExercise} style={styles.menuButton}>
+                <button onClick={addExercise} style={styles.compactAddExerciseButton}>
                   + 운동 추가
                 </button>
 
@@ -7381,6 +7391,120 @@ textarea: {
     fontSize: 24,
     marginTop: 22,
     marginBottom: 14,
+  },
+  workoutCompactBox: {
+    background: "#202020",
+    border: "1px solid #333",
+    borderRadius: 18,
+    padding: 10,
+    marginBottom: 12,
+    overflowX: "auto",
+  },
+  workoutCompactHeader: {
+    display: "grid",
+    gridTemplateColumns: "1.6fr repeat(4, 1fr) .75fr",
+    gap: 6,
+    minWidth: 760,
+    color: "#aaa",
+    fontSize: 12,
+    fontWeight: 900,
+    padding: "0 4px 8px",
+  },
+  workoutCompactRow: {
+    display: "grid",
+    gridTemplateColumns: "1.6fr repeat(4, 1fr) .75fr",
+    gap: 6,
+    minWidth: 760,
+    alignItems: "start",
+    padding: "8px 4px",
+    borderTop: "1px solid #333",
+  },
+  workoutNameCell: {
+    position: "relative",
+    display: "grid",
+    gap: 6,
+  },
+  compactNameInput: {
+    width: "100%",
+    boxSizing: "border-box",
+    background: "#f5f5f5",
+    color: "#111",
+    border: "1px solid #e5e5e5",
+    borderRadius: 10,
+    padding: "10px 10px",
+    fontSize: 14,
+    fontWeight: 800,
+  },
+  compactSetCell: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 4,
+  },
+  compactSetInput: {
+    width: "100%",
+    minWidth: 0,
+    boxSizing: "border-box",
+    background: "#f5f5f5",
+    color: "#111",
+    border: "1px solid #e5e5e5",
+    borderRadius: 10,
+    padding: "10px 6px",
+    fontSize: 14,
+    fontWeight: 800,
+    textAlign: "center",
+  },
+  compactActionCell: {
+    display: "grid",
+    gap: 5,
+  },
+  compactMiniButton: {
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #444",
+    borderRadius: 10,
+    padding: "8px 6px",
+    fontSize: 12,
+    fontWeight: 900,
+  },
+  compactDangerButton: {
+    background: "#3f1111",
+    color: "#fecaca",
+    border: "1px solid #7f1d1d",
+    borderRadius: 10,
+    padding: "8px 6px",
+    fontSize: 12,
+    fontWeight: 900,
+  },
+  compactAddExerciseButton: {
+    width: "100%",
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #333",
+    borderRadius: 16,
+    padding: "14px 12px",
+    fontSize: 17,
+    fontWeight: 900,
+    marginBottom: 16,
+  },
+  exerciseSuggestBoxCompact: {
+    position: "relative",
+    zIndex: 5,
+    background: "#111",
+    border: "1px solid #333",
+    borderRadius: 12,
+    padding: 6,
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  compactLastButton: {
+    background: "#263a36",
+    color: "#d7fff3",
+    border: "1px solid #3f5f58",
+    borderRadius: 999,
+    padding: "6px 8px",
+    fontSize: 12,
+    fontWeight: 900,
   },
   infoBlock: {
     background: "#222",
