@@ -577,10 +577,25 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
           ) : (
             <>
               <button
-                onClick={() => openActionModal(schedule)}
+                type="button"
+                onClick={() => completeScheduleClass(schedule)}
                 style={styles.incompleteCompleteButton}
               >
-                처리
+                완료
+              </button>
+              <button
+                type="button"
+                onClick={() => markScheduleNoShow(schedule)}
+                style={styles.incompleteNoShowButton}
+              >
+                노쇼
+              </button>
+              <button
+                type="button"
+                onClick={() => markScheduleCancelled(schedule)}
+                style={styles.incompleteCancelScheduleButton}
+              >
+                취소
               </button>
               <button
                 type="button"
@@ -3913,10 +3928,25 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
                     ) : (
                       <>
                         <button
-                          onClick={() => openActionModal(schedule)}
+                          type="button"
+                          onClick={() => completeScheduleClass(schedule)}
                           style={styles.incompleteCompleteButton}
                         >
-                          처리하기
+                          완료
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => markScheduleNoShow(schedule)}
+                          style={styles.incompleteNoShowButton}
+                        >
+                          노쇼
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => markScheduleCancelled(schedule)}
+                          style={styles.incompleteCancelScheduleButton}
+                        >
+                          취소
                         </button>
                         <button
                           type="button"
@@ -6853,7 +6883,7 @@ const styles = {
   },
   incompleteButtonGroup: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(74px, 1fr))",
     gap: 8,
     width: "100%",
   },
@@ -8453,7 +8483,7 @@ textarea: {
   },
   scheduleCheckButtonGroup: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(72px, 1fr))",
     gap: 8,
   },
   whiteModalOverlay: {
