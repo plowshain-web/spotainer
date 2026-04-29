@@ -177,7 +177,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [scheduleSearch, setScheduleSearch] = useState("");
   const [scheduleSearchResultList, setScheduleSearchResultList] = useState([]);
   const [showScheduleSearchResultModal, setShowScheduleSearchResultModal] = useState(false);
-  const modalHistoryPushedRef = useRef(false);
   const [showScheduleConflictModal, setShowScheduleConflictModal] = useState(false);
   const [conflictSchedules, setConflictSchedules] = useState([]);
   const [pendingSchedule, setPendingSchedule] = useState(null);
@@ -214,59 +213,131 @@ const [workoutExercises, setWorkoutExercises] = useState([
     }
   }, [showScheduleModal, scheduleDate]);
 
-  useEffect(() => {
-    const hasOpenModal =
-      showInbodyModal ||
-      showAllInbodyModal ||
-      showAllWorkoutModal ||
-      showScheduleSearchResultModal ||
-      showScheduleConflictModal ||
-      showScheduleModal ||
-      showScheduleCheckModal ||
-      actionModalSchedule ||
-      showMemberListModal ||
-      showAddModal ||
-      editModalMember ||
-      selectedMember ||
-      workoutMember ||
-      ptModalMember ||
-      showAllPtModal ||
-      showAllAttendanceModal;
+  const openModalDepth = [
+    showMemberListModal,
+    selectedMember,
+    workoutMember,
+    showAllWorkoutModal,
+    showInbodyModal,
+    showAllInbodyModal,
+    showScheduleCheckModal,
+    showScheduleSearchResultModal,
+    showScheduleModal,
+    showScheduleConflictModal,
+    actionModalSchedule,
+    ptModalMember,
+    editModalMember,
+    showAddModal,
+    showAllPtModal,
+    showAllAttendanceModal,
+  ].filter(Boolean).length;
 
-    if (hasOpenModal && !modalHistoryPushedRef.current) {
-      window.history.pushState({ spotainerModal: true }, "");
-      modalHistoryPushedRef.current = true;
+  const previousModalDepthRef = useRef(0);
+
+  useEffect(() => {
+    if (openModalDepth > previousModalDepthRef.current) {
+      const pushCount = openModalDepth - previousModalDepthRef.current;
+
+      for (let i = 0; i < pushCount; i += 1) {
+        window.history.pushState({ spotainerModal: true }, "");
+      }
     }
 
-    if (!hasOpenModal) {
-      modalHistoryPushedRef.current = false;
+    previousModalDepthRef.current = openModalDepth;
+  }, [openModalDepth]);
+
+  useEffect(() => {
+    function closeTopModal() {
+      if (showInbodyModal) {
+        closeInbodyModal();
+        return true;
+      }
+
+      if (showAllInbodyModal) {
+        setShowAllInbodyModal(false);
+        return true;
+      }
+
+      if (showAllWorkoutModal) {
+        setShowAllWorkoutModal(false);
+        return true;
+      }
+
+      if (showScheduleSearchResultModal) {
+        setShowScheduleSearchResultModal(false);
+        return true;
+      }
+
+      if (showScheduleConflictModal) {
+        closeScheduleConflictModal();
+        return true;
+      }
+
+      if (actionModalSchedule) {
+        closeActionModal();
+        return true;
+      }
+
+      if (ptModalMember) {
+        closePtModal();
+        return true;
+      }
+
+      if (editModalMember) {
+        closeEditModal();
+        return true;
+      }
+
+      if (workoutMember) {
+        closeWorkout();
+        return true;
+      }
+
+      if (selectedMember) {
+        closeDetail();
+        return true;
+      }
+
+      if (showScheduleModal) {
+        closeScheduleModal();
+        return true;
+      }
+
+      if (showScheduleCheckModal) {
+        closeScheduleCheckModal();
+        return true;
+      }
+
+      if (showMemberListModal) {
+        closeMemberListModal();
+        return true;
+      }
+
+      if (showAddModal) {
+        setShowAddModal(false);
+        return true;
+      }
+
+      if (showAllPtModal) {
+        setShowAllPtModal(false);
+        return true;
+      }
+
+      if (showAllAttendanceModal) {
+        setShowAllAttendanceModal(false);
+        return true;
+      }
+
+      return false;
     }
 
     function handlePopState() {
-      const closeOneAndStay = (closeFn) => {
-        closeFn();
+      const closed = closeTopModal();
 
-        setTimeout(() => {
-          window.history.pushState({ spotainerMain: true }, "");
-        }, 0);
-      };
-
-      if (showInbodyModal) return closeOneAndStay(closeInbodyModal);
-      if (showAllInbodyModal) return closeOneAndStay(() => setShowAllInbodyModal(false));
-      if (showAllWorkoutModal) return closeOneAndStay(() => setShowAllWorkoutModal(false));
-      if (showScheduleSearchResultModal) return closeOneAndStay(() => setShowScheduleSearchResultModal(false));
-      if (showScheduleConflictModal) return closeOneAndStay(closeScheduleConflictModal);
-      if (actionModalSchedule) return closeOneAndStay(closeActionModal);
-      if (ptModalMember) return closeOneAndStay(closePtModal);
-      if (editModalMember) return closeOneAndStay(closeEditModal);
-      if (workoutMember) return closeOneAndStay(closeWorkout);
-      if (selectedMember) return closeOneAndStay(closeDetail);
-      if (showScheduleModal) return closeOneAndStay(closeScheduleModal);
-      if (showScheduleCheckModal) return closeOneAndStay(closeScheduleCheckModal);
-      if (showMemberListModal) return closeOneAndStay(closeMemberListModal);
-      if (showAddModal) return closeOneAndStay(() => setShowAddModal(false));
-      if (showAllPtModal) return closeOneAndStay(() => setShowAllPtModal(false));
-      if (showAllAttendanceModal) return closeOneAndStay(() => setShowAllAttendanceModal(false));
+      if (closed) {
+        previousModalDepthRef.current = Math.max(previousModalDepthRef.current - 1, 0);
+        return;
+      }
 
       const shouldExit = window.confirm("앱을 종료할까요?");
 
@@ -286,15 +357,15 @@ const [workoutExercises, setWorkoutExercises] = useState([
     showAllWorkoutModal,
     showScheduleSearchResultModal,
     showScheduleConflictModal,
+    actionModalSchedule,
+    ptModalMember,
+    editModalMember,
+    workoutMember,
+    selectedMember,
     showScheduleModal,
     showScheduleCheckModal,
-    actionModalSchedule,
     showMemberListModal,
     showAddModal,
-    editModalMember,
-    selectedMember,
-    workoutMember,
-    ptModalMember,
     showAllPtModal,
     showAllAttendanceModal,
   ]);
