@@ -2745,9 +2745,12 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     const q = String(value || "").trim().toLowerCase();
     if (!q) return [];
 
-    return getWorkoutHistoryNames()
-      .filter((name) => name.toLowerCase().includes(q))
-      .slice(0, 6);
+    const baseNames = [...exerciseList, ...getWorkoutHistoryNames()];
+    const uniqueNames = [...new Set(baseNames)];
+
+    return uniqueNames
+      .filter((name) => String(name || "").toLowerCase().includes(q))
+      .slice(0, 8);
   }
 
   function getLastExerciseGroup(exerciseName) {
