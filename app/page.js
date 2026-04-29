@@ -652,15 +652,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
             onClick={() => addToDeviceCalendar(schedule)}
             style={styles.calendarButton}
           >
-            기본캘린더
-          </button>
-
-          <button
-            type="button"
-            onClick={() => addToGoogleCalendar(schedule)}
-            style={styles.googleCalendarButton}
-          >
-            구글캘린더
+            캘린더
           </button>
 
           {isDone ? (
@@ -3654,15 +3646,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
                       onClick={() => addToDeviceCalendar(schedule)}
                       style={styles.calendarButton}
                     >
-                      기본캘린더
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => addToGoogleCalendar(schedule)}
-                      style={styles.googleCalendarButton}
-                    >
-                      구글캘린더
+                      캘린더
                     </button>
 
                     {isNoShow || isCancelled || isCompleted ? (
@@ -6358,32 +6342,36 @@ const styles = {
   },
   incompleteList: {
     display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
     gap: 10,
+    alignItems: "stretch",
   },
   incompleteItem: {
     background: "#241f17",
     border: "1px solid #4a3a1f",
     borderRadius: 18,
     padding: "12px 14px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: 10,
+    alignItems: "stretch",
+    minWidth: 0,
   },
   incompleteMain: {
-    display: "flex",
+    display: "grid",
+    gridTemplateColumns: "auto 1fr",
     alignItems: "center",
-    gap: 14,
-    flex: 1,
+    gap: 12,
+    minWidth: 0,
   },
   incompleteCompleteButton: {
     background: "#f5f5f5",
     color: "#111",
     border: "1px solid #ffffff",
     borderRadius: 12,
-    padding: "10px 12px",
+    padding: "9px 10px",
     fontWeight: 900,
-    fontSize: 14,
+    fontSize: 13,
     whiteSpace: "nowrap",
   },
   calendarButton: {
@@ -6391,9 +6379,9 @@ const styles = {
     color: "#bfdbfe",
     border: "1px solid #1d4ed8",
     borderRadius: 12,
-    padding: "10px 12px",
+    padding: "9px 10px",
     fontWeight: 900,
-    fontSize: 14,
+    fontSize: 13,
     whiteSpace: "nowrap",
   },
   googleCalendarButton: {
@@ -6408,9 +6396,9 @@ const styles = {
   },
   incompleteButtonGroup: {
     display: "grid",
-    gridTemplateColumns: "1fr",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
     gap: 8,
-    minWidth: 92,
+    width: "100%",
   },
   incompleteNoShowButton: {
     background: "#3f1111",
@@ -6885,9 +6873,9 @@ const styles = {
     color: "#f5f5f5",
     border: "1px solid #444",
     borderRadius: 12,
-    padding: "10px 12px",
+    padding: "9px 10px",
     fontWeight: 900,
-    fontSize: 14,
+    fontSize: 13,
     whiteSpace: "nowrap",
   },
   timeQuickRow: {
@@ -7686,30 +7674,33 @@ textarea: {
   },
   scheduleCheckList: {
     display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
     gap: 10,
+    alignItems: "stretch",
   },
   scheduleCheckItem: {
     background: "#f3f3f3",
     border: "1px solid #e5e5e5",
     borderRadius: 18,
-    padding: 14,
+    padding: 12,
     display: "grid",
-    gridTemplateColumns: "1fr auto",
-    gap: 12,
-    alignItems: "center",
+    gridTemplateColumns: "1fr",
+    gap: 10,
+    alignItems: "stretch",
+    minWidth: 0,
   },
   scheduleCheckMain: {
     minWidth: 0,
   },
   scheduleCheckTime: {
     color: "#111",
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 900,
   },
   scheduleCheckMember: {
     color: "#333",
-    margin: "6px 0 0",
-    fontSize: 15,
+    margin: "4px 0 0",
+    fontSize: 14,
     fontWeight: 900,
   },
   scheduleCheckMemo: {
@@ -7754,8 +7745,8 @@ textarea: {
   },
   scheduleCheckButtonGroup: {
     display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
     gap: 8,
-    minWidth: 86,
   },
   whiteModalOverlay: {
     position: "fixed",
@@ -8117,6 +8108,7 @@ textarea: {
     padding: 12,
     color: "#eee",
     minWidth: 0,
+    position: "relative",
   },
   workoutExerciseCardTop: {
     display: "flex",
@@ -8152,10 +8144,21 @@ textarea: {
     marginBottom: 8,
   },
   compactExerciseSuggestBox: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    top: 92,
+    zIndex: 20,
     display: "flex",
     flexWrap: "wrap",
     gap: 6,
-    marginBottom: 8,
+    maxHeight: 86,
+    overflowY: "auto",
+    background: "#181818",
+    border: "1px solid #444",
+    borderRadius: 12,
+    padding: 8,
+    boxShadow: "0 12px 26px rgba(0,0,0,.35)",
   },
   compactExerciseSuggestButton: {
     background: "#111",
