@@ -3593,6 +3593,13 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!hasOpenModal) return;
+
+    window.history.pushState({ spotainerModalGuard: true }, "", window.location.href);
+  }, [hasOpenModal]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
     function handleMainBackPress() {
       if (allowBackExitRef.current) {
@@ -3602,7 +3609,8 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
       window.history.pushState({ spotainerMainGuard: true }, "", window.location.href);
 
       if (hasOpenModal) {
-        setExitToast("닫기 또는 ← 메인으로 버튼을 눌러주세요");
+        window.history.pushState({ spotainerModalGuard: true }, "", window.location.href);
+        setExitToast("닫기 버튼으로 화면을 닫아주세요");
         return;
       }
 
@@ -3671,12 +3679,6 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 
   return (
     <main style={styles.page}>
-      {hasOpenModal && (
-        <button type="button" onClick={goToMain} style={styles.mainReturnButton}>
-          ← 메인으로
-        </button>
-      )}
-
       {exitToast && (
         <div style={styles.appToast}>
           {exitToast}
@@ -5865,20 +5867,6 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 }
 
 const styles = {
-  mainReturnButton: {
-    position: "fixed",
-    top: 14,
-    left: 14,
-    zIndex: 99999,
-    background: "#111",
-    color: "#fff",
-    border: "1px solid #333",
-    borderRadius: 999,
-    padding: "10px 14px",
-    fontSize: 14,
-    fontWeight: 900,
-    boxShadow: "0 10px 24px rgba(0,0,0,0.22)",
-  },
   appToast: {
     position: "fixed",
     right: 24,
