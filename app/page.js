@@ -2912,24 +2912,24 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
               <polyline
                 points={linePoints}
                 fill="none"
-                stroke="#facc15"
-                strokeWidth="4"
+                stroke="#38bdf8"
+                strokeWidth="3.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
             )}
-            {validPoints.map((point) => (
-              <circle
-                key={`${key}-dot-${point.index}`}
-                cx={point.x}
-                cy={point.y}
-                r="4.5"
-                fill="#facc15"
-                stroke="#111"
-                strokeWidth="2"
-              />
-            ))}
           </svg>
+
+          {validPoints.map((point) => (
+            <span
+              key={`${key}-dot-${point.index}`}
+              style={{
+                ...styles.inbodyTrendDot,
+                left: `${point.x}%`,
+                top: `${point.y}%`,
+              }}
+            />
+          ))}
 
           <div
             style={{
@@ -7766,6 +7766,18 @@ textarea: {
     width: "100%",
     height: 38,
     overflow: "visible",
+    pointerEvents: "none",
+  },
+  inbodyTrendDot: {
+    position: "absolute",
+    width: 12,
+    height: 12,
+    borderRadius: "50%",
+    background: "#38bdf8",
+    border: "2px solid #e0f2fe",
+    boxShadow: "0 0 0 2px #111, 0 0 10px rgba(56, 189, 248, 0.55)",
+    transform: "translate(-50%, -50%)",
+    zIndex: 2,
   },
   inbodyTrendValueGrid: {
     position: "absolute",
@@ -7784,7 +7796,7 @@ textarea: {
     marginBottom: 8,
   },
   inbodyTrendDate: {
-    color: "#facc15",
+    color: "#38bdf8",
     fontSize: 13,
     fontWeight: 900,
     textAlign: "center",
