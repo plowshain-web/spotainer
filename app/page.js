@@ -201,6 +201,8 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [lastBackPressedAt, setLastBackPressedAt] = useState(0);
   const [exitToast, setExitToast] = useState("");
   const allowBackExitRef = useRef(false);
+  const hasOpenModalRef = useRef(false);
+  const lastBackPressedAtRef = useRef(0);
 
   const isSearching = search.trim().length > 0;
 
@@ -209,26 +211,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
     loadSchedules(getTodayDateString());
     loadSales();
     loadCenterInfo();
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!("serviceWorker" in navigator)) return;
-
-    const registerServiceWorker = () => {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .catch((error) => {
-          console.error("Spotainer PWA 서비스워커 등록 실패:", error);
-        });
-    };
-
-    if (document.readyState === "complete") {
-      registerServiceWorker();
-    } else {
-      window.addEventListener("load", registerServiceWorker, { once: true });
-      return () => window.removeEventListener("load", registerServiceWorker);
-    }
   }, []);
 
   useEffect(() => {
@@ -3604,44 +3586,164 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     summaryModal;
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    hasOpenModalRef.current = Boolean(hasOpenModal);
+  }, [hasOpenModal]);
 
-    window.history.pushState({ spotainerMainGuard: true }, "", window.location.href);
-  }, []);
+  useEffect(() => {
+    lastBackPressedAtRef.current = lastBackPressedAt;
+  }, [lastBackPressedAt]);
+
+  function closeTopModalByBackButton() {
+    if (showInbodyModal) {
+      closeInbodyModal();
+      return true;
+    }
+
+    if (showAllInbodyModal) {
+      setShowAllInbodyModal(false);
+      return true;
+    }
+
+    if (showAllWorkoutModal) {
+      setShowAllWorkoutModal(false);
+      return true;
+    }
+
+    if (workoutMember) {
+      closeWorkout();
+      return true;
+    }
+
+    if (showScheduleSearchResultModal) {
+      setShowScheduleSearchResultModal(false);
+      return true;
+    }
+
+    if (showScheduleConflictModal) {
+      closeScheduleConflictModal();
+      return true;
+    }
+
+    if (actionModalSchedule) {
+      closeActionModal();
+      return true;
+    }
+
+    if (ptModalMember) {
+      closePtModal();
+      return true;
+    }
+
+    if (editModalMember) {
+      closeEditModal();
+      return true;
+    }
+
+    if (selectedMember) {
+      if (detailMode && detailMode !== "menu") {
+        setDetailMode("menu");
+        return true;
+      }
+
+      closeDetail();
+      return true;
+    }
+
+    if (showScheduleModal) {
+      closeScheduleModal();
+      return true;
+    }
+
+    if (showScheduleCheckModal) {
+      closeScheduleCheckModal();
+      return true;
+    }
+
+    if (showMemberListModal) {
+      closeMemberListModal();
+      return true;
+    }
+
+    if (showAddModal) {
+      setShowAddModal(false);
+      return true;
+    }
+
+    if (showAllPtModal) {
+      setShowAllPtModal(false);
+      return true;
+    }
+
+    if (showAllAttendanceModal) {
+      setShowAllAttendanceModal(false);
+      return true;
+    }
+
+    if (contactModalMember) {
+      closeContactModal();
+      return true;
+    }
+
+    if (showContactListModal) {
+      setShowContactListModal(false);
+      return true;
+    }
+
+    if (showCenterModal) {
+      closeCenterModal();
+      return true;
+    }
+
+    if (summaryModal) {
+      setSummaryModal(null);
+      return true;
+    }
+
+    return false;
+  }
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    function handleMainBackPress() {
-      if (allowBackExitRef.current) {
-        return;
-      }
+    const guardState = { spotainerBackGuard: true };
+    window.history.replaceState({ spotainerBase: true }, "", window.location.href);
+    window.history.pushState(guardState, "", window.location.href);
 
-      if (hasOpenModal) {
-        window.history.pushState({ spotainerMainGuard: true }, "", window.location.href);
-        setExitToast("닫기 또는 메인으로 버튼을 눌러주세요");
+    function handlePwaBackButton() {
+      if (allowBackExitRef.current) return;
+
+      if (hasOpenModalRef.current) {
+        closeTopModalByBackButton();
+        setExitToast("이전 화면으로 이동했습니다");
+        window.history.pushState(guardState, "", window.location.href);
         return;
       }
 
       const now = Date.now();
+      const previous = lastBackPressedAtRef.current;
 
-      if (now - lastBackPressedAt < 2000) {
+      if (now - previous < 2000) {
         allowBackExitRef.current = true;
-        window.history.back();
+        setExitToast("");
+
+        setTimeout(() => {
+          window.history.back();
+        }, 0);
         return;
       }
 
+      lastBackPressedAtRef.current = now;
       setLastBackPressedAt(now);
       setExitToast("한 번 더 누르면 종료됩니다");
-      window.history.pushState({ spotainerMainGuard: true }, "", window.location.href);
+      window.history.pushState(guardState, "", window.location.href);
     }
 
-    window.addEventListener("popstate", handleMainBackPress);
+    window.addEventListener("popstate", handlePwaBackButton);
 
     return () => {
-      window.removeEventListener("popstate", handleMainBackPress);
+      window.removeEventListener("popstate", handlePwaBackButton);
     };
-  }, [hasOpenModal, lastBackPressedAt]);
+  }, []);
 
   function goToMain() {
     setSummaryModal(null);
@@ -3688,12 +3790,6 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 
   return (
     <main style={styles.page}>
-      {hasOpenModal && (
-        <button type="button" onClick={goToMain} style={styles.mainReturnButton}>
-          ← 메인으로
-        </button>
-      )}
-
       {exitToast && (
         <div style={styles.appToast}>
           {exitToast}
@@ -5882,25 +5978,10 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 }
 
 const styles = {
-  mainReturnButton: {
-    position: "fixed",
-    top: 14,
-    left: 14,
-    zIndex: 99999,
-    background: "#111",
-    color: "#fff",
-    border: "1px solid #333",
-    borderRadius: 999,
-    padding: "10px 14px",
-    fontSize: 14,
-    fontWeight: 900,
-    boxShadow: "0 10px 24px rgba(0,0,0,0.22)",
-  },
   appToast: {
     position: "fixed",
-    left: "50%",
-    bottom: 28,
-    transform: "translateX(-50%)",
+    right: 24,
+    bottom: 24,
     zIndex: 100000,
     background: "rgba(20,20,20,0.96)",
     color: "#fff",
