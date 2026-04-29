@@ -7978,7 +7978,7 @@ textarea: {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 5000,
+    zIndex: 16000,
     padding: 20,
   },
   workoutHistoryOverlay: {
