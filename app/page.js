@@ -154,6 +154,8 @@ export default function Page() {
   const isSearching = search.trim().length > 0;
 
   useEffect(() => {
+    window.history.pushState({ spotainerMain: true }, "");
+
     loadMembers();
     loadSchedules();
     loadSales();
@@ -211,6 +213,14 @@ export default function Page() {
       if (showAddModal) return setShowAddModal(false);
       if (showAllPtModal) return setShowAllPtModal(false);
       if (showAllAttendanceModal) return setShowAllAttendanceModal(false);
+
+      const shouldExit = window.confirm("앱을 종료할까요?");
+
+      if (!shouldExit) {
+        window.history.pushState({ spotainerMain: true }, "");
+      } else {
+        window.history.back();
+      }
     }
 
     window.addEventListener("popstate", handlePopState);
