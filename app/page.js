@@ -140,6 +140,7 @@ export default function Page() {
   const [workoutReturnSource, setWorkoutReturnSource] = useState(null);
   const [workoutSessions, setWorkoutSessions] = useState([]);
   const [workoutMode, setWorkoutMode] = useState("list");
+  const [workoutTrainingType, setWorkoutTrainingType] = useState("weight");
   const [workoutMemo, setWorkoutMemo] = useState("");
   const [workoutCondition, setWorkoutCondition] = useState("normal");
   const [workoutIssue, setWorkoutIssue] = useState("");
@@ -2819,6 +2820,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     setWorkoutMember(member);
     setWorkoutReturnSource(source);
     setWorkoutMode("list");
+    setWorkoutTrainingType("weight");
     setWorkoutMemo("");
     setWorkoutCondition("normal");
     setWorkoutIssue("");
@@ -2836,6 +2838,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     setWorkoutReturnSource(null);
     setWorkoutSessions([]);
     setWorkoutMode("list");
+    setWorkoutTrainingType("weight");
     setWorkoutMemo("");
     setWorkoutCondition("normal");
     setWorkoutIssue("");
@@ -5015,7 +5018,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 
       {workoutMember && (
         <div style={styles.modalOverlay}>
-          <section style={styles.modalBox}>
+          <section style={workoutMode === "add" ? styles.workoutModalBox : styles.modalBox}>
             <div style={styles.detailTop}>
               <div>
                 <h2 style={styles.detailName}>{workoutMember.name} 운동 기록</h2>
@@ -5027,7 +5030,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
             {workoutMode === "list" && (
               <>
                 <div style={styles.menuGrid}>
-                  <button onClick={() => setWorkoutMode("add")} style={styles.menuButton}>
+                  <button onClick={() => setWorkoutMode("select")} style={styles.menuButton}>
                     + 오늘 운동 기록하기
                   </button>
                 </div>
@@ -5051,10 +5054,71 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
               </>
             )}
 
+            {workoutMode === "select" && (
+              <>
+                <h3 style={styles.subTitle}>운동 기록 방식 선택</h3>
+                <p style={styles.muted}>오늘 수업이 웨이트인지 서킷트레이닝인지 먼저 선택하세요.</p>
+
+                <div style={styles.workoutTypeGrid}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWorkoutTrainingType("weight");
+                      setWorkoutExercises([{ name: "", sets: [{ weight: "", reps: "" }] }]);
+                      setWorkoutMode("add");
+                    }}
+                    style={styles.workoutTypeButton}
+                  >
+                    <strong>웨이트</strong>
+                    <span>운동별로 세트마다 중량/횟수 입력</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWorkoutTrainingType("circuit");
+                      setWorkoutExercises([{ name: "", sets: [{ weight: "", reps: "" }] }]);
+                      setWorkoutMode("add");
+                    }}
+                    style={styles.workoutTypeButton}
+                  >
+                    <strong>서킷트레이닝</strong>
+                    <span>단계 버튼으로 운동 목록 자동 입력</span>
+                  </button>
+                </div>
+
+                <div style={styles.editActions}>
+                  <button onClick={() => setWorkoutMode("list")} style={styles.cancelButton}>
+                    뒤로
+                  </button>
+                </div>
+              </>
+            )}
+
             {workoutMode === "add" && (
               <>
-                <h3 style={styles.subTitle}>오늘 운동 입력</h3>
+                <div style={styles.workoutAddTitleRow}>
+                  <div>
+                    <h3 style={styles.subTitle}>
+                      {workoutTrainingType === "circuit" ? "서킷트레이닝 입력" : "웨이트 입력"}
+                    </h3>
+                    <p style={styles.workoutTypeLabel}>
+                      {workoutTrainingType === "circuit"
+                        ? "서킷 모드 · 단계 버튼으로 불러온 뒤 필요한 운동만 수정하세요."
+                        : "웨이트 모드 · 세트마다 중량을 다르게 입력하세요."}
+                    </p>
+                  </div>
 
+                  <button
+                    type="button"
+                    onClick={() => setWorkoutMode("select")}
+                    style={styles.smallDark}
+                  >
+                    방식 변경
+                  </button>
+                </div>
+
+                {workoutTrainingType === "circuit" && (
                 <div style={styles.circuitProgramBox}>
                   <strong>전신 서킷 자동 입력</strong>
                   <p>다이어트/체력증가 회원은 단계 버튼을 눌러 운동 목록을 한 번에 불러오세요.</p>
@@ -5072,6 +5136,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
                     ))}
                   </div>
                 </div>
+                )}
 
                 <div style={styles.workoutAddTopRow}>
                   <p style={styles.workoutAddGuide}>
@@ -5264,7 +5329,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 
                 <div style={styles.editActions}>
                   <button onClick={saveWorkout} style={styles.primaryButton}>저장</button>
-                  <button onClick={() => setWorkoutMode("list")} style={styles.cancelButton}>
+                  <button onClick={() => setWorkoutMode("select")} style={styles.cancelButton}>
                     취소
                   </button>
                 </div>
@@ -7971,6 +8036,50 @@ textarea: {
     marginBottom: 0,
     fontSize: 15,
   },
+  workoutModalBox: {
+    width: "100%",
+    maxWidth: "min(1180px, calc(100vw - 32px))",
+    maxHeight: "88vh",
+    overflowY: "auto",
+    background: "#181818",
+    border: "1px solid #333",
+    borderRadius: 28,
+    padding: 24,
+    boxShadow: "0 20px 60px rgba(0,0,0,.45)",
+  },
+  workoutTypeGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 12,
+    marginTop: 18,
+    marginBottom: 18,
+  },
+  workoutTypeButton: {
+    background: "#f5f5f5",
+    color: "#111",
+    border: "1px solid #ffffff",
+    borderRadius: 18,
+    padding: "18px 16px",
+    fontSize: 16,
+    fontWeight: 900,
+    display: "grid",
+    gap: 8,
+    textAlign: "left",
+  },
+  workoutAddTitleRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 12,
+  },
+  workoutTypeLabel: {
+    color: "#aaa",
+    fontSize: 13,
+    fontWeight: 800,
+    margin: "4px 0 0",
+    lineHeight: 1.4,
+  },
   workoutAddTopRow: {
     display: "grid",
     gridTemplateColumns: "1fr auto",
@@ -7997,7 +8106,7 @@ textarea: {
   },
   workoutExerciseGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
     gap: 10,
     alignItems: "start",
   },
