@@ -211,16 +211,20 @@ const [workoutExercises, setWorkoutExercises] = useState([
     : actionModalSchedule ? "actionModal"
     : ptModalMember ? "ptModal"
     : editModalMember ? "editModal"
-    : selectedMember ? "memberDetailModal"
+    : contactModalMember ? "contactResultModal"
+    : selectedMember ? `memberDetailModal:${detailMode || "menu"}`
     : showScheduleModal ? "scheduleModal"
     : showScheduleCheckModal ? "scheduleCheckModal"
     : showMemberListModal ? "memberListModal"
+    : showContactListModal ? "contactListModal"
+    : showCenterModal ? "centerModal"
     : showAddModal ? "addMemberModal"
     : showAllPtModal ? "allPtModal"
     : showAllAttendanceModal ? "allAttendanceModal"
     : "";
 
   const lastHistoryModalKeyRef = useRef("");
+  const isClosingByBackRef = useRef(false);
 
   useEffect(() => {
     window.history.replaceState({ spotainerMain: true }, "");
@@ -244,6 +248,13 @@ const [workoutExercises, setWorkoutExercises] = useState([
   useEffect(() => {
     if (!topModalKey) {
       lastHistoryModalKeyRef.current = "";
+      isClosingByBackRef.current = false;
+      return;
+    }
+
+    if (isClosingByBackRef.current) {
+      lastHistoryModalKeyRef.current = topModalKey;
+      isClosingByBackRef.current = false;
       return;
     }
 
@@ -254,6 +265,30 @@ const [workoutExercises, setWorkoutExercises] = useState([
   }, [topModalKey]);
 
   useEffect(() => {
+    function hasAnyModalOpen() {
+      return Boolean(
+        showInbodyModal ||
+        showAllInbodyModal ||
+        showAllWorkoutModal ||
+        workoutMember ||
+        showScheduleSearchResultModal ||
+        showScheduleConflictModal ||
+        actionModalSchedule ||
+        ptModalMember ||
+        editModalMember ||
+        contactModalMember ||
+        selectedMember ||
+        showScheduleModal ||
+        showScheduleCheckModal ||
+        showMemberListModal ||
+        showContactListModal ||
+        showCenterModal ||
+        showAddModal ||
+        showAllPtModal ||
+        showAllAttendanceModal
+      );
+    }
+
     function closeTopModal() {
       if (showInbodyModal) {
         closeInbodyModal();
@@ -300,6 +335,16 @@ const [workoutExercises, setWorkoutExercises] = useState([
         return true;
       }
 
+      if (contactModalMember) {
+        setContactModalMember(null);
+        return true;
+      }
+
+      if (selectedMember && detailMode && detailMode !== "menu") {
+        setDetailMode("menu");
+        return true;
+      }
+
       if (selectedMember) {
         closeDetail();
         return true;
@@ -317,6 +362,16 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
       if (showMemberListModal) {
         closeMemberListModal();
+        return true;
+      }
+
+      if (showContactListModal) {
+        setShowContactListModal(false);
+        return true;
+      }
+
+      if (showCenterModal) {
+        closeCenterModal();
         return true;
       }
 
@@ -339,34 +394,9 @@ const [workoutExercises, setWorkoutExercises] = useState([
     }
 
     function handlePopState() {
-      const closed = closeTopModal();
-
-      if (closed) {
-        lastHistoryModalKeyRef.current = "";
-
-        setTimeout(() => {
-          const stillHasModal =
-            showInbodyModal ||
-            showAllInbodyModal ||
-            showAllWorkoutModal ||
-            showScheduleSearchResultModal ||
-            showScheduleConflictModal ||
-            actionModalSchedule ||
-            ptModalMember ||
-            editModalMember ||
-            selectedMember ||
-            showScheduleModal ||
-            showScheduleCheckModal ||
-            showMemberListModal ||
-            showAddModal ||
-            showAllPtModal ||
-            showAllAttendanceModal;
-
-          if (!stillHasModal) {
-            window.history.replaceState({ spotainerMain: true }, "");
-          }
-        }, 0);
-
+      if (hasAnyModalOpen()) {
+        isClosingByBackRef.current = true;
+        closeTopModal();
         return;
       }
 
@@ -392,10 +422,14 @@ const [workoutExercises, setWorkoutExercises] = useState([
     actionModalSchedule,
     ptModalMember,
     editModalMember,
+    contactModalMember,
     selectedMember,
+    detailMode,
     showScheduleModal,
     showScheduleCheckModal,
     showMemberListModal,
+    showContactListModal,
+    showCenterModal,
     showAddModal,
     showAllPtModal,
     showAllAttendanceModal,
