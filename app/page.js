@@ -213,129 +213,100 @@ const [workoutExercises, setWorkoutExercises] = useState([
     }
   }, [showScheduleModal, scheduleDate]);
 
-  const openModalDepth = [
-    showMemberListModal,
-    selectedMember,
-    workoutMember,
-    showAllWorkoutModal,
-    showInbodyModal,
-    showAllInbodyModal,
-    showScheduleCheckModal,
-    showScheduleSearchResultModal,
-    showScheduleModal,
-    showScheduleConflictModal,
-    actionModalSchedule,
-    ptModalMember,
-    editModalMember,
-    showAddModal,
-    showAllPtModal,
-    showAllAttendanceModal,
-  ].filter(Boolean).length;
-
-  const previousModalDepthRef = useRef(0);
-
   useEffect(() => {
-    if (openModalDepth > previousModalDepthRef.current) {
-      const pushCount = openModalDepth - previousModalDepthRef.current;
-
-      for (let i = 0; i < pushCount; i += 1) {
-        window.history.pushState({ spotainerModal: true }, "");
-      }
-    }
-
-    previousModalDepthRef.current = openModalDepth;
-  }, [openModalDepth]);
-
-  useEffect(() => {
-    function closeTopModal() {
-      if (showInbodyModal) {
-        closeInbodyModal();
-        return true;
-      }
-
-      if (showAllInbodyModal) {
-        setShowAllInbodyModal(false);
-        return true;
-      }
-
-      if (showAllWorkoutModal) {
-        setShowAllWorkoutModal(false);
-        return true;
-      }
-
-      if (showScheduleSearchResultModal) {
-        setShowScheduleSearchResultModal(false);
-        return true;
-      }
-
-      if (showScheduleConflictModal) {
-        closeScheduleConflictModal();
-        return true;
-      }
-
-      if (actionModalSchedule) {
-        closeActionModal();
-        return true;
-      }
-
-      if (ptModalMember) {
-        closePtModal();
-        return true;
-      }
-
-      if (editModalMember) {
-        closeEditModal();
-        return true;
-      }
-
-      if (workoutMember) {
-        closeWorkout();
-        return true;
-      }
-
-      if (selectedMember) {
-        closeDetail();
-        return true;
-      }
-
-      if (showScheduleModal) {
-        closeScheduleModal();
-        return true;
-      }
-
-      if (showScheduleCheckModal) {
-        closeScheduleCheckModal();
-        return true;
-      }
-
-      if (showMemberListModal) {
-        closeMemberListModal();
-        return true;
-      }
-
-      if (showAddModal) {
-        setShowAddModal(false);
-        return true;
-      }
-
-      if (showAllPtModal) {
-        setShowAllPtModal(false);
-        return true;
-      }
-
-      if (showAllAttendanceModal) {
-        setShowAllAttendanceModal(false);
-        return true;
-      }
-
-      return false;
-    }
+    window.history.pushState({ spotainerMain: true }, "");
 
     function handlePopState() {
+      const closeTopModal = () => {
+        if (showInbodyModal) {
+          closeInbodyModal();
+          return true;
+        }
+
+        if (showAllInbodyModal) {
+          setShowAllInbodyModal(false);
+          return true;
+        }
+
+        if (showAllWorkoutModal) {
+          setShowAllWorkoutModal(false);
+          return true;
+        }
+
+        if (showScheduleSearchResultModal) {
+          setShowScheduleSearchResultModal(false);
+          return true;
+        }
+
+        if (showScheduleConflictModal) {
+          closeScheduleConflictModal();
+          return true;
+        }
+
+        if (actionModalSchedule) {
+          closeActionModal();
+          return true;
+        }
+
+        if (ptModalMember) {
+          closePtModal();
+          return true;
+        }
+
+        if (editModalMember) {
+          closeEditModal();
+          return true;
+        }
+
+        if (workoutMember) {
+          closeWorkout();
+          return true;
+        }
+
+        if (selectedMember) {
+          closeDetail();
+          return true;
+        }
+
+        if (showScheduleModal) {
+          closeScheduleModal();
+          return true;
+        }
+
+        if (showScheduleCheckModal) {
+          closeScheduleCheckModal();
+          return true;
+        }
+
+        if (showMemberListModal) {
+          closeMemberListModal();
+          return true;
+        }
+
+        if (showAddModal) {
+          setShowAddModal(false);
+          return true;
+        }
+
+        if (showAllPtModal) {
+          setShowAllPtModal(false);
+          return true;
+        }
+
+        if (showAllAttendanceModal) {
+          setShowAllAttendanceModal(false);
+          return true;
+        }
+
+        return false;
+      };
+
       const closed = closeTopModal();
 
       if (closed) {
-        previousModalDepthRef.current = Math.max(previousModalDepthRef.current - 1, 0);
+        setTimeout(() => {
+          window.history.pushState({ spotainerMain: true }, "");
+        }, 0);
         return;
       }
 
@@ -7781,6 +7752,7 @@ textarea: {
     fontSize: 20,
     margin: 0,
     fontWeight: 900,
+    color: "#111",
   },
   whiteExerciseGroup: {
     background: "#fff",
