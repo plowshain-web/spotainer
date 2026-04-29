@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -129,6 +129,9 @@ export default function Page() {
   const [scheduleCheckDate, setScheduleCheckDate] = useState(getTodayDateString());
   const [scheduleCheckList, setScheduleCheckList] = useState([]);
   const [scheduleSearch, setScheduleSearch] = useState("");
+  const [scheduleSearchResultList, setScheduleSearchResultList] = useState([]);
+  const [showScheduleSearchResultModal, setShowScheduleSearchResultModal] = useState(false);
+  const modalHistoryPushedRef = useRef(false);
   const [showScheduleConflictModal, setShowScheduleConflictModal] = useState(false);
   const [conflictSchedules, setConflictSchedules] = useState([]);
   const [pendingSchedule, setPendingSchedule] = useState(null);
@@ -164,10 +167,73 @@ export default function Page() {
   }, [showScheduleModal, scheduleDate]);
 
   useEffect(() => {
-    if (showScheduleCheckModal && scheduleCheckDate) {
-      loadScheduleCheckList(scheduleCheckDate);
+    const hasOpenModal =
+      showInbodyModal ||
+      showAllInbodyModal ||
+      showAllWorkoutModal ||
+      showScheduleSearchResultModal ||
+      showScheduleConflictModal ||
+      showScheduleModal ||
+      showScheduleCheckModal ||
+      actionModalSchedule ||
+      showMemberListModal ||
+      showAddModal ||
+      editModalMember ||
+      selectedMember ||
+      workoutMember ||
+      ptModalMember ||
+      showAllPtModal ||
+      showAllAttendanceModal;
+
+    if (hasOpenModal && !modalHistoryPushedRef.current) {
+      window.history.pushState({ spotainerModal: true }, "");
+      modalHistoryPushedRef.current = true;
     }
-  }, [showScheduleCheckModal, scheduleCheckDate]);
+
+    if (!hasOpenModal) {
+      modalHistoryPushedRef.current = false;
+    }
+
+    function handlePopState() {
+      if (showInbodyModal) return closeInbodyModal();
+      if (showAllInbodyModal) return setShowAllInbodyModal(false);
+      if (showAllWorkoutModal) return setShowAllWorkoutModal(false);
+      if (showScheduleSearchResultModal) return setShowScheduleSearchResultModal(false);
+      if (showScheduleConflictModal) return closeScheduleConflictModal();
+      if (actionModalSchedule) return closeActionModal();
+      if (ptModalMember) return closePtModal();
+      if (editModalMember) return closeEditModal();
+      if (workoutMember) return closeWorkout();
+      if (selectedMember) return closeDetail();
+      if (showScheduleModal) return closeScheduleModal();
+      if (showScheduleCheckModal) return closeScheduleCheckModal();
+      if (showMemberListModal) return closeMemberListModal();
+      if (showAddModal) return setShowAddModal(false);
+      if (showAllPtModal) return setShowAllPtModal(false);
+      if (showAllAttendanceModal) return setShowAllAttendanceModal(false);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [
+    showInbodyModal,
+    showAllInbodyModal,
+    showAllWorkoutModal,
+    showScheduleSearchResultModal,
+    showScheduleConflictModal,
+    showScheduleModal,
+    showScheduleCheckModal,
+    actionModalSchedule,
+    showMemberListModal,
+    showAddModal,
+    editModalMember,
+    selectedMember,
+    workoutMember,
+    ptModalMember,
+    showAllPtModal,
+    showAllAttendanceModal,
+  ]);
 
   async function loadMembers() {
     const { data } = await supabase
@@ -260,24 +326,17 @@ export default function Page() {
     setSelectedDateSchedules(data || []);
   }
 
-  async function loadScheduleCheckList(date = scheduleCheckDate, search = "") {
-    let query = supabase
-      .from("schedules")
-      .select("*, members(*)")
-      .order("schedule_date", { ascending: true })
-      .order("start_time", { ascending: true });
-
-    if (search && search.trim()) {
-      // 날짜 제한 없이 전체 조회
-    } else {
-      if (!date) {
-        setScheduleCheckList([]);
-        return;
-      }
-      query = query.eq("schedule_date", date);
+  async function loadScheduleCheckList(date = scheduleCheckDate) {
+    if (!date) {
+      setScheduleCheckList([]);
+      return;
     }
 
-    const { data, error } = await query;
+    const { data, error } = await supabase
+      .from("schedules")
+      .select("*, members(*)")
+      .eq("schedule_date", date)
+      .order("start_time", { ascending: true });
 
     if (error) {
       alert("스케줄 확인 불러오기 실패: " + error.message);
@@ -288,19 +347,12 @@ export default function Page() {
   }
 
   
-  useEffect(() => {
-    if (scheduleSearch.trim()) {
-      loadScheduleCheckList(null, scheduleSearch);
-    } else {
-      loadScheduleCheckList(scheduleCheckDate);
-    }
-  }, [scheduleSearch, scheduleCheckDate]);
-function getFilteredScheduleCheckList() {
-    const q = scheduleSearch.trim().toLowerCase();
+function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = scheduleSearch) {
+    const q = String(keyword || "").trim().toLowerCase();
 
-    if (!q) return scheduleCheckList;
+    if (!q) return list;
 
-    return scheduleCheckList.filter((schedule) => {
+    return list.filter((schedule) => {
       const member = getScheduleMember(schedule) || schedule.members;
 
       return (
@@ -312,10 +364,34 @@ function getFilteredScheduleCheckList() {
     });
   }
 
-  function getScheduleTimelineGroups() {
+  async function searchScheduleByKeyword() {
+    const keyword = scheduleSearch.trim();
+
+    if (!keyword) {
+      alert("검색할 회원 이름이나 전화번호를 입력하세요.");
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("schedules")
+      .select("*, members(*)")
+      .order("schedule_date", { ascending: true })
+      .order("start_time", { ascending: true });
+
+    if (error) {
+      alert("스케줄 검색 실패: " + error.message);
+      return;
+    }
+
+    const filtered = getFilteredScheduleCheckList(data || [], keyword);
+    setScheduleSearchResultList(filtered);
+    setShowScheduleSearchResultModal(true);
+  }
+
+  function getScheduleTimelineGroups(list = scheduleSearchResultList, keyword = scheduleSearch) {
     const groups = {};
 
-    getFilteredScheduleCheckList().forEach((schedule) => {
+    getFilteredScheduleCheckList(list, keyword).forEach((schedule) => {
       const member = getScheduleMember(schedule) || schedule.members;
       const key = member?.id || schedule.member_id || "unknown";
 
@@ -608,6 +684,8 @@ function getFilteredScheduleCheckList() {
   function openScheduleCheckModal() {
     setScheduleCheckDate(getTodayDateString());
     setScheduleSearch("");
+    setScheduleSearchResultList([]);
+    setShowScheduleSearchResultModal(false);
     setShowScheduleCheckModal(true);
     loadScheduleCheckList(getTodayDateString());
   }
@@ -3790,14 +3868,28 @@ function getFilteredScheduleCheckList() {
               <input
                 value={scheduleSearch}
                 onChange={(e) => setScheduleSearch(e.target.value)}
-                placeholder="회원 이름, 전화번호, 수업 종류, 메모 검색"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") searchScheduleByKeyword();
+                }}
+                placeholder="회원 이름 또는 전화번호 검색"
                 style={{ ...styles.whiteInput, marginBottom: 0 }}
               />
+
+              <button
+                type="button"
+                onClick={searchScheduleByKeyword}
+                style={styles.whiteSaveButton}
+              >
+                검색
+              </button>
 
               {scheduleSearch.trim() && (
                 <button
                   type="button"
-                  onClick={() => setScheduleSearch("")}
+                  onClick={() => {
+                    setScheduleSearch("");
+                    setScheduleSearchResultList([]);
+                  }}
                   style={styles.whiteCancelButton}
                 >
                   초기화
@@ -3805,73 +3897,60 @@ function getFilteredScheduleCheckList() {
               )}
             </div>
 
-            {scheduleSearch.trim() && (
-              <p style={styles.whiteMuted}>
-                “{scheduleSearch}” 검색 결과 {getFilteredScheduleCheckList().length}건
-              </p>
-            )}
-
-            <div style={styles.scheduleSlotBox}>
-              <div style={styles.scheduleSlotTop}>
-                <strong>시간별 예약 현황</strong>
-                <span>2명 기준</span>
-              </div>
-
-              <div style={styles.scheduleSlotGrid}>
-                {getTimeOptions().filter((time) => time.endsWith(":00") || time.endsWith(":30")).map((time) => {
-                  const count = getSchedulesAtStartTime(scheduleCheckList, time).length;
-
-                  return (
-                    <button
-                      key={time}
-                      type="button"
-                      onClick={() => {
-                        setScheduleDate(scheduleCheckDate);
-                        setScheduleStartTime(time);
-                        setScheduleEndTime(addMinutesToTime(time, 50));
-                        setReturnToScheduleCheckAfterAdd(true);
-                        setShowScheduleCheckModal(false);
-                        setShowScheduleModal(true);
-                        loadSelectedDateSchedules(scheduleCheckDate);
-                      }}
-                      style={{ ...styles.scheduleSlotButton, ...getSlotStyle(count) }}
-                    >
-                      <strong>{formatTime(time)}</strong>
-                      <span>{getSlotLabel(count)}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             {scheduleCheckList.length === 0 ? (
               <div style={styles.scheduleCheckEmpty}>
                 이 날짜에 등록된 스케줄이 없습니다.
               </div>
-            ) : getFilteredScheduleCheckList().length === 0 ? (
+            ) : (
+              <div style={styles.scheduleCheckList}>
+                {scheduleCheckList.map((schedule) => renderScheduleCheckItem(schedule, false))}              </div>
+            )}
+          </section>
+        </div>
+      )}
+
+      {showScheduleSearchResultModal && (
+        <div style={styles.scheduleSearchResultOverlay}>
+          <section style={styles.scheduleCheckModalBox}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>회원 스케줄 검색 결과</h2>
+                <p style={styles.whiteMuted}>
+                  “{scheduleSearch}” 검색 결과 {scheduleSearchResultList.length}건입니다.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowScheduleSearchResultModal(false)}
+                style={styles.whiteCloseButton}
+              >
+                닫기
+              </button>
+            </div>
+
+            {scheduleSearchResultList.length === 0 ? (
               <div style={styles.scheduleCheckEmpty}>
                 검색 결과가 없습니다.
               </div>
             ) : (
               <div style={styles.scheduleCheckList}>
-                {scheduleSearch.trim()
-                  ? getScheduleTimelineGroups().map((group) => (
-                      <div key={group.key} style={styles.scheduleTimelineGroup}>
-                        <div style={styles.scheduleTimelineHeader}>
-                          <div>
-                            <strong>{group.member?.name || "회원 정보 없음"}</strong>
-                            <p>
-                              {group.member?.phone || "전화번호 없음"} · 총 {group.schedules.length}건
-                            </p>
-                          </div>
-                        </div>
-
-                        <div style={styles.scheduleTimelineList}>
-                          {group.schedules.map((schedule) => renderScheduleCheckItem(schedule, true))}
-                        </div>
+                {getScheduleTimelineGroups(scheduleSearchResultList, scheduleSearch).map((group) => (
+                  <div key={group.key} style={styles.scheduleTimelineGroup}>
+                    <div style={styles.scheduleTimelineHeader}>
+                      <div>
+                        <strong>{group.member?.name || "회원 정보 없음"}</strong>
+                        <p>
+                          {group.member?.phone || "전화번호 없음"} · 총 {group.schedules.length}건
+                        </p>
                       </div>
-                    ))
-                  : getFilteredScheduleCheckList().map((schedule) => renderScheduleCheckItem(schedule, false))}              </div>
+                    </div>
+
+                    <div style={styles.scheduleTimelineList}>
+                      {group.schedules.map((schedule) => renderScheduleCheckItem(schedule, true))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </section>
         </div>
@@ -7225,7 +7304,7 @@ const styles = {
   },
   scheduleSearchBox: {
     display: "grid",
-    gridTemplateColumns: "1fr auto",
+    gridTemplateColumns: "1fr auto auto",
     gap: 10,
     alignItems: "center",
     marginBottom: 14,
@@ -7279,6 +7358,16 @@ const styles = {
     margin: "5px 0 0",
     fontSize: 14,
     fontWeight: 700,
+  },
+  scheduleSearchResultOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,.72)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 15000,
+    padding: 20,
   },
   scheduleTimelineGroup: {
     background: "#ffffff",
