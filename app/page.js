@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -201,35 +201,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
   const isSearching = search.trim().length > 0;
 
-  const topModalKey =
-    showInbodyModal ? "inbodyModal"
-    : showAllInbodyModal ? "allInbodyModal"
-    : showAllWorkoutModal ? "allWorkoutModal"
-    : workoutMember ? "workoutModal"
-    : showScheduleSearchResultModal ? "scheduleSearchResultModal"
-    : showScheduleConflictModal ? "scheduleConflictModal"
-    : actionModalSchedule ? "actionModal"
-    : ptModalMember ? "ptModal"
-    : editModalMember ? "editModal"
-    : contactModalMember ? "contactResultModal"
-    : selectedMember ? `memberDetailModal:${detailMode || "menu"}`
-    : showScheduleModal ? "scheduleModal"
-    : showScheduleCheckModal ? "scheduleCheckModal"
-    : showMemberListModal ? "memberListModal"
-    : showContactListModal ? "contactListModal"
-    : showCenterModal ? "centerModal"
-    : showAddModal ? "addMemberModal"
-    : showAllPtModal ? "allPtModal"
-    : showAllAttendanceModal ? "allAttendanceModal"
-    : "";
-
-  const lastHistoryModalKeyRef = useRef("");
-  const isClosingByBackRef = useRef(false);
-
-  useEffect(() => {
-    window.history.replaceState({ spotainerMain: true }, "");
-  }, []);
-
   useEffect(() => {
     loadMembers();
     loadSchedules(getTodayDateString());
@@ -244,196 +215,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
     loadScheduleCheckList(scheduleCheckDate);
     loadScheduleCheckMonthList(scheduleCheckDate);
   }, [showScheduleCheckModal, scheduleCheckDate]);
-
-  useEffect(() => {
-    if (!topModalKey) {
-      lastHistoryModalKeyRef.current = "";
-      isClosingByBackRef.current = false;
-      return;
-    }
-
-    if (isClosingByBackRef.current) {
-      lastHistoryModalKeyRef.current = topModalKey;
-      isClosingByBackRef.current = false;
-      return;
-    }
-
-    if (lastHistoryModalKeyRef.current !== topModalKey) {
-      window.history.pushState({ spotainerModal: topModalKey }, "");
-      lastHistoryModalKeyRef.current = topModalKey;
-    }
-  }, [topModalKey]);
-
-  useEffect(() => {
-    function hasAnyModalOpen() {
-      return Boolean(
-        showInbodyModal ||
-        showAllInbodyModal ||
-        showAllWorkoutModal ||
-        workoutMember ||
-        showScheduleSearchResultModal ||
-        showScheduleConflictModal ||
-        actionModalSchedule ||
-        ptModalMember ||
-        editModalMember ||
-        contactModalMember ||
-        selectedMember ||
-        showScheduleModal ||
-        showScheduleCheckModal ||
-        showMemberListModal ||
-        showContactListModal ||
-        showCenterModal ||
-        showAddModal ||
-        showAllPtModal ||
-        showAllAttendanceModal
-      );
-    }
-
-    function closeTopModal() {
-      if (showInbodyModal) {
-        closeInbodyModal();
-        return true;
-      }
-
-      if (showAllInbodyModal) {
-        setShowAllInbodyModal(false);
-        return true;
-      }
-
-      if (showAllWorkoutModal) {
-        setShowAllWorkoutModal(false);
-        return true;
-      }
-
-      if (workoutMember) {
-        closeWorkout();
-        return true;
-      }
-
-      if (showScheduleSearchResultModal) {
-        setShowScheduleSearchResultModal(false);
-        return true;
-      }
-
-      if (showScheduleConflictModal) {
-        closeScheduleConflictModal();
-        return true;
-      }
-
-      if (actionModalSchedule) {
-        closeActionModal();
-        return true;
-      }
-
-      if (ptModalMember) {
-        closePtModal();
-        return true;
-      }
-
-      if (editModalMember) {
-        closeEditModal();
-        return true;
-      }
-
-      if (contactModalMember) {
-        setContactModalMember(null);
-        return true;
-      }
-
-      if (selectedMember && detailMode && detailMode !== "menu") {
-        setDetailMode("menu");
-        return true;
-      }
-
-      if (selectedMember) {
-        closeDetail();
-        return true;
-      }
-
-      if (showScheduleModal) {
-        closeScheduleModal();
-        return true;
-      }
-
-      if (showScheduleCheckModal) {
-        closeScheduleCheckModal();
-        return true;
-      }
-
-      if (showMemberListModal) {
-        closeMemberListModal();
-        return true;
-      }
-
-      if (showContactListModal) {
-        setShowContactListModal(false);
-        return true;
-      }
-
-      if (showCenterModal) {
-        closeCenterModal();
-        return true;
-      }
-
-      if (showAddModal) {
-        setShowAddModal(false);
-        return true;
-      }
-
-      if (showAllPtModal) {
-        setShowAllPtModal(false);
-        return true;
-      }
-
-      if (showAllAttendanceModal) {
-        setShowAllAttendanceModal(false);
-        return true;
-      }
-
-      return false;
-    }
-
-    function handlePopState() {
-      if (hasAnyModalOpen()) {
-        isClosingByBackRef.current = true;
-        closeTopModal();
-        return;
-      }
-
-      const shouldExit = window.confirm("앱을 종료할까요?");
-
-      if (!shouldExit) {
-        window.history.pushState({ spotainerMain: true }, "");
-      } else {
-        window.history.back();
-      }
-    }
-
-    window.addEventListener("popstate", handlePopState);
-
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [
-    showInbodyModal,
-    showAllInbodyModal,
-    showAllWorkoutModal,
-    workoutMember,
-    showScheduleSearchResultModal,
-    showScheduleConflictModal,
-    actionModalSchedule,
-    ptModalMember,
-    editModalMember,
-    contactModalMember,
-    selectedMember,
-    detailMode,
-    showScheduleModal,
-    showScheduleCheckModal,
-    showMemberListModal,
-    showContactListModal,
-    showCenterModal,
-    showAddModal,
-    showAllPtModal,
-    showAllAttendanceModal,
-  ]);
 
   async function loadMembers() {
     let { data, error } = await supabase
@@ -1669,8 +1450,11 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 
     const returnDate = schedule.schedule_date || scheduleCheckDate || getTodayDateString();
     setScheduleCheckDate(returnDate);
-    setShowScheduleCheckModal(true);
     await loadScheduleCheckList(returnDate);
+
+    // 수업 완료 후에는 운동 기록 화면이 바로 보여야 하므로,
+    // 스케줄 확인 팝업이 운동 기록 화면 위에 다시 뜨지 않게 닫아둡니다.
+    setShowScheduleCheckModal(false);
 
     await openWorkout(member, "scheduleCheck");
     setWorkoutMode("add");
@@ -3764,6 +3548,61 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     );
   }
 
+  const hasOpenModal =
+    showInbodyModal ||
+    showAllInbodyModal ||
+    showAllWorkoutModal ||
+    workoutMember ||
+    showScheduleSearchResultModal ||
+    showScheduleConflictModal ||
+    actionModalSchedule ||
+    ptModalMember ||
+    editModalMember ||
+    selectedMember ||
+    showScheduleModal ||
+    showScheduleCheckModal ||
+    showMemberListModal ||
+    showAddModal ||
+    showAllPtModal ||
+    showAllAttendanceModal ||
+    showContactListModal ||
+    showCenterModal ||
+    contactModalMember ||
+    summaryModal;
+
+  function goToMain() {
+    setSummaryModal(null);
+    setShowContactListModal(false);
+    setShowCenterModal(false);
+    setContactModalMember(null);
+    setShowAddModal(false);
+    setEditModalMember(null);
+    setEditingId(null);
+    setSelectedMember(null);
+    setDetailMode(null);
+    setShowAllPtModal(false);
+    setShowAllAttendanceModal(false);
+    setShowInbodyModal(false);
+    setShowAllInbodyModal(false);
+    setEditingInbodyLog(null);
+    setWorkoutMember(null);
+    setWorkoutReturnSource(null);
+    setWorkoutMode("list");
+    setShowAllWorkoutModal(false);
+    setEditingWorkoutSetId(null);
+    setPtModalMember(null);
+    setShowScheduleModal(false);
+    setShowScheduleCheckModal(false);
+    setShowScheduleSearchResultModal(false);
+    setShowScheduleConflictModal(false);
+    setConflictSchedules([]);
+    setPendingSchedule(null);
+    setActionModalSchedule(null);
+    setShowMemberListModal(false);
+    setReturnToMemberListAfterDetail(false);
+    setReturnToScheduleCheckAfterAdd(false);
+  }
+
   const incompleteSchedules = schedules.filter((schedule) => {
     if (
       schedule.status === "noshow" ||
@@ -3776,6 +3615,11 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 
   return (
     <main style={styles.page}>
+      {hasOpenModal && (
+        <button type="button" onClick={goToMain} style={styles.mainReturnButton}>
+          ← 메인으로
+        </button>
+      )}
       <header style={styles.header}>
         <div>
           <h1 style={styles.title}>Spotainer</h1>
@@ -5958,6 +5802,20 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 }
 
 const styles = {
+  mainReturnButton: {
+    position: "fixed",
+    top: 14,
+    left: 14,
+    zIndex: 99999,
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #333",
+    borderRadius: 999,
+    padding: "10px 14px",
+    fontSize: 14,
+    fontWeight: 900,
+    boxShadow: "0 10px 24px rgba(0,0,0,0.22)",
+  },
   page: {
     minHeight: "100vh",
     background: "linear-gradient(180deg, #090909 0%, #111 100%)",
