@@ -3699,104 +3699,33 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     return false;
   }
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const guardState = { spotainerBackGuard: true };
-
-    function pushBackGuard() {
-      try {
-        window.history.pushState(guardState, "", window.location.href);
-      } catch (error) {
-        console.error("뒤로가기 방어 기록 생성 실패:", error);
-      }
-    }
-
-    function openExitConfirmModal() {
-      exitConfirmOpenRef.current = true;
-      setExitToast("");
-      setShowExitConfirm(true);
-
-      // 일부 Android/PWA 환경에서는 popstate가 연속으로 들어오며 렌더가 밀릴 수 있어
-      // 짧은 간격으로 한 번 더 고정합니다. 취소/종료 버튼을 누르기 전에는 닫히지 않습니다.
-      window.setTimeout(() => {
-        if (exitConfirmOpenRef.current) setShowExitConfirm(true);
-      }, 80);
-      window.setTimeout(() => {
-        if (exitConfirmOpenRef.current) setShowExitConfirm(true);
-      }, 220);
-    }
-
-    window.history.replaceState({ spotainerBase: true }, "", window.location.href);
-    pushBackGuard();
-    pushBackGuard();
-    backGuardReadyRef.current = true;
-
-    function handlePwaBackButton() {
-      if (allowBackExitRef.current) return;
-
-      pushBackGuard();
-
-      if (!backGuardReadyRef.current) return;
-
-      if (exitConfirmOpenRef.current) {
-        setShowExitConfirm(true);
-        return;
-      }
-
-      if (hasOpenModalRef.current) {
-        setExitToast("닫기 버튼을 사용하세요");
-        return;
-      }
-
-      openExitConfirmModal();
-    }
-
-    window.addEventListener("popstate", handlePwaBackButton);
-
-    return () => {
-      window.removeEventListener("popstate", handlePwaBackButton);
-    };
-  }, []);
+  function openExitConfirmFromButton() {
+    setExitToast("");
+    setShowExitConfirm(true);
+  }
 
   function confirmExitApp() {
-    allowBackExitRef.current = true;
-    exitConfirmOpenRef.current = false;
     setShowExitConfirm(false);
     setExitToast("");
 
-    // PWA 환경에서는 window.close가 막힐 수 있어서, 먼저 히스토리를 크게 뒤로 보낸 뒤 종료를 시도합니다.
+    try {
+      window.close();
+    } catch (error) {
+      console.error("앱 종료 실패:", error);
+    }
+
     setTimeout(() => {
       try {
-        window.history.go(-10);
+        window.history.back();
       } catch (error) {
-        console.error("앱 종료 이동 실패:", error);
+        console.error("앱 뒤로가기 종료 실패:", error);
       }
-
-      setTimeout(() => {
-        try {
-          window.close();
-        } catch (error) {
-          console.error("앱 종료 실패:", error);
-        }
-      }, 120);
-    }, 0);
+    }, 80);
   }
 
   function cancelExitApp() {
-    exitConfirmOpenRef.current = false;
     setShowExitConfirm(false);
     setExitToast("종료를 취소했습니다");
-
-    if (typeof window !== "undefined") {
-      window.setTimeout(() => {
-        try {
-          window.history.pushState({ spotainerBackGuard: true }, "", window.location.href);
-        } catch (error) {
-          console.error("뒤로가기 방어 기록 복구 실패:", error);
-        }
-      }, 0);
-    }
   }
 
   function goToMain() {
@@ -3844,6 +3773,16 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 
   return (
     <main style={styles.page}>
+      {!hasOpenModal && !showExitConfirm && (
+        <button
+          type="button"
+          onClick={openExitConfirmFromButton}
+          style={styles.exitFloatingButton}
+        >
+          앱 종료
+        </button>
+      )}
+
       {exitToast && (
         <div style={styles.appToast}>
           {exitToast}
@@ -6059,6 +5998,21 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 }
 
 const styles = {
+  exitFloatingButton: {
+    position: "fixed",
+    right: 24,
+    bottom: 24,
+    zIndex: 99990,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(23,23,23,0.92)",
+    color: "#fff",
+    borderRadius: 999,
+    padding: "12px 18px",
+    fontSize: 14,
+    fontWeight: 900,
+    cursor: "pointer",
+    boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
+  },
   appToast: {
     position: "fixed",
     right: 24,
