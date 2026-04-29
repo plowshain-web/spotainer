@@ -203,6 +203,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const hasOpenModalRef = useRef(false);
   const exitConfirmOpenRef = useRef(false);
   const allowActualExitRef = useRef(false);
+  const lastBackEventAtRef = useRef(0);
 
   const isSearching = search.trim().length > 0;
 
@@ -3648,28 +3649,55 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
       } catch (error) {
         console.error("window.close 실패", error);
       }
-    }, 80);
+    }, 120);
   }
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const baseUrl = `${window.location.pathname}${window.location.search}`;
+    const homeHash = "#spotainer-home";
+    const guardHash = "#spotainer-guard";
+
+    function setHomePoint() {
+      try {
+        window.history.replaceState(
+          { spotainerHome: true },
+          "",
+          `${baseUrl}${homeHash}`
+        );
+      } catch (error) {
+        console.error("뒤로가기 홈 지점 설정 실패", error);
+      }
+    }
+
     function pushBackGuard() {
       try {
-        window.history.pushState({ spotainerBackGuard: true }, "", window.location.href);
+        window.history.pushState(
+          { spotainerBackGuard: true },
+          "",
+          `${baseUrl}${guardHash}`
+        );
       } catch (error) {
         console.error("뒤로가기 방어 설정 실패", error);
       }
     }
 
-    pushBackGuard();
+    function rearmBackGuard() {
+      setHomePoint();
+      pushBackGuard();
+    }
+
+    rearmBackGuard();
 
     function handlePwaBackButton() {
-      if (allowActualExitRef.current) {
-        return;
-      }
+      if (allowActualExitRef.current) return;
 
-      pushBackGuard();
+      const now = Date.now();
+      if (now - lastBackEventAtRef.current < 120) return;
+      lastBackEventAtRef.current = now;
+
+      rearmBackGuard();
 
       if (exitConfirmOpenRef.current) {
         return;
@@ -3685,9 +3713,13 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     }
 
     window.addEventListener("popstate", handlePwaBackButton);
+    window.addEventListener("hashchange", handlePwaBackButton);
+    window.addEventListener("pageshow", rearmBackGuard);
 
     return () => {
       window.removeEventListener("popstate", handlePwaBackButton);
+      window.removeEventListener("hashchange", handlePwaBackButton);
+      window.removeEventListener("pageshow", rearmBackGuard);
     };
   }, []);
 
