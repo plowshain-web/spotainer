@@ -2889,26 +2889,65 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
   function renderInbodyTrendRow(label, key, unit = "", decimals = 1) {
     const logs = getInbodyTrendLogs();
     const values = logs.map((log) => getTrendValue(log, key));
+    const validPoints = values
+      .map((value, index) => {
+        if (!Number.isFinite(value)) return null;
+
+        const x = logs.length <= 1 ? 50 : (index / (logs.length - 1)) * 100;
+        const y = 100 - getTrendPercent(value, values);
+
+        return { x, y, value, index };
+      })
+      .filter(Boolean);
+
+    const linePoints = validPoints.map((point) => `${point.x},${point.y}`).join(" ");
 
     return (
-      <div style={styles.inbodyTrendRow}>
+      <div style={styles.inbodyTrendLineRow}>
         <div style={styles.inbodyTrendLabel}>{label}</div>
 
-        {logs.map((log, index) => {
-          const value = getTrendValue(log, key);
-          const percent = getTrendPercent(value, values);
+        <div style={styles.inbodyTrendLineArea}>
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={styles.inbodyTrendSvg}>
+            {validPoints.length >= 2 && (
+              <polyline
+                points={linePoints}
+                fill="none"
+                stroke="#facc15"
+                strokeWidth="4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+            {validPoints.map((point) => (
+              <circle
+                key={`${key}-dot-${point.index}`}
+                cx={point.x}
+                cy={point.y}
+                r="4.5"
+                fill="#facc15"
+                stroke="#111"
+                strokeWidth="2"
+              />
+            ))}
+          </svg>
 
-          return (
-            <div key={`${key}-${log.id || index}`} style={styles.inbodyTrendCell}>
-              <div style={styles.inbodyTrendBarTrack}>
-                <div style={{ ...styles.inbodyTrendBar, height: `${percent}%` }} />
-              </div>
-              <strong style={styles.inbodyTrendValue}>
-                {value === null ? "-" : formatMetric(value, unit, decimals)}
-              </strong>
-            </div>
-          );
-        })}
+          <div
+            style={{
+              ...styles.inbodyTrendValueGrid,
+              gridTemplateColumns: `repeat(${logs.length}, minmax(0, 1fr))`,
+            }}
+          >
+            {logs.map((log, index) => {
+              const value = getTrendValue(log, key);
+
+              return (
+                <strong key={`${key}-${log.id || index}`} style={styles.inbodyTrendValue}>
+                  {value === null ? "-" : formatMetric(value, unit, decimals)}
+                </strong>
+              );
+            })}
+          </div>
+        </div>
       </div>
     );
   }
@@ -2929,13 +2968,20 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
           </button>
         </div>
 
-        <div style={styles.inbodyTrendDateRow}>
+        <div style={styles.inbodyTrendDateLineRow}>
           <span />
-          {logs.map((log, index) => (
-            <strong key={log.id || index} style={styles.inbodyTrendDate}>
-              {getShortDateText(log.measured_at)}
-            </strong>
-          ))}
+          <div
+            style={{
+              ...styles.inbodyTrendDateGrid,
+              gridTemplateColumns: `repeat(${logs.length}, minmax(0, 1fr))`,
+            }}
+          >
+            {logs.map((log, index) => (
+              <strong key={log.id || index} style={styles.inbodyTrendDate}>
+                {getShortDateText(log.measured_at)}
+              </strong>
+            ))}
+          </div>
         </div>
 
         {renderInbodyTrendRow("체중", "weight", "kg", 1)}
@@ -7686,6 +7732,49 @@ textarea: {
     alignItems: "center",
     gap: 10,
     marginBottom: 12,
+  },
+  inbodyTrendDateLineRow: {
+    display: "grid",
+    gridTemplateColumns: "86px 1fr",
+    gap: 8,
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  inbodyTrendDateGrid: {
+    display: "grid",
+    gap: 8,
+    alignItems: "center",
+  },
+  inbodyTrendLineRow: {
+    display: "grid",
+    gridTemplateColumns: "86px 1fr",
+    gap: 8,
+    alignItems: "center",
+    padding: "10px 0",
+    borderTop: "1px solid #303030",
+  },
+  inbodyTrendLineArea: {
+    position: "relative",
+    height: 58,
+    paddingTop: 4,
+  },
+  inbodyTrendSvg: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    width: "100%",
+    height: 38,
+    overflow: "visible",
+  },
+  inbodyTrendValueGrid: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    display: "grid",
+    gap: 8,
+    alignItems: "center",
   },
   inbodyTrendDateRow: {
     display: "grid",
