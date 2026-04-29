@@ -176,6 +176,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [showScheduleCheckModal, setShowScheduleCheckModal] = useState(false);
   const [scheduleCheckDate, setScheduleCheckDate] = useState(getTodayDateString());
   const [scheduleCheckList, setScheduleCheckList] = useState([]);
+  const [scheduleCheckMonthList, setScheduleCheckMonthList] = useState([]);
   const [scheduleSearch, setScheduleSearch] = useState("");
   const [scheduleSearchResultList, setScheduleSearchResultList] = useState([]);
   const [showScheduleSearchResultModal, setShowScheduleSearchResultModal] = useState(false);
@@ -231,6 +232,14 @@ const [workoutExercises, setWorkoutExercises] = useState([
     loadSales();
     loadCenterInfo();
   }, []);
+
+
+  useEffect(() => {
+    if (!showScheduleCheckModal || !scheduleCheckDate) return;
+
+    loadScheduleCheckList(scheduleCheckDate);
+    loadScheduleCheckMonthList(scheduleCheckDate);
+  }, [showScheduleCheckModal, scheduleCheckDate]);
 
   useEffect(() => {
     if (!topModalKey) {
@@ -518,6 +527,40 @@ const [workoutExercises, setWorkoutExercises] = useState([
     }
 
     setScheduleCheckList(data || []);
+  }
+
+  function getMonthRange(dateText = getTodayDateString()) {
+    const [year, month] = String(dateText || getTodayDateString()).split("-").map(Number);
+    const start = new Date(year, month - 1, 1);
+    const end = new Date(year, month, 1);
+
+    return {
+      startText: getDateOnlyString(start),
+      endText: getDateOnlyString(end),
+    };
+  }
+
+  async function loadScheduleCheckMonthList(date = scheduleCheckDate) {
+    if (!date) {
+      setScheduleCheckMonthList([]);
+      return;
+    }
+
+    const range = getMonthRange(date);
+
+    const { data, error } = await supabase
+      .from("schedules")
+      .select("id,schedule_date,status,type")
+      .gte("schedule_date", range.startText)
+      .lt("schedule_date", range.endText);
+
+    if (error) {
+      console.error("월간 스케줄 불러오기 실패:", error.message);
+      setScheduleCheckMonthList([]);
+      return;
+    }
+
+    setScheduleCheckMonthList(data || []);
   }
 
   
@@ -879,12 +922,55 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
   function moveScheduleCheckDate(dayAmount) {
     const base = scheduleCheckDate ? new Date(scheduleCheckDate) : new Date();
     base.setDate(base.getDate() + dayAmount);
+    setScheduleCheckDate(getDateOnlyString(base));
+  }
 
+  function moveScheduleCheckMonth(monthAmount) {
+    const base = scheduleCheckDate ? new Date(scheduleCheckDate) : new Date();
+    base.setDate(1);
+    base.setMonth(base.getMonth() + monthAmount);
+    setScheduleCheckDate(getDateOnlyString(base));
+  }
+
+  function getScheduleCheckMonthTitle() {
+    const base = scheduleCheckDate ? new Date(scheduleCheckDate) : new Date();
+    return `${base.getFullYear()}년 ${String(base.getMonth() + 1).padStart(2, "0")}월`;
+  }
+
+  function getScheduleCheckCalendarDays() {
+    const base = scheduleCheckDate ? new Date(scheduleCheckDate) : new Date();
     const year = base.getFullYear();
-    const month = String(base.getMonth() + 1).padStart(2, "0");
-    const day = String(base.getDate()).padStart(2, "0");
+    const month = base.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const cells = [];
 
-    setScheduleCheckDate(`${year}-${month}-${day}`);
+    for (let i = 0; i < firstDay.getDay(); i += 1) {
+      cells.push({ key: `empty-start-${i}`, empty: true });
+    }
+
+    for (let day = 1; day <= lastDay.getDate(); day += 1) {
+      const date = new Date(year, month, day);
+      const dateText = getDateOnlyString(date);
+      const count = scheduleCheckMonthList.filter(
+        (schedule) => schedule.schedule_date === dateText && schedule.status !== "cancelled"
+      ).length;
+
+      cells.push({
+        key: dateText,
+        dateText,
+        day,
+        count,
+        selected: dateText === scheduleCheckDate,
+        today: dateText === getTodayDateString(),
+      });
+    }
+
+    while (cells.length % 7 !== 0) {
+      cells.push({ key: `empty-end-${cells.length}`, empty: true });
+    }
+
+    return cells;
   }
 
   function openActionModal(schedule) {
@@ -4019,29 +4105,52 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
               </button>
             </div>
 
-            <div style={styles.scheduleCheckDateRow}>
-              <button
-                type="button"
-                onClick={() => moveScheduleCheckDate(-1)}
-                style={styles.scheduleCheckMoveButton}
-              >
-                이전날
-              </button>
+            <div style={styles.scheduleMiniCalendarBox}>
+              <div style={styles.scheduleMiniCalendarHeader}>
+                <button
+                  type="button"
+                  onClick={() => moveScheduleCheckMonth(-1)}
+                  style={styles.scheduleMiniMonthButton}
+                >
+                  ‹
+                </button>
 
-              <input
-                value={scheduleCheckDate}
-                onChange={(e) => setScheduleCheckDate(e.target.value)}
-                type="date"
-                style={styles.whiteInput}
-              />
+                <strong style={styles.scheduleMiniMonthTitle}>{getScheduleCheckMonthTitle()}</strong>
 
-              <button
-                type="button"
-                onClick={() => moveScheduleCheckDate(1)}
-                style={styles.scheduleCheckMoveButton}
-              >
-                다음날
-              </button>
+                <button
+                  type="button"
+                  onClick={() => moveScheduleCheckMonth(1)}
+                  style={styles.scheduleMiniMonthButton}
+                >
+                  ›
+                </button>
+              </div>
+
+              <div style={styles.scheduleMiniWeekRow}>
+                {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
+                  <div key={day} style={styles.scheduleMiniWeekCell}>{day}</div>
+                ))}
+              </div>
+
+              <div style={styles.scheduleMiniCalendarGrid}>
+                {getScheduleCheckCalendarDays().map((day) => (
+                  day.empty ? (
+                    <div key={day.key} style={styles.scheduleMiniEmptyDay} />
+                  ) : (
+                    <button
+                      key={day.key}
+                      type="button"
+                      onClick={() => setScheduleCheckDate(day.dateText)}
+                      style={day.selected ? styles.scheduleMiniDaySelected : day.today ? styles.scheduleMiniDayToday : styles.scheduleMiniDay}
+                    >
+                      <span style={styles.scheduleMiniDayNumber}>{day.day}</span>
+                      {day.count > 0 && (
+                        <span style={styles.scheduleMiniDayCount}>{day.count}건</span>
+                      )}
+                    </button>
+                  )
+                ))}
+              </div>
             </div>
 
             <div style={styles.scheduleCheckTopActions}>
@@ -7624,7 +7733,7 @@ textarea: {
   },
   scheduleCheckModalBox: {
     width: "100%",
-    maxWidth: 760,
+    maxWidth: 980,
     maxHeight: "86vh",
     overflowY: "auto",
     background: "#ffffff",
@@ -7648,6 +7757,105 @@ textarea: {
     padding: "12px 14px",
     fontSize: 14,
     fontWeight: 900,
+  },
+  scheduleMiniCalendarBox: {
+    background: "#f7f7f7",
+    border: "1px solid #e4e4e4",
+    borderRadius: 18,
+    padding: 12,
+    marginBottom: 12,
+  },
+  scheduleMiniCalendarHeader: {
+    display: "grid",
+    gridTemplateColumns: "44px 1fr 44px",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+  },
+  scheduleMiniMonthButton: {
+    background: "#111",
+    color: "#fff",
+    border: "none",
+    borderRadius: 12,
+    height: 40,
+    fontSize: 24,
+    fontWeight: 900,
+    lineHeight: 1,
+  },
+  scheduleMiniMonthTitle: {
+    color: "#111",
+    fontSize: 20,
+    fontWeight: 900,
+    textAlign: "center",
+  },
+  scheduleMiniWeekRow: {
+    display: "grid",
+    gridTemplateColumns: "repeat(7, 1fr)",
+    gap: 6,
+    marginBottom: 6,
+  },
+  scheduleMiniWeekCell: {
+    textAlign: "center",
+    color: "#777",
+    fontSize: 12,
+    fontWeight: 900,
+  },
+  scheduleMiniCalendarGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(7, 1fr)",
+    gap: 6,
+  },
+  scheduleMiniEmptyDay: {
+    minHeight: 48,
+  },
+  scheduleMiniDay: {
+    minHeight: 48,
+    background: "#fff",
+    border: "1px solid #e5e5e5",
+    borderRadius: 12,
+    padding: "6px 4px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    color: "#111",
+  },
+  scheduleMiniDayToday: {
+    minHeight: 48,
+    background: "#fff7d6",
+    border: "1px solid #facc15",
+    borderRadius: 12,
+    padding: "6px 4px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    color: "#111",
+  },
+  scheduleMiniDaySelected: {
+    minHeight: 48,
+    background: "#111",
+    border: "1px solid #111",
+    borderRadius: 12,
+    padding: "6px 4px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    color: "#fff",
+  },
+  scheduleMiniDayNumber: {
+    fontSize: 15,
+    fontWeight: 900,
+    lineHeight: 1,
+  },
+  scheduleMiniDayCount: {
+    fontSize: 11,
+    fontWeight: 900,
+    lineHeight: 1,
   },
   scheduleSearchBox: {
     display: "grid",
