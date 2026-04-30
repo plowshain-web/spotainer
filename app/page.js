@@ -200,6 +200,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [scheduleMemo, setScheduleMemo] = useState("");
   const [exitToast, setExitToast] = useState("");
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [scheduleActionMenuId, setScheduleActionMenuId] = useState(null);
   const hasOpenModalRef = useRef(false);
   const modalBackGuardArmedRef = useRef(false);
 
@@ -489,6 +490,120 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     return "지난 수업";
   }
 
+  function closeScheduleActionMenu() {
+    setScheduleActionMenuId(null);
+  }
+
+  function renderScheduleMoreMenu(schedule) {
+    return (
+      <div style={styles.scheduleMoreMenu}>
+        <button
+          type="button"
+          onClick={() => {
+            closeScheduleActionMenu();
+            addToDeviceCalendar(schedule);
+          }}
+          style={styles.scheduleMoreMenuButton}
+        >
+          캘린더
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            closeScheduleActionMenu();
+            markScheduleNoShow(schedule);
+          }}
+          style={styles.scheduleMoreMenuButtonDanger}
+        >
+          노쇼
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            closeScheduleActionMenu();
+            markScheduleCancelled(schedule);
+          }}
+          style={styles.scheduleMoreMenuButtonWarning}
+        >
+          취소
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            closeScheduleActionMenu();
+            startEditSchedule(schedule);
+          }}
+          style={styles.scheduleMoreMenuButton}
+        >
+          수정
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            closeScheduleActionMenu();
+            deleteSchedule(schedule);
+          }}
+          style={styles.scheduleMoreMenuButtonDanger}
+        >
+          삭제
+        </button>
+        <button
+          type="button"
+          onClick={closeScheduleActionMenu}
+          style={styles.scheduleMoreMenuCloseButton}
+        >
+          닫기
+        </button>
+      </div>
+    );
+  }
+
+  function renderScheduleQuickButtons(schedule, isDone = false) {
+    return (
+      <div style={styles.scheduleQuickButtonWrap}>
+        {scheduleActionMenuId === schedule.id && renderScheduleMoreMenu(schedule)}
+
+        {isDone ? (
+          <button style={styles.scheduleDisabledButton} disabled>
+            {schedule.status === "cancelled"
+              ? "취소됨"
+              : schedule.status === "noshow"
+                ? "노쇼"
+                : "완료됨"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => completeScheduleClass(schedule)}
+            style={styles.incompleteCompleteButton}
+          >
+            완료
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => sendScheduleSMS(schedule)}
+          style={styles.scheduleSmsButton}
+        >
+          문자
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            setScheduleActionMenuId((current) =>
+              current === schedule.id ? null : schedule.id
+            )
+          }
+          style={styles.scheduleMoreButton}
+        >
+          ⋯
+        </button>
+      </div>
+    );
+  }
+
   function renderScheduleCheckItem(schedule, showDate = false) {
     const member = getScheduleMember(schedule) || schedule.members;
     const status = getSchedulePreviewStatus(schedule);
@@ -537,68 +652,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
         </div>
 
         <div style={styles.scheduleCheckButtonGroup}>
-          <button
-            type="button"
-            onClick={() => addToDeviceCalendar(schedule)}
-            style={styles.calendarButton}
-          >
-            캘린더
-          </button>
-          <button
-            type="button"
-            onClick={() => sendScheduleSMS(schedule)}
-            style={styles.scheduleSmsButton}
-          >
-            문자
-          </button>
-
-          {isDone ? (
-            <button style={styles.scheduleDisabledButton} disabled>
-              {schedule.status === "cancelled"
-                ? "취소됨"
-                : schedule.status === "noshow"
-                  ? "노쇼"
-                  : "완료됨"}
-            </button>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => completeScheduleClass(schedule)}
-                style={styles.incompleteCompleteButton}
-              >
-                완료
-              </button>
-              <button
-                type="button"
-                onClick={() => markScheduleNoShow(schedule)}
-                style={styles.incompleteNoShowButton}
-              >
-                노쇼
-              </button>
-              <button
-                type="button"
-                onClick={() => markScheduleCancelled(schedule)}
-                style={styles.incompleteCancelScheduleButton}
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={() => startEditSchedule(schedule)}
-                style={styles.scheduleEditButton}
-              >
-                수정
-              </button>
-            </>
-          )}
-
-          <button
-            onClick={() => deleteSchedule(schedule)}
-            style={styles.whiteDeleteButton}
-          >
-            삭제
-          </button>
+          {renderScheduleQuickButtons(schedule, isDone)}
         </div>
       </div>
     );
@@ -901,10 +955,19 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     }
 
     alert("스케줄이 저장되었습니다.");
+
+    if (confirm("이 스케줄을 기본 캘린더에 추가할까요?")) {
+      addToDeviceCalendar({
+        ...row,
+        id: row.id || `schedule-${Date.now()}`,
+        members: getFreshMember(row.member_id),
+      });
+    }
+
     return true;
   }
 
-  async function finishScheduleSave(date, message = "스케줄이 저장되었습니다.") {
+  async function finishScheduleSave(date, message = "스케줄이 저장되었습니다.", calendarRows = []) {
     const shouldReturnToScheduleCheck = returnToScheduleCheckAfterAdd;
 
     closeScheduleModal();
@@ -919,6 +982,16 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     }
 
     alert(message);
+
+    if (calendarRows.length > 0 && confirm("저장한 스케줄을 기본 캘린더에 추가할까요?")) {
+      calendarRows.forEach((calendarRow, index) => {
+        addToDeviceCalendar({
+          ...calendarRow,
+          id: calendarRow.id || `schedule-${Date.now()}-${index}`,
+          members: getFreshMember(calendarRow.member_id),
+        });
+      });
+    }
   }
 
   async function addSchedule(forceSave = false) {
@@ -1037,7 +1110,8 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 
     await finishScheduleSave(
       scheduleDate,
-      rows.length > 1 ? "그룹PT 스케줄이 저장되었습니다." : "스케줄이 저장되었습니다."
+      rows.length > 1 ? "그룹PT 스케줄이 저장되었습니다." : "스케줄이 저장되었습니다.",
+      rows
     );
   }
 
@@ -1080,7 +1154,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
         if (!ok) return;
       }
 
-      await finishScheduleSave(date, "그룹PT 스케줄이 저장되었습니다.");
+      await finishScheduleSave(date, "그룹PT 스케줄이 저장되었습니다.", pendingSchedule.rows);
       return;
     }
 
@@ -3909,56 +3983,9 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
                   </div>
 
                   <div style={styles.incompleteButtonGroup}>
-                    <button
-                      type="button"
-                      onClick={() => addToDeviceCalendar(schedule)}
-                      style={styles.calendarButton}
-                    >
-                      캘린더
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => sendScheduleSMS(schedule)}
-                      style={styles.scheduleSmsButton}
-                    >
-                      문자
-                    </button>
-
-                    {isNoShow || isCancelled || isCompleted ? (
-                      <button style={styles.scheduleDisabledButton} disabled>
-                        {isCancelled ? "취소됨" : isNoShow ? "노쇼" : "완료됨"}
-                      </button>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => completeScheduleClass(schedule)}
-                          style={styles.incompleteCompleteButton}
-                        >
-                          완료
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => markScheduleNoShow(schedule)}
-                          style={styles.incompleteNoShowButton}
-                        >
-                          노쇼
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => markScheduleCancelled(schedule)}
-                          style={styles.incompleteCancelScheduleButton}
-                        >
-                          취소
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => startEditSchedule(schedule)}
-                          style={styles.scheduleEditButton}
-                        >
-                          수정
-                        </button>
-                      </>
+                    {renderScheduleQuickButtons(
+                      schedule,
+                      isNoShow || isCancelled || isCompleted
                     )}
                   </div>
                 </div>
@@ -6837,6 +6864,7 @@ const styles = {
     alignItems: "stretch",
   },
   incompleteItem: {
+    position: "relative",
     background: "#241f17",
     border: "1px solid #4a3a1f",
     borderRadius: 18,
@@ -6895,10 +6923,79 @@ const styles = {
     whiteSpace: "nowrap",
   },
   incompleteButtonGroup: {
+    width: "100%",
+  },
+  scheduleQuickButtonWrap: {
+    position: "relative",
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(74px, 1fr))",
+    gridTemplateColumns: "1.15fr 1fr 44px",
     gap: 8,
     width: "100%",
+  },
+  scheduleMoreButton: {
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #333",
+    borderRadius: 12,
+    padding: "9px 10px",
+    fontWeight: 900,
+    fontSize: 18,
+    lineHeight: 1,
+    whiteSpace: "nowrap",
+  },
+  scheduleMoreMenu: {
+    position: "absolute",
+    right: 0,
+    bottom: "calc(100% + 8px)",
+    width: 160,
+    background: "#111",
+    border: "1px solid #333",
+    borderRadius: 16,
+    padding: 8,
+    display: "grid",
+    gap: 6,
+    zIndex: 12000,
+    boxShadow: "0 18px 44px rgba(0,0,0,.35)",
+  },
+  scheduleMoreMenuButton: {
+    background: "#1f2937",
+    color: "#fff",
+    border: "1px solid #374151",
+    borderRadius: 10,
+    padding: "9px 10px",
+    fontSize: 13,
+    fontWeight: 900,
+    textAlign: "left",
+  },
+  scheduleMoreMenuButtonDanger: {
+    background: "#3f1111",
+    color: "#fecaca",
+    border: "1px solid #7f1d1d",
+    borderRadius: 10,
+    padding: "9px 10px",
+    fontSize: 13,
+    fontWeight: 900,
+    textAlign: "left",
+  },
+  scheduleMoreMenuButtonWarning: {
+    background: "#422006",
+    color: "#fde68a",
+    border: "1px solid #92400e",
+    borderRadius: 10,
+    padding: "9px 10px",
+    fontSize: 13,
+    fontWeight: 900,
+    textAlign: "left",
+  },
+  scheduleMoreMenuCloseButton: {
+    background: "#f5f5f5",
+    color: "#111",
+    border: "1px solid #fff",
+    borderRadius: 10,
+    padding: "9px 10px",
+    fontSize: 13,
+    fontWeight: 900,
+    textAlign: "center",
   },
   incompleteNoShowButton: {
     background: "#3f1111",
@@ -8430,6 +8527,7 @@ textarea: {
     alignItems: "stretch",
   },
   scheduleCheckItem: {
+    position: "relative",
     background: "#f3f3f3",
     border: "1px solid #e5e5e5",
     borderRadius: 18,
@@ -8495,9 +8593,7 @@ textarea: {
     fontWeight: 900,
   },
   scheduleCheckButtonGroup: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(72px, 1fr))",
-    gap: 8,
+    width: "100%",
   },
   whiteModalOverlay: {
     position: "fixed",
