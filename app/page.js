@@ -544,6 +544,13 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
           >
             캘린더
           </button>
+          <button
+            type="button"
+            onClick={() => sendScheduleSMS(schedule)}
+            style={styles.scheduleSmsButton}
+          >
+            문자
+          </button>
 
           {isDone ? (
             <button style={styles.scheduleDisabledButton} disabled>
@@ -2377,6 +2384,32 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     return String(phone || "").replace(/[^0-9+]/g, "");
   }
 
+  function sendScheduleSMS(schedule) {
+    const member = getScheduleMember(schedule) || schedule.members;
+    const phone = normalizePhone(member?.phone);
+
+    if (!member) {
+      alert("연결된 회원 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    if (!phone) {
+      alert(`${member.name || "회원"} 회원의 전화번호가 없습니다.`);
+      return;
+    }
+
+    const dateText = schedule.schedule_date ? formatDate(schedule.schedule_date) : "오늘";
+    const timeText = formatScheduleRange(schedule);
+    const typeText = getScheduleTypeText(schedule.type);
+    const message = `[스포테이너]\n${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.\n늦지 않게 방문해주세요 😊`;
+
+    if (!confirm(`${member.name || "회원"} 회원에게 예약 안내 문자를 보낼까요?\n\n확인을 누르면 문자앱이 열리고, 직접 전송 버튼을 눌러야 발송됩니다.`)) {
+      return;
+    }
+
+    window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
+  }
+
   async function sendGroupSMS(type, targetMembers) {
     const validMembers = (targetMembers || []).filter((member) => normalizePhone(member.phone));
 
@@ -3882,6 +3915,13 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
                       style={styles.calendarButton}
                     >
                       캘린더
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => sendScheduleSMS(schedule)}
+                      style={styles.scheduleSmsButton}
+                    >
+                      문자
                     </button>
 
                     {isNoShow || isCancelled || isCompleted ? (
@@ -6828,6 +6868,16 @@ const styles = {
     background: "#172554",
     color: "#bfdbfe",
     border: "1px solid #1d4ed8",
+    borderRadius: 12,
+    padding: "9px 10px",
+    fontWeight: 900,
+    fontSize: 13,
+    whiteSpace: "nowrap",
+  },
+  scheduleSmsButton: {
+    background: "#263a36",
+    color: "#d7fff3",
+    border: "1px solid #3f5f58",
     borderRadius: 12,
     padding: "9px 10px",
     fontWeight: 900,
