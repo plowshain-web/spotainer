@@ -201,6 +201,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [exitToast, setExitToast] = useState("");
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const hasOpenModalRef = useRef(false);
+  const modalBackGuardArmedRef = useRef(false);
 
   const isSearching = search.trim().length > 0;
 
@@ -224,34 +225,12 @@ const [workoutExercises, setWorkoutExercises] = useState([
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const guardState = { spotainerBackGuard: true };
-
-    function armBackGuard() {
-      try {
-        window.history.pushState(guardState, "", window.location.href);
-      } catch (error) {
-        console.error("뒤로가기 방어 설정 실패", error);
-      }
-    }
-
-    try {
-      window.history.replaceState({ spotainerMain: true }, "", window.location.href);
-    } catch (error) {
-      console.error("메인 히스토리 설정 실패", error);
-    }
-
-    armBackGuard();
-
     function handleBackButton() {
-      armBackGuard();
-
       if (hasOpenModalRef.current) {
         goToMain();
-        setExitToast("메인화면으로 이동했습니다");
-        return;
       }
-
-      setExitToast("이미 메인화면입니다");
+      // 메인화면에서는 아무것도 막지 않습니다.
+      // 태블릿/PWA 기본 동작대로 뒤로가면 앱이 종료됩니다.
     }
 
     window.addEventListener("popstate", handleBackButton);
@@ -3639,8 +3618,25 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     summaryModal;
 
   useEffect(() => {
-    hasOpenModalRef.current = Boolean(hasOpenModal || showExitConfirm);
-  }, [hasOpenModal, showExitConfirm]);
+    hasOpenModalRef.current = Boolean(hasOpenModal);
+  }, [hasOpenModal]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (hasOpenModal && !modalBackGuardArmedRef.current) {
+      try {
+        window.history.pushState({ spotainerModalGuard: true }, "", window.location.href);
+        modalBackGuardArmedRef.current = true;
+      } catch (error) {
+        console.error("팝업 뒤로가기 방어 설정 실패", error);
+      }
+    }
+
+    if (!hasOpenModal) {
+      modalBackGuardArmedRef.current = false;
+    }
+  }, [hasOpenModal]);
 
   function goToMain() {
     setShowExitConfirm(false);
@@ -3714,12 +3710,6 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
 
   return (
     <main style={styles.page}>
-      {exitToast && (
-        <div style={styles.appToast}>
-          {exitToast}
-        </div>
-      )}
-
       {hasOpenModal && (
         <button
           type="button"
