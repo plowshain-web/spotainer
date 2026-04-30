@@ -3720,7 +3720,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
         </div>
       )}
 
-      {!hasOpenModal && (
+      {hasOpenModal && (
         <button
           type="button"
           onClick={goToMain}
