@@ -625,36 +625,41 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     return (
       <div key={schedule.id} style={styles.scheduleCheckItem}>
-        <div style={styles.scheduleCheckMain}>
-          <strong style={styles.scheduleCheckTime}>
-            {showDate ? `${formatDate(schedule.schedule_date)} · ` : ""}
-            {formatScheduleRange(schedule)}
-          </strong>
+        <div style={styles.scheduleCheckMainCompact}>
+          <div style={styles.scheduleCheckTitleRow}>
+            <strong style={styles.scheduleCheckTime}>
+              {showDate ? `${formatDate(schedule.schedule_date)} · ` : ""}
+              {formatScheduleRange(schedule)}
+            </strong>
 
-          <p style={styles.scheduleCheckMember}>
-            {getScheduleTypeText(schedule.type)} · {member?.name || "회원 정보 없음"}
-            {member ? ` · PT ${member.pt_remaining || 0}회` : ""}
-          </p>
+            <span style={status.style}>{status.text}</span>
+          </div>
 
-          {showDate && (
-            <p style={styles.scheduleTimelineMeta}>
-              {getScheduleRelationText(schedule.schedule_date)}
-            </p>
-          )}
+          <div style={styles.scheduleCheckSubRow}>
+            <span style={styles.scheduleCheckMemberCompact}>
+              {getScheduleTypeText(schedule.type)} · {member?.name || "회원 정보 없음"}
+              {member ? ` · PT ${member.pt_remaining || 0}회` : ""}
+            </span>
+
+            {showDate && (
+              <span style={styles.scheduleTimelineMetaCompact}>
+                {getScheduleRelationText(schedule.schedule_date)}
+              </span>
+            )}
+          </div>
 
           {schedule.memo && (
-            <p style={styles.scheduleCheckMemo}>{schedule.memo}</p>
+            <p style={styles.scheduleCheckMemoCompact}>{schedule.memo}</p>
           )}
 
-          <div style={styles.scheduleStatusRow}>
-            <span style={status.style}>{status.text}</span>
+          <div style={styles.scheduleStatusRowCompact}>
             {schedule.attendance_checked ? (
-              <span style={styles.scheduleDoneText}>출석 완료</span>
+              <span style={styles.scheduleDoneText}>출석</span>
             ) : (
               <span style={styles.scheduleWarningText}>출석 전</span>
             )}
             {schedule.pt_used ? (
-              <span style={styles.scheduleDoneText}>차감 완료</span>
+              <span style={styles.scheduleDoneText}>차감</span>
             ) : (
               <span style={styles.scheduleWarningText}>차감 전</span>
             )}
@@ -667,6 +672,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
       </div>
     );
   }
+
 
     async function loadSales() {
     const now = new Date();
@@ -3732,7 +3738,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
                 }}
                 style={styles.conditionSmsButton}
               >
-                컨디션 문자
+                컨디션 확인
               </button>
 
               {member.is_active === false ? (
@@ -3759,8 +3765,9 @@ const [workoutExercises, setWorkoutExercises] = useState([
             </div>
 
             <div style={styles.warningRowCompact}>
-              {ptStatus && <span style={ptStatus.style}>{ptStatus.text}</span>}
-              {visitStatus && <span style={visitStatus.style}>{visitStatus.text}</span>}
+              {[ptStatus, visitStatus].filter(Boolean).slice(0, 2).map((badge, index) => (
+                <span key={index} style={badge.style}>{badge.text}</span>
+              ))}
             </div>
           </div>
         )}
@@ -9590,6 +9597,396 @@ textarea: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
     gap: 8,
+  },
+
+  scheduleFullContent: {
+    flex: 1,
+    minHeight: 0,
+    display: "grid",
+    gridTemplateColumns: "minmax(250px, 32%) minmax(0, 1fr)",
+    gap: 12,
+    overflow: "hidden",
+  },
+  scheduleFullCalendarPanel: {
+    minHeight: 0,
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+  },
+  scheduleFullListPanel: {
+    minHeight: 0,
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    border: "1px solid #e5e5e5",
+    borderRadius: 18,
+    padding: 10,
+    background: "#fafafa",
+  },
+  scheduleMiniCalendarBoxCompact: {
+    background: "#f7f7f7",
+    border: "1px solid #e4e4e4",
+    borderRadius: 16,
+    padding: 9,
+    marginBottom: 0,
+    touchAction: "pan-y",
+  },
+  scheduleMiniDay: {
+    minHeight: 30,
+    background: "#fff",
+    border: "1px solid #e5e5e5",
+    borderRadius: 9,
+    padding: "3px 2px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    color: "#111",
+  },
+  scheduleMiniDayToday: {
+    minHeight: 30,
+    background: "#fff7d6",
+    border: "1px solid #facc15",
+    borderRadius: 9,
+    padding: "3px 2px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    color: "#111",
+  },
+  scheduleMiniDaySelected: {
+    minHeight: 30,
+    background: "#111",
+    border: "1px solid #111",
+    borderRadius: 9,
+    padding: "3px 2px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    color: "#fff",
+  },
+  scheduleCheckItem: {
+    position: "relative",
+    background: "#f3f3f3",
+    border: "1px solid #e5e5e5",
+    borderRadius: 16,
+    padding: 10,
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) 300px",
+    gap: 10,
+    alignItems: "center",
+    minWidth: 0,
+  },
+  scheduleCheckMainCompact: {
+    minWidth: 0,
+  },
+  scheduleCheckTitleRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    minWidth: 0,
+  },
+  scheduleCheckSubRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginTop: 4,
+    minWidth: 0,
+  },
+  scheduleCheckTime: {
+    color: "#111",
+    fontSize: 15,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+  },
+  scheduleCheckMemberCompact: {
+    color: "#333",
+    fontSize: 14,
+    fontWeight: 900,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  scheduleCheckMemoCompact: {
+    color: "#666",
+    margin: "4px 0 0",
+    fontSize: 13,
+    fontWeight: 800,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  scheduleStatusRowCompact: {
+    display: "flex",
+    gap: 6,
+    flexWrap: "wrap",
+    marginTop: 6,
+  },
+  scheduleTimelineMetaCompact: {
+    color: "#666",
+    background: "#fff",
+    border: "1px solid #e5e5e5",
+    borderRadius: 999,
+    padding: "3px 7px",
+    fontSize: 11,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+  },
+  scheduleCheckButtonGroup: {
+    width: "100%",
+    minWidth: 0,
+  },
+  scheduleQuickButtonWrap: {
+    position: "relative",
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 40px",
+    gap: 6,
+    width: "100%",
+  },
+  incompleteCompleteButton: {
+    background: "#f5f5f5",
+    color: "#111",
+    border: "1px solid #ffffff",
+    borderRadius: 12,
+    padding: "8px 8px",
+    fontWeight: 1000,
+    fontSize: 12,
+    whiteSpace: "nowrap",
+  },
+  scheduleDisabledButton: {
+    background: "#2a2a2a",
+    color: "#777",
+    border: "1px solid #3a3a3a",
+    borderRadius: 12,
+    padding: "8px 8px",
+    fontWeight: 1000,
+    fontSize: 12,
+    whiteSpace: "nowrap",
+  },
+  scheduleSmsButton: {
+    background: "#263a36",
+    color: "#d7fff3",
+    border: "1px solid #3f5f58",
+    borderRadius: 12,
+    padding: "8px 8px",
+    fontWeight: 1000,
+    fontSize: 12,
+    whiteSpace: "nowrap",
+  },
+  scheduleMoreButton: {
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #333",
+    borderRadius: 12,
+    padding: "7px 8px",
+    fontWeight: 1000,
+    fontSize: 16,
+    lineHeight: 1,
+    whiteSpace: "nowrap",
+  },
+  scheduleDoneText: {
+    color: "#d7fff3",
+    background: "#263a36",
+    border: "1px solid #3f5f58",
+    borderRadius: 999,
+    padding: "3px 7px",
+    fontSize: 11,
+    fontWeight: 1000,
+  },
+  scheduleWarningText: {
+    color: "#fde68a",
+    background: "#33270a",
+    border: "1px solid #854d0e",
+    borderRadius: 999,
+    padding: "3px 7px",
+    fontSize: 11,
+    fontWeight: 1000,
+  },
+  scheduleNoShowText: {
+    color: "#fca5a5",
+    background: "#351414",
+    border: "1px solid #6b2424",
+    borderRadius: 999,
+    padding: "3px 7px",
+    fontSize: 11,
+    fontWeight: 1000,
+  },
+  scheduleCancelText: {
+    color: "#bdbdbd",
+    background: "#242424",
+    border: "1px solid #444",
+    borderRadius: 999,
+    padding: "3px 7px",
+    fontSize: 11,
+    fontWeight: 1000,
+  },
+  scheduleCheckListScrollable: {
+    flex: 1,
+    minHeight: 0,
+    overflowY: "auto",
+    paddingRight: 4,
+    display: "grid",
+    gap: 8,
+    alignContent: "start",
+  },
+  scheduleCheckList: {
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: 10,
+    alignItems: "stretch",
+  },
+  scheduleSearchResultOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,.72)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 15000,
+    padding: 16,
+  },
+  scheduleCheckModalBox: {
+    width: "100%",
+    maxWidth: 1180,
+    maxHeight: "88vh",
+    overflowY: "auto",
+    background: "#ffffff",
+    color: "#111",
+    borderRadius: 24,
+    padding: 16,
+    boxShadow: "0 20px 60px rgba(0,0,0,.45)",
+  },
+  scheduleTimelineGroup: {
+    background: "#ffffff",
+    border: "1px solid #e5e5e5",
+    borderRadius: 18,
+    padding: 10,
+    marginBottom: 10,
+  },
+  scheduleTimelineHeader: {
+    background: "#111",
+    color: "#fff",
+    borderRadius: 14,
+    padding: 10,
+    marginBottom: 8,
+  },
+  scheduleTimelineList: {
+    display: "grid",
+    gap: 8,
+  },
+  memberModalGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+    gap: 8,
+  },
+  cardCompact: {
+    background: "#1c1c1c",
+    border: "1px solid #292929",
+    borderRadius: 18,
+    padding: 12,
+    marginBottom: 8,
+    boxShadow: "0 6px 18px rgba(0,0,0,.18)",
+  },
+  memberCardTopLine: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    flexWrap: "wrap",
+    marginBottom: 6,
+  },
+  memberNameSmall: {
+    fontSize: 18,
+    margin: 0,
+    fontWeight: 1000,
+    color: "#ffffff",
+    wordBreak: "keep-all",
+  },
+  ptCountPill: {
+    borderRadius: 999,
+    padding: "4px 8px",
+    fontSize: 11,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+  },
+  cardPtAddButtonMini: {
+    background: "#f5f5f5",
+    color: "#111",
+    border: "1px solid #ffffff",
+    borderRadius: 999,
+    padding: "5px 9px",
+    fontSize: 11,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+  },
+  memberTypeRowCompact: {
+    display: "flex",
+    gap: 5,
+    alignItems: "center",
+    marginBottom: 5,
+    flexWrap: "wrap",
+  },
+  phoneSmallCompact: {
+    color: "#b3b3b3",
+    fontSize: 12,
+    margin: 0,
+    marginBottom: 5,
+  },
+  compactInfoRow: {
+    display: "flex",
+    gap: 7,
+    flexWrap: "wrap",
+    color: "#93c5fd",
+    fontSize: 12,
+    marginBottom: 3,
+  },
+  memberCardBottomRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 7,
+    marginTop: 5,
+  },
+  conditionSmsButton: {
+    background: "#172554",
+    color: "#bfdbfe",
+    border: "1px solid #1d4ed8",
+    borderRadius: 999,
+    padding: "6px 9px",
+    fontSize: 11,
+    fontWeight: 1000,
+  },
+  cardDeactivateButtonMini: {
+    background: "#3f1111",
+    color: "#fca5a5",
+    border: "1px solid #7f1d1d",
+    borderRadius: 999,
+    padding: "4px 7px",
+    fontSize: 10,
+    fontWeight: 1000,
+  },
+  cardRestoreButtonMini: {
+    background: "#263a36",
+    color: "#d7fff3",
+    border: "1px solid #3f5f58",
+    borderRadius: 999,
+    padding: "4px 7px",
+    fontSize: 10,
+    fontWeight: 1000,
+  },
+  warningRowCompact: {
+    display: "flex",
+    gap: 5,
+    flexWrap: "wrap",
+    marginTop: 6,
   },
 
 };
