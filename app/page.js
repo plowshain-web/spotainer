@@ -188,6 +188,8 @@ export default function Page() {
   const [feedbackDraft, setFeedbackDraft] = useState("");
   const [freeSmsModalMember, setFreeSmsModalMember] = useState(null);
   const [freeSmsDraft, setFreeSmsDraft] = useState("");
+  const [completedTodayTodoKeys, setCompletedTodayTodoKeys] = useState({});
+  const [activeTodayTodoKey, setActiveTodayTodoKey] = useState(null);
   const [exerciseSuggestions, setExerciseSuggestions] = useState([]);
 const [activeExerciseIndex, setActiveExerciseIndex] = useState(null);
 const [workoutExercises, setWorkoutExercises] = useState([
@@ -2730,7 +2732,40 @@ const [workoutExercises, setWorkoutExercises] = useState([
       tone: "neutral",
       actionText: "회원 보기",
     })),
-  ].slice(0, 8);
+  ].slice(0, 8).map((item) => ({
+    ...item,
+    done: Boolean(completedTodayTodoKeys[item.key]),
+  }));
+
+  function markTodayTodoDone(item) {
+    if (!item?.key) return;
+
+    setCompletedTodayTodoKeys((prev) => ({
+      ...prev,
+      [item.key]: true,
+    }));
+  }
+
+  function openTodayTodoContact(item, defaultResult = "pending") {
+    if (!item?.member) return;
+
+    setActiveTodayTodoKey(item.key);
+    openContactModal(item.member, defaultResult);
+  }
+
+  function openTodayTodoFreeSms(item) {
+    if (!item?.member) return;
+
+    setActiveTodayTodoKey(item.key);
+    sendFreeMemberSMS(item.member);
+  }
+
+  async function sendTodayTodoScheduleSMS(item) {
+    if (!item?.schedule) return;
+
+    await sendScheduleSMS(item.schedule);
+    markTodayTodoDone(item);
+  }
 
   function openTodayTodoItem(item) {
     if (!item) return;
@@ -3176,6 +3211,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setContactModalMember(null);
     setContactResult("pending");
     setContactNote("");
+    setActiveTodayTodoKey(null);
   }
 
   async function saveContactResult() {
@@ -3221,6 +3257,14 @@ const [workoutExercises, setWorkoutExercises] = useState([
     const resultText = getContactResultText(contactResult);
     const nextText = nextDate ? `\n다음 연락일: ${nextDate}` : "";
     alert(`${contactModalMember.name} 연락 결과가 저장되었습니다.\n결과: ${resultText}${nextText}`);
+
+    if (activeTodayTodoKey) {
+      setCompletedTodayTodoKeys((prev) => ({
+        ...prev,
+        [activeTodayTodoKey]: true,
+      }));
+      setActiveTodayTodoKey(null);
+    }
 
     closeContactModal();
     await loadMembers();
@@ -3536,6 +3580,7 @@ ${nextLine}
   function closeFreeSmsModal() {
     setFreeSmsModalMember(null);
     setFreeSmsDraft("");
+    setActiveTodayTodoKey(null);
   }
 
   async function sendFreeSmsDraft() {
@@ -4713,6 +4758,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   function closeFeedbackModal() {
     setFeedbackModalMember(null);
     setFeedbackDraft("");
+    setActiveTodayTodoKey(null);
   }
 
   async function sendFeedbackSMS() {
@@ -5466,26 +5512,68 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
           ) : (
             <div style={styles.todayTodoList}>
               {todayTodoItems.map((item) => (
-                <button
+                <div
                   key={item.key}
-                  type="button"
-                  onClick={() => openTodayTodoItem(item)}
-                  style={styles.todayTodoItem}
+                  style={{
+                    ...styles.todayTodoItem,
+                    ...(item.done ? styles.todayTodoItemDone : {}),
+                  }}
                 >
-                  <span style={{
-                    ...styles.todayTodoBadge,
-                    ...(item.tone === "danger" ? styles.todayTodoBadgeDanger : {}),
-                    ...(item.tone === "warn" ? styles.todayTodoBadgeWarn : {}),
-                    ...(item.tone === "sms" ? styles.todayTodoBadgeSms : {}),
-                  }}>
-                    {item.badge}
-                  </span>
-                  <span style={styles.todayTodoTextWrap}>
-                    <strong style={styles.todayTodoName}>{item.title}</strong>
-                    <span style={styles.todayTodoDesc}>{item.desc}</span>
-                  </span>
-                  <span style={styles.todayTodoAction}>{item.actionText}</span>
-                </button>
+                  <div style={styles.todayTodoMainRow}>
+                    <span style={{
+                      ...styles.todayTodoBadge,
+                      ...(item.tone === "danger" ? styles.todayTodoBadgeDanger : {}),
+                      ...(item.tone === "warn" ? styles.todayTodoBadgeWarn : {}),
+                      ...(item.tone === "sms" ? styles.todayTodoBadgeSms : {}),
+                    }}>
+                      {item.done ? "오늘 처리 완료" : item.badge}
+                    </span>
+                    <span style={styles.todayTodoTextWrap}>
+                      <strong style={styles.todayTodoName}>{item.title}</strong>
+                      <span style={styles.todayTodoDesc}>{item.desc}</span>
+                    </span>
+                  </div>
+
+                  {item.done ? (
+                    <span style={styles.todayTodoDoneText}>완료 표시 유지</span>
+                  ) : (
+                    <div style={styles.todayTodoActionRow}>
+                      {item.type === "sms" ? (
+                        <button
+                          type="button"
+                          onClick={() => sendTodayTodoScheduleSMS(item)}
+                          style={styles.todayTodoActionButtonPrimary}
+                        >
+                          문자
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => openTodayTodoFreeSms(item)}
+                            style={styles.todayTodoActionButton}
+                          >
+                            문자
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openTodayTodoContact(item, item.badge === "강한 권유" || item.badge === "재등록 상담" ? "pending" : "pending")}
+                            style={styles.todayTodoActionButtonPrimary}
+                          >
+                            상담기록
+                          </button>
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => markTodayTodoDone(item)}
+                        style={styles.todayTodoActionButtonSoft}
+                      >
+                        완료
+                      </button>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -8543,6 +8631,46 @@ const styles = {
     cursor: "pointer",
   },
 
+  todayTodoActionRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 8,
+    flexShrink: 0,
+  },
+  todayTodoActionButton: {
+    border: "1px solid #111",
+    borderRadius: 999,
+    background: "#fff",
+    color: "#111",
+    fontSize: 13,
+    fontWeight: 900,
+    padding: "8px 13px",
+  },
+  todayTodoActionButtonPrimary: {
+    border: "1px solid #111",
+    borderRadius: 999,
+    background: "#111",
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: 900,
+    padding: "8px 13px",
+  },
+  todayTodoActionButtonSoft: {
+    border: "1px solid #cbd5e1",
+    borderRadius: 999,
+    background: "#f8fafc",
+    color: "#334155",
+    fontSize: 13,
+    fontWeight: 900,
+    padding: "8px 13px",
+  },
+  todayTodoDoneText: {
+    flexShrink: 0,
+    color: "#64748b",
+    fontSize: 13,
+    fontWeight: 900,
+  },
   todayTodoBadge: {
     borderRadius: 999,
     padding: "5px 8px",
