@@ -4003,18 +4003,81 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       .filter(Boolean);
   }
 
+  const exerciseBodyPartKeywordMap = {
+    가슴: ["체스트", "벤치", "인클라인", "디클라인", "펙덱", "플라이", "푸쉬업", "덤벨프레스", "케이블플라이", "케이블 플라이"],
+    어깨: ["숄더", "레터럴", "프론트", "리어", "델트", "업라이트", "오버헤드"],
+    등: ["랫풀", "랫 풀", "풀다운", "로우", "풀업", "페이스풀", "리버스", "데드리프트"],
+    하체: ["스쿼트", "런지", "레그", "힙", "글루트", "스텝업", "어브덕션", "어덕션", "카프"],
+    팔: ["컬", "바이셉스", "트라이셉스", "푸쉬다운", "암", "킥백", "익스텐션"],
+    복부: ["플랭크", "크런치", "레그레이즈", "데드버그", "버드독", "트위스트", "싯업", "복부"],
+  };
+
+  function inferBodyPartsFromExerciseNames(names = []) {
+    const combined = names.join(" ").toLowerCase();
+
+    return weightBodyPartOptions.filter((part) =>
+      (exerciseBodyPartKeywordMap[part] || []).some((keyword) =>
+        combined.includes(String(keyword).toLowerCase())
+      )
+    );
+  }
+
   function getRecentBodyPartSessions() {
     if (workoutTrainingType !== "weight") return [];
     if (workoutBodyParts.length === 0) return [];
 
     const selectedParts = new Set(workoutBodyParts);
+    const taggedMatches = [];
+    const inferredMatches = [];
+    const untaggedFallback = [];
 
-    return workoutSessions
-      .filter((session) => {
-        const parts = getWorkoutSessionBodyParts(session);
-        if (parts.length === 0) return false;
-        return parts.some((part) => selectedParts.has(part));
-      })
+    workoutSessions.forEach((session) => {
+      const names = getSessionExerciseNames(session);
+      if (names.length === 0) return;
+
+      const parts = getWorkoutSessionBodyParts(session);
+
+      if (parts.length > 0) {
+        const matchedParts = parts.filter((part) => selectedParts.has(part));
+        if (matchedParts.length > 0) {
+          taggedMatches.push({
+            ...session,
+            __referenceLabel: matchedParts.join(", "),
+            __referenceKind: "tagged",
+          });
+        }
+        return;
+      }
+
+      // 예전 기록에는 body_parts가 없어서, 운동명으로 한 번 추정합니다.
+      const inferredParts = inferBodyPartsFromExerciseNames(names).filter((part) =>
+        selectedParts.has(part)
+      );
+
+      if (inferredParts.length > 0) {
+        inferredMatches.push({
+          ...session,
+          __referenceLabel: `추정: ${inferredParts.join(", ")}`,
+          __referenceKind: "inferred",
+        });
+        return;
+      }
+
+      // 그래도 못 맞추면 최근 과거 기록으로 보여줍니다.
+      // 지금까지 쌓인 운동명은 참고할 수 있고, 오늘 부위 판단은 대표가 직접 합니다.
+      untaggedFallback.push({
+        ...session,
+        __referenceLabel: "부위 미지정 과거기록",
+        __referenceKind: "unknown",
+      });
+    });
+
+    const prioritized = [...taggedMatches, ...inferredMatches];
+
+    return [...prioritized, ...untaggedFallback]
+      .filter((session, index, list) =>
+        list.findIndex((item) => item.id === session.id) === index
+      )
       .slice(0, 3);
   }
 
@@ -6817,7 +6880,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
                     {getRecentBodyPartSessions().length === 0 ? (
                       <p style={styles.recentBodyReferenceEmpty}>
-                        아직 이 부위로 저장된 운동기록이 없습니다. 오늘 기록부터 쌓이면 다음 수업부터 참고할 수 있습니다.
+                        참고할 수 있는 이전 운동기록이 없습니다. 오늘 기록부터 쌓이면 다음 수업부터 더 정확하게 보여집니다.
                       </p>
                     ) : (
                       <div style={styles.recentBodyReferenceList}>
@@ -6828,7 +6891,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                             <div key={session.id} style={styles.recentBodyReferenceCard}>
                               <div style={styles.recentBodyReferenceDate}>
                                 <strong>{formatDate(session.workout_date || session.created_at)}</strong>
-                                <span>{getWorkoutSessionBodyParts(session).join(", ")}</span>
+                                <span>{session.__referenceLabel || getWorkoutSessionBodyParts(session).join(", ")}</span>
                               </div>
 
                               <div style={styles.recentBodyExerciseWrap}>
