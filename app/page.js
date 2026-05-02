@@ -3447,6 +3447,37 @@ ${partText} 흐름 잘 이어가고 있고
     window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
   }
 
+
+  async function sendFreeMemberSMS(member) {
+    const phone = normalizePhone(member?.phone);
+
+    if (!member) {
+      alert("회원 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    if (!phone) {
+      alert(`${member.name || "회원"} 회원의 전화번호가 없습니다.`);
+      return;
+    }
+
+    const message = prompt(
+      `${member.name || "회원"} 회원에게 보낼 문자를 입력하세요.`,
+      ""
+    );
+
+    if (message === null) return;
+
+    const finalMessage = String(message || "").trim();
+    if (!finalMessage) {
+      alert("보낼 문자를 입력하세요.");
+      return;
+    }
+
+    await markMemberContacted(member, "일반 문자");
+    window.location.href = `sms:${phone}?body=${encodeURIComponent(finalMessage)}`;
+  }
+
   function sendReRegisterSMS(member) {
     const phone = normalizePhone(member?.phone);
 
@@ -5079,6 +5110,18 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                     sendConditionCheckSMS(member);
                   }}
                   style={styles.conditionSmsButton}
+                  title="수업 전 컨디션 확인 문자"
+                >
+                  컨디션
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    sendFreeMemberSMS(member);
+                  }}
+                  style={styles.freeSmsButtonMini}
+                  title="일반 문자 직접 작성"
                 >
                   문자
                 </button>
@@ -5089,6 +5132,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                     openFeedbackModal(member, generateMemberCardFeedbackMessage(member));
                   }}
                   style={shouldRecommendFeedback(member) ? styles.feedbackRecommendButtonMini : styles.feedbackButtonMini}
+                  title="수업 후 피드백 문자"
                 >
                   {shouldRecommendFeedback(member) ? "피드백🔥" : "피드백"}
                 </button>
@@ -7866,7 +7910,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
               <div>
                 <h2 style={styles.whiteModalTitle}>{feedbackModalMember.name} 피드백 문자</h2>
                 <p style={styles.whiteMuted}>
-                  부정적인 표현은 피하고, 오늘 기록을 긍정적인 성장 방향으로 정리한 초안입니다. 필요한 부분만 가볍게 수정해서 보내세요.
+                  수업 후에만 사용하는 피드백 초안입니다. 회원에게 실제로 보낼 말투로 가볍게 수정해서 보내세요.
                 </p>
               </div>
 
@@ -11411,6 +11455,15 @@ textarea: {
     background: "#172554",
     color: "#bfdbfe",
     border: "1px solid #1d4ed8",
+    borderRadius: 999,
+    padding: "7px 10px",
+    fontSize: 12,
+    fontWeight: 1000,
+  },
+  freeSmsButtonMini: {
+    background: "#ffffff",
+    color: "#111827",
+    border: "1px solid #d1d5db",
     borderRadius: 999,
     padding: "7px 10px",
     fontSize: 12,
