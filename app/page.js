@@ -202,6 +202,10 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [scheduleActionMenuId, setScheduleActionMenuId] = useState(null);
   const [showScheduleMonthPicker, setShowScheduleMonthPicker] = useState(false);
+  const [smsQueue, setSmsQueue] = useState([]);
+  const [smsIndex, setSmsIndex] = useState(0);
+  const [smsMode, setSmsMode] = useState(false);
+  const [smsSentMap, setSmsSentMap] = useState({});
   const scheduleCalendarTouchStartXRef = useRef(null);
   const hasOpenModalRef = useRef(false);
   const modalBackGuardArmedRef = useRef(false);
@@ -2499,6 +2503,20 @@ const [workoutExercises, setWorkoutExercises] = useState([
     return String(phone || "").replace(/[^0-9+]/g, "");
   }
 
+  function buildScheduleSMSMessage(schedule) {
+    const dateText = schedule?.schedule_date ? formatDate(schedule.schedule_date) : "오늘";
+    const timeText = formatScheduleRange(schedule || {});
+    const typeText = getScheduleTypeText(schedule?.type);
+
+    return `[스포테이너]
+${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
+
+오늘 몸상태나 컨디션 어떠세요?
+불편한 부위 있으면 미리 알려주세요.
+
+늦지 않게 방문해주세요 😊`;
+  }
+
   function sendScheduleSMS(schedule) {
     const member = getScheduleMember(schedule) || schedule.members;
     const phone = normalizePhone(member?.phone);
@@ -2513,16 +2531,100 @@ const [workoutExercises, setWorkoutExercises] = useState([
       return;
     }
 
-    const dateText = schedule.schedule_date ? formatDate(schedule.schedule_date) : "오늘";
-    const timeText = formatScheduleRange(schedule);
-    const typeText = getScheduleTypeText(schedule.type);
-    const message = `[스포테이너]\n${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.\n늦지 않게 방문해주세요 😊`;
+    const message = buildScheduleSMSMessage(schedule);
 
-    if (!confirm(`${member.name || "회원"} 회원에게 예약 안내 문자를 보낼까요?\n\n확인을 누르면 문자앱이 열리고, 직접 전송 버튼을 눌러야 발송됩니다.`)) {
+    if (!confirm(`${member.name || "회원"} 회원에게 수업 안내 + 컨디션 확인 문자를 보낼까요?\n\n확인을 누르면 문자앱이 열리고, 직접 전송 버튼을 눌러야 발송됩니다.`)) {
       return;
     }
 
     window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
+  }
+
+  function getTodaySMSTargets() {
+    const today = getTodayDateString();
+
+    return (schedules || []).filter((schedule) => {
+      if (schedule.schedule_date !== today) return false;
+      if (schedule.status === "cancelled") return false;
+      if (schedule.status === "completed") return false;
+      if (schedule.status === "noshow") return false;
+      if (smsSentMap[schedule.id]) return false;
+
+      const member = getScheduleMember(schedule) || schedule.members;
+      const phone = normalizePhone(member?.phone);
+      if (!member || !phone) return false;
+
+      return true;
+    });
+  }
+
+  function startTodaySMSQueue() {
+    const targets = getTodaySMSTargets().sort((a, b) => {
+      const aTime = normalizeTimeValue(a.start_time || "");
+      const bTime = normalizeTimeValue(b.start_time || "");
+      return aTime.localeCompare(bTime);
+    });
+
+    if (targets.length === 0) {
+      alert("문자 보낼 오늘 스케줄이 없습니다.\n이미 보낸 대상, 취소/완료/노쇼, 전화번호 없는 회원은 제외됩니다.");
+      return;
+    }
+
+    setSmsQueue(targets);
+    setSmsIndex(0);
+    setSmsMode(true);
+  }
+
+  function stopTodaySMSQueue() {
+    setSmsMode(false);
+    setSmsQueue([]);
+    setSmsIndex(0);
+  }
+
+  function getCurrentSMSSchedule() {
+    return smsQueue[smsIndex] || null;
+  }
+
+  function sendCurrentScheduleSMS() {
+    const schedule = getCurrentSMSSchedule();
+    const member = schedule ? getScheduleMember(schedule) || schedule.members : null;
+    const phone = normalizePhone(member?.phone);
+
+    if (!schedule || !member || !phone) {
+      alert("현재 문자 보낼 대상을 찾을 수 없습니다.");
+      return;
+    }
+
+    const message = buildScheduleSMSMessage(schedule);
+    window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
+  }
+
+  function markCurrentSMSSentAndNext() {
+    const schedule = getCurrentSMSSchedule();
+
+    if (schedule?.id) {
+      setSmsSentMap((prev) => ({
+        ...prev,
+        [schedule.id]: true,
+      }));
+    }
+
+    if (smsIndex + 1 >= smsQueue.length) {
+      alert("오늘 문자 큐가 끝났습니다.");
+      stopTodaySMSQueue();
+      return;
+    }
+
+    setSmsIndex((prev) => prev + 1);
+  }
+
+  function skipCurrentSMS() {
+    if (smsIndex + 1 >= smsQueue.length) {
+      stopTodaySMSQueue();
+      return;
+    }
+
+    setSmsIndex((prev) => prev + 1);
   }
 
   function sendConditionCheckSMS(member) {
@@ -3997,8 +4099,64 @@ const [workoutExercises, setWorkoutExercises] = useState([
             </p>
           </div>
 
-          <div style={styles.incompleteCount}>{schedules.length}건</div>
+          <div style={styles.incompleteTopActions}>
+            <button
+              type="button"
+              onClick={startTodaySMSQueue}
+              style={styles.todaySmsStartButton}
+            >
+              오늘 문자 시작
+            </button>
+            <div style={styles.incompleteCount}>{schedules.length}건</div>
+          </div>
         </div>
+
+        {smsMode && getCurrentSMSSchedule() && (
+          <div style={styles.smsQueueBox}>
+            <div style={styles.smsQueueInfo}>
+              <strong style={styles.smsQueueTitle}>
+                오늘 문자 {smsIndex + 1} / {smsQueue.length}
+              </strong>
+              <span style={styles.smsQueueTarget}>
+                {getScheduleMember(getCurrentSMSSchedule())?.name || "회원 정보 없음"} · {formatScheduleRange(getCurrentSMSSchedule())}
+              </span>
+              <span style={styles.smsQueueHint}>
+                문자앱에서 전송 후 돌아와서 ‘보낸 처리’를 누르면 다음 회원으로 넘어갑니다.
+              </span>
+            </div>
+
+            <div style={styles.smsQueueActions}>
+              <button
+                type="button"
+                onClick={sendCurrentScheduleSMS}
+                style={styles.smsQueuePrimaryButton}
+              >
+                문자 보내기
+              </button>
+              <button
+                type="button"
+                onClick={markCurrentSMSSentAndNext}
+                style={styles.smsQueueDoneButton}
+              >
+                보낸 처리
+              </button>
+              <button
+                type="button"
+                onClick={skipCurrentSMS}
+                style={styles.smsQueueSkipButton}
+              >
+                건너뛰기
+              </button>
+              <button
+                type="button"
+                onClick={stopTodaySMSQueue}
+                style={styles.smsQueueCloseButton}
+              >
+                종료
+              </button>
+            </div>
+          </div>
+        )}
 
         {schedules.length === 0 ? (
           <p style={styles.muted}>오늘 등록된 스케줄이 없습니다.</p>
@@ -6941,6 +7099,79 @@ const styles = {
     padding: "9px 12px",
     fontWeight: 900,
   },
+  smsQueueBox: {
+    background: "#151f1d",
+    border: "1px solid #31524b",
+    borderRadius: 18,
+    padding: 12,
+    marginBottom: 14,
+    display: "grid",
+    gridTemplateColumns: "1fr auto",
+    gap: 12,
+    alignItems: "center",
+  },
+  smsQueueInfo: {
+    display: "grid",
+    gap: 4,
+    minWidth: 0,
+  },
+  smsQueueTitle: {
+    color: "#d7fff3",
+    fontSize: 16,
+    fontWeight: 900,
+  },
+  smsQueueTarget: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: 800,
+  },
+  smsQueueHint: {
+    color: "#9ac6bd",
+    fontSize: 12,
+    lineHeight: 1.35,
+  },
+  smsQueueActions: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, auto)",
+    gap: 8,
+    alignItems: "center",
+  },
+  smsQueuePrimaryButton: {
+    background: "#d7fff3",
+    color: "#10201d",
+    border: "none",
+    borderRadius: 12,
+    padding: "9px 10px",
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  smsQueueDoneButton: {
+    background: "#facc15",
+    color: "#111",
+    border: "none",
+    borderRadius: 12,
+    padding: "9px 10px",
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  smsQueueSkipButton: {
+    background: "#334155",
+    color: "#e5e7eb",
+    border: "1px solid #475569",
+    borderRadius: 12,
+    padding: "9px 10px",
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  smsQueueCloseButton: {
+    background: "#3f1111",
+    color: "#fca5a5",
+    border: "1px solid #7f1d1d",
+    borderRadius: 12,
+    padding: "9px 10px",
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
   incompleteBox: {
     background: "#1f1a12",
     border: "1px solid #5b4320",
@@ -6954,6 +7185,23 @@ const styles = {
     gap: 14,
     alignItems: "center",
     marginBottom: 16,
+  },
+  incompleteTopActions: {
+    display: "flex",
+    gap: 8,
+    alignItems: "center",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+  },
+  todaySmsStartButton: {
+    background: "#d7fff3",
+    color: "#10201d",
+    border: "1px solid #9eead8",
+    borderRadius: 999,
+    padding: "8px 12px",
+    fontSize: 13,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
   },
   incompleteTitle: {
     fontSize: 22,
