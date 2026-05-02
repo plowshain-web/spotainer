@@ -206,6 +206,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [smsIndex, setSmsIndex] = useState(0);
   const [smsMode, setSmsMode] = useState(false);
   const [smsSentMap, setSmsSentMap] = useState({});
+  const [smsSentLogList, setSmsSentLogList] = useState([]);
   const scheduleCalendarTouchStartXRef = useRef(null);
   const hasOpenModalRef = useRef(false);
   const modalBackGuardArmedRef = useRef(false);
@@ -215,6 +216,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   useEffect(() => {
     loadMembers();
     loadSchedules(getTodayDateString());
+    loadScheduleSMSLogs(getTodayDateString());
     loadSales();
     loadCenterInfo();
   }, []);
@@ -415,6 +417,74 @@ const [workoutExercises, setWorkoutExercises] = useState([
     }
 
     setScheduleCheckMonthList(data || []);
+  }
+
+  async function loadScheduleSMSLogs(date = getTodayDateString()) {
+    const targetDate = date || getTodayDateString();
+
+    const { data, error } = await supabase
+      .from("schedule_sms_logs")
+      .select("*")
+      .eq("sent_date", targetDate)
+      .eq("message_type", "schedule_condition");
+
+    if (error) {
+      console.error("문자 발송 기록 불러오기 실패:", error.message);
+      setSmsSentLogList([]);
+      setSmsSentMap({});
+      return;
+    }
+
+    const nextMap = {};
+    (data || []).forEach((log) => {
+      if (log.schedule_id) nextMap[log.schedule_id] = true;
+    });
+
+    setSmsSentLogList(data || []);
+    setSmsSentMap(nextMap);
+  }
+
+  async function saveScheduleSMSLog(schedule, memoText = "") {
+    if (!schedule?.id) return false;
+
+    const member = getScheduleMember(schedule) || schedule.members;
+    const sentDate = schedule.schedule_date || getTodayDateString();
+
+    const row = {
+      schedule_id: schedule.id,
+      member_id: member?.id || schedule.member_id || null,
+      sent_date: sentDate,
+      sent_at: new Date().toISOString(),
+      message_type: "schedule_condition",
+      memo: memoText || null,
+    };
+
+    const { error } = await supabase
+      .from("schedule_sms_logs")
+      .upsert(row, { onConflict: "schedule_id,sent_date,message_type" });
+
+    if (error) {
+      alert("문자 발송 기록 저장 실패: " + error.message);
+      return false;
+    }
+
+    setSmsSentMap((prev) => ({
+      ...prev,
+      [schedule.id]: true,
+    }));
+
+    setSmsSentLogList((prev) => {
+      const filtered = (prev || []).filter(
+        (log) => !(log.schedule_id === schedule.id && log.sent_date === sentDate && log.message_type === "schedule_condition")
+      );
+      return [...filtered, row];
+    });
+
+    return true;
+  }
+
+  function isScheduleSMSSent(schedule) {
+    return Boolean(schedule?.id && smsSentMap[schedule.id]);
   }
 
   
@@ -657,6 +727,9 @@ const [workoutExercises, setWorkoutExercises] = useState([
           )}
 
           <div style={styles.scheduleStatusRowCompact}>
+            {isScheduleSMSSent(schedule) && (
+              <span style={styles.scheduleSmsDoneText}>문자 완료</span>
+            )}
             {schedule.attendance_checked ? (
               <span style={styles.scheduleDoneText}>출석</span>
             ) : (
@@ -2517,7 +2590,7 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
 늦지 않게 방문해주세요 😊`;
   }
 
-  function sendScheduleSMS(schedule) {
+  async function sendScheduleSMS(schedule) {
     const member = getScheduleMember(schedule) || schedule.members;
     const phone = normalizePhone(member?.phone);
 
@@ -2531,12 +2604,16 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
       return;
     }
 
-    const message = buildScheduleSMSMessage(schedule);
-
-    if (!confirm(`${member.name || "회원"} 회원에게 수업 안내 + 컨디션 확인 문자를 보낼까요?\n\n확인을 누르면 문자앱이 열리고, 직접 전송 버튼을 눌러야 발송됩니다.`)) {
+    if (isScheduleSMSSent(schedule)) {
+      const resend = confirm(`${member.name || "회원"} 회원에게 오늘 이미 문자를 보낸 기록이 있습니다.\n그래도 다시 문자앱을 열까요?`);
+      if (!resend) return;
+    } else if (!confirm(`${member.name || "회원"} 회원에게 수업 안내 + 컨디션 확인 문자를 보낼까요?\n\n확인을 누르면 문자앱이 열리고, 직접 전송 버튼을 눌러야 발송됩니다.`)) {
       return;
     }
 
+    await saveScheduleSMSLog(schedule, "개별 문자 버튼");
+
+    const message = buildScheduleSMSMessage(schedule);
     window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
   }
 
@@ -2599,14 +2676,12 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
     window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
   }
 
-  function markCurrentSMSSentAndNext() {
+  async function markCurrentSMSSentAndNext() {
     const schedule = getCurrentSMSSchedule();
 
     if (schedule?.id) {
-      setSmsSentMap((prev) => ({
-        ...prev,
-        [schedule.id]: true,
-      }));
+      const ok = await saveScheduleSMSLog(schedule, "문자 큐 보낸 처리");
+      if (!ok) return;
     }
 
     if (smsIndex + 1 >= smsQueue.length) {
@@ -4182,6 +4257,9 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
                       </strong>
 
                       <div style={styles.scheduleStatusRow}>
+                        {isScheduleSMSSent(schedule) && (
+                          <span style={styles.scheduleSmsDoneText}>문자 완료</span>
+                        )}
                         {isCancelled ? (
                           <>
                             <span style={styles.scheduleCancelText}>취소</span>
@@ -6983,6 +7061,14 @@ const styles = {
     padding: "4px 8px",
     fontSize: 12,
     fontWeight: 900,
+  },
+  scheduleSmsDoneText: {
+    fontSize: 11,
+    fontWeight: 900,
+    color: "#2563eb",
+    background: "#dbeafe",
+    borderRadius: 999,
+    padding: "3px 7px",
   },
   scheduleWarningText: {
     color: "#fde68a",
