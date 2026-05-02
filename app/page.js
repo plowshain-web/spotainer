@@ -201,6 +201,8 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [exitToast, setExitToast] = useState("");
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [scheduleActionMenuId, setScheduleActionMenuId] = useState(null);
+  const [showScheduleMonthPicker, setShowScheduleMonthPicker] = useState(false);
+  const scheduleCalendarTouchStartXRef = useRef(null);
   const hasOpenModalRef = useRef(false);
   const modalBackGuardArmedRef = useRef(false);
 
@@ -412,21 +414,29 @@ const [workoutExercises, setWorkoutExercises] = useState([
   }
 
   
-function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = scheduleSearch) {
+  function filterScheduleList(list = [], keyword = "") {
     const q = String(keyword || "").trim().toLowerCase();
 
-    if (!q) return list;
+    if (!q) return list || [];
 
-    return list.filter((schedule) => {
+    return (list || []).filter((schedule) => {
       const member = getScheduleMember(schedule) || schedule.members;
+      const memberName = String(member?.name || "").toLowerCase();
+      const memberPhone = String(member?.phone || "").toLowerCase().replace(/[^0-9]/g, "");
+      const cleanKeyword = q.replace(/[^0-9]/g, "");
 
       return (
-        member?.name?.toLowerCase().includes(q) ||
-        member?.phone?.toLowerCase().includes(q) ||
+        memberName.includes(q) ||
+        String(member?.phone || "").toLowerCase().includes(q) ||
+        (cleanKeyword && memberPhone.includes(cleanKeyword)) ||
         getScheduleTypeText(schedule.type).toLowerCase().includes(q) ||
         String(schedule.memo || "").toLowerCase().includes(q)
       );
     });
+  }
+
+  function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = scheduleSearch) {
+    return filterScheduleList(list, keyword);
   }
 
   async function searchScheduleByKeyword() {
@@ -858,6 +868,31 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
   function getScheduleCheckMonthTitle() {
     const base = scheduleCheckDate ? new Date(scheduleCheckDate) : new Date();
     return `${base.getFullYear()}년 ${String(base.getMonth() + 1).padStart(2, "0")}월`;
+  }
+
+  function setScheduleCheckMonth(monthNumber) {
+    const base = scheduleCheckDate ? new Date(scheduleCheckDate) : new Date();
+    base.setDate(1);
+    base.setMonth(monthNumber - 1);
+    setScheduleCheckDate(getDateOnlyString(base));
+    setShowScheduleMonthPicker(false);
+  }
+
+  function handleScheduleCalendarTouchStart(e) {
+    scheduleCalendarTouchStartXRef.current = e.touches?.[0]?.clientX ?? null;
+  }
+
+  function handleScheduleCalendarTouchEnd(e) {
+    const startX = scheduleCalendarTouchStartXRef.current;
+    const endX = e.changedTouches?.[0]?.clientX ?? null;
+
+    if (startX === null || endX === null) return;
+
+    const diff = endX - startX;
+    scheduleCalendarTouchStartXRef.current = null;
+
+    if (Math.abs(diff) < 55) return;
+    moveScheduleCheckMonth(diff > 0 ? -1 : 1);
   }
 
   function getScheduleCheckCalendarDays() {
@@ -2484,6 +2519,28 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
     window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
   }
 
+  function sendConditionCheckSMS(member) {
+    const phone = normalizePhone(member?.phone);
+
+    if (!member) {
+      alert("회원 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    if (!phone) {
+      alert(`${member.name || "회원"} 회원의 전화번호가 없습니다.`);
+      return;
+    }
+
+    const message = `${member.name || "회원"}님 오늘 몸상태나 컨디션 어떠세요? 불편한 부위 있으면 미리 알려주세요!`;
+
+    if (!confirm(`${member.name || "회원"} 회원에게 컨디션 확인 문자를 보낼까요?\n\n확인을 누르면 문자앱이 열리고, 직접 전송 버튼을 눌러야 발송됩니다.`)) {
+      return;
+    }
+
+    window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
+  }
+
   async function sendGroupSMS(type, targetMembers) {
     const validMembers = (targetMembers || []).filter((member) => normalizePhone(member.phone));
 
@@ -3620,29 +3677,62 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
             </div>
           </div>
         ) : (
-          <div onClick={() => openDetailFromMemberList(member)} style={styles.memberMain}>
-            <div style={styles.compactTop}>
+          <div onClick={() => openDetailFromMemberList(member)} style={styles.memberMainCompact}>
+            <div style={styles.memberCardTopLine}>
               <h3 style={styles.memberNameSmall}>{member.name}</h3>
-              <div
+
+              <span
                 style={{
-                  ...styles.ptCountSmall,
-                  color: (member.pt_remaining || 0) <= 2 ? "#f87171" : "#ffffff",
+                  ...styles.ptCountPill,
+                  ...(member.pt_remaining || 0) <= 2
+                    ? styles.ptCountPillDanger
+                    : (member.pt_remaining || 0) <= 5
+                      ? styles.ptCountPillWarning
+                      : styles.ptCountPillNormal,
                 }}
               >
-                PT {member.pt_remaining}회
-              </div>
-            </div>
+                PT {member.pt_remaining || 0}회 남음
+              </span>
 
-            <div style={styles.memberCardActionRow}>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   closeMemberListModal();
                   openPtModal(member);
                 }}
-                style={styles.cardPtAddButton}
+                style={styles.cardPtAddButtonMini}
               >
                 + 이용권
+              </button>
+            </div>
+
+            <div style={styles.memberTypeRowCompact}>
+              <span style={getMemberTypeStyle(member.member_type)}>
+                {getMemberTypeText(member.member_type)}
+              </span>
+              {member.is_vip && <span style={styles.vipBadge}>VIP</span>}
+            </div>
+
+            <p style={styles.phoneSmallCompact}>
+              {member.age ? `${member.age}세 · ` : ""}
+              {member.height ? `${member.height}cm · ` : ""}
+              {member.phone || "전화번호 없음"}
+            </p>
+
+            <div style={styles.compactInfoRow}>
+              <span>출석 {formatDate(member.latest_visit)}</span>
+              <span>PT {formatDate(member.latest_pt)}</span>
+            </div>
+
+            <div style={styles.memberCardBottomRow}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  sendConditionCheckSMS(member);
+                }}
+                style={styles.conditionSmsButton}
+              >
+                컨디션 문자
               </button>
 
               {member.is_active === false ? (
@@ -3651,7 +3741,7 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
                     e.stopPropagation();
                     reactivateMember(member);
                   }}
-                  style={styles.cardRestoreButton}
+                  style={styles.cardRestoreButtonMini}
                 >
                   복구
                 </button>
@@ -3661,38 +3751,14 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
                     e.stopPropagation();
                     deactivateMember(member);
                   }}
-                  style={styles.cardDeactivateButton}
+                  style={styles.cardDeactivateButtonMini}
                 >
                   비활성
                 </button>
               )}
             </div>
 
-            <div style={styles.memberTypeRow}>
-              <span style={getMemberTypeStyle(member.member_type)}>
-                {getMemberTypeText(member.member_type)}
-              </span>
-            </div>
-
-            <p style={styles.phoneSmall}>
-              {member.age ? `${member.age}세 · ` : ""}
-              {member.height ? `${member.height}cm · ` : ""}
-              {member.phone || "전화번호 없음"}
-            </p>
-
-            <div style={styles.memberSalesRow}>
-              <span style={styles.memberSalesText}>
-                누적 결제 {Number(member.total_paid || 0).toLocaleString("ko-KR")}원
-              </span>
-              {member.is_vip && <span style={styles.vipBadge}>VIP</span>}
-            </div>
-
-            <div style={styles.compactInfoRow}>
-              <span>출석 {formatDate(member.latest_visit)}</span>
-              <span>PT {formatDate(member.latest_pt)}</span>
-            </div>
-
-            <div style={styles.warningRow}>
+            <div style={styles.warningRowCompact}>
               {ptStatus && <span style={ptStatus.style}>{ptStatus.text}</span>}
               {visitStatus && <span style={visitStatus.style}>{visitStatus.text}</span>}
             </div>
@@ -4323,12 +4389,12 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
       )}
 
       {showScheduleCheckModal && (
-        <div style={styles.whiteModalOverlay}>
-          <section style={styles.scheduleCheckModalBox}>
+        <div style={styles.scheduleFullOverlay}>
+          <section style={styles.scheduleFullModalBox}>
             <div style={styles.whiteModalTop}>
               <div>
                 <h2 style={styles.whiteModalTitle}>스케줄 확인</h2>
-                <p style={styles.whiteMuted}>날짜별 예약을 확인하고 바로 추가할 수 있습니다.</p>
+                <p style={styles.whiteMuted}>왼쪽에서 날짜를 고르고, 오른쪽에서 해당 날짜의 스케줄만 확인합니다.</p>
               </div>
 
               <button onClick={closeScheduleCheckModal} style={styles.whiteCloseButton}>
@@ -4336,113 +4402,156 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
               </button>
             </div>
 
-            <div style={styles.scheduleMiniCalendarBox}>
-              <div style={styles.scheduleMiniCalendarHeader}>
-                <button
-                  type="button"
-                  onClick={() => moveScheduleCheckMonth(-1)}
-                  style={styles.scheduleMiniMonthButton}
-                >
-                  ‹
-                </button>
-
-                <strong style={styles.scheduleMiniMonthTitle}>{getScheduleCheckMonthTitle()}</strong>
-
-                <button
-                  type="button"
-                  onClick={() => moveScheduleCheckMonth(1)}
-                  style={styles.scheduleMiniMonthButton}
-                >
-                  ›
-                </button>
-              </div>
-
-              <div style={styles.scheduleMiniWeekRow}>
-                {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
-                  <div key={day} style={styles.scheduleMiniWeekCell}>{day}</div>
-                ))}
-              </div>
-
-              <div style={styles.scheduleMiniCalendarGrid}>
-                {getScheduleCheckCalendarDays().map((day) => (
-                  day.empty ? (
-                    <div key={day.key} style={styles.scheduleMiniEmptyDay} />
-                  ) : (
+            <div style={styles.scheduleFullContent}>
+              <div
+                style={styles.scheduleFullCalendarPanel}
+                onTouchStart={handleScheduleCalendarTouchStart}
+                onTouchEnd={handleScheduleCalendarTouchEnd}
+              >
+                <div style={styles.scheduleMiniCalendarBoxCompact}>
+                  <div style={styles.scheduleMiniCalendarHeader}>
                     <button
-                      key={day.key}
                       type="button"
-                      onClick={() => setScheduleCheckDate(day.dateText)}
-                      style={day.selected ? styles.scheduleMiniDaySelected : day.today ? styles.scheduleMiniDayToday : styles.scheduleMiniDay}
+                      onClick={() => moveScheduleCheckMonth(-1)}
+                      style={styles.scheduleMiniMonthButton}
                     >
-                      <span style={styles.scheduleMiniDayNumber}>{day.day}</span>
-                      {day.count > 0 && (
-                        <span style={day.selected ? styles.scheduleMiniDayCountSelected : styles.scheduleMiniDayCount}>{day.count}건</span>
-                      )}
+                      ‹
                     </button>
-                  )
-                ))}
+
+                    <button
+                      type="button"
+                      onClick={() => setShowScheduleMonthPicker((current) => !current)}
+                      style={styles.scheduleMonthTitleButton}
+                    >
+                      {getScheduleCheckMonthTitle()}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => moveScheduleCheckMonth(1)}
+                      style={styles.scheduleMiniMonthButton}
+                    >
+                      ›
+                    </button>
+                  </div>
+
+                  {showScheduleMonthPicker && (
+                    <div style={styles.scheduleMonthPicker}>
+                      {Array.from({ length: 12 }, (_, index) => index + 1).map((monthNumber) => (
+                        <button
+                          key={monthNumber}
+                          type="button"
+                          onClick={() => setScheduleCheckMonth(monthNumber)}
+                          style={
+                            new Date(scheduleCheckDate || getTodayDateString()).getMonth() + 1 === monthNumber
+                              ? styles.scheduleMonthPickerButtonActive
+                              : styles.scheduleMonthPickerButton
+                          }
+                        >
+                          {new Date(scheduleCheckDate || getTodayDateString()).getFullYear()}년 {monthNumber}월
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div style={styles.scheduleMiniWeekRow}>
+                    {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
+                      <div key={day} style={styles.scheduleMiniWeekCell}>{day}</div>
+                    ))}
+                  </div>
+
+                  <div style={styles.scheduleMiniCalendarGrid}>
+                    {getScheduleCheckCalendarDays().map((day) => (
+                      day.empty ? (
+                        <div key={day.key} style={styles.scheduleMiniEmptyDay} />
+                      ) : (
+                        <button
+                          key={day.key}
+                          type="button"
+                          onClick={() => setScheduleCheckDate(day.dateText)}
+                          style={day.selected ? styles.scheduleMiniDaySelected : day.today ? styles.scheduleMiniDayToday : styles.scheduleMiniDay}
+                        >
+                          <span style={styles.scheduleMiniDayNumber}>{day.day}</span>
+                          {day.count > 0 && (
+                            <span style={day.selected ? styles.scheduleMiniDayCountSelected : styles.scheduleMiniDayCount}>{day.count}건</span>
+                          )}
+                        </button>
+                      )
+                    ))}
+                  </div>
+                </div>
+
+                <div style={styles.scheduleCheckTopActionsCompact}>
+                  <button
+                    type="button"
+                    onClick={() => setScheduleCheckDate(getTodayDateString())}
+                    style={styles.memberSortButton}
+                  >
+                    오늘
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={openScheduleAddFromCheck}
+                    style={styles.whiteSaveLargeButton}
+                  >
+                    + 이 날짜에 스케줄 추가
+                  </button>
+                </div>
+
+                <p style={styles.scheduleSwipeHint}>캘린더 영역에서 좌우로 밀면 월이 이동합니다.</p>
+              </div>
+
+              <div style={styles.scheduleFullListPanel}>
+                <div style={styles.scheduleSearchBoxSticky}>
+                  <input
+                    value={scheduleSearch}
+                    onChange={(e) => setScheduleSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") searchScheduleByKeyword();
+                    }}
+                    placeholder="회원 이름 또는 전화번호 검색"
+                    style={{ ...styles.whiteInput, marginBottom: 0 }}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={searchScheduleByKeyword}
+                    style={styles.whiteSaveButton}
+                  >
+                    검색
+                  </button>
+
+                  {scheduleSearch.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScheduleSearch("");
+                        setScheduleSearchResultList([]);
+                      }}
+                      style={styles.whiteCancelButton}
+                    >
+                      초기화
+                    </button>
+                  )}
+                </div>
+
+                <div style={styles.scheduleSelectedDateHeader}>
+                  <strong>{formatDate(scheduleCheckDate)}</strong>
+                  <span>{scheduleCheckList.length}건</span>
+                </div>
+
+                {scheduleCheckList.length === 0 ? (
+                  <div style={styles.scheduleCheckEmpty}>
+                    이 날짜에 등록된 스케줄이 없습니다.
+                  </div>
+                ) : (
+                  <div style={styles.scheduleCheckListScrollable}>
+                    {scheduleCheckList.map((schedule) => renderScheduleCheckItem(schedule, false))}
+                  </div>
+                )}
               </div>
             </div>
-
-            <div style={styles.scheduleCheckTopActions}>
-              <button
-                type="button"
-                onClick={() => setScheduleCheckDate(getTodayDateString())}
-                style={styles.memberSortButton}
-              >
-                오늘
-              </button>
-
-              <button
-                type="button"
-                onClick={openScheduleAddFromCheck}
-                style={styles.whiteSaveLargeButton}
-              >
-                + 이 날짜에 스케줄 추가
-              </button>
-            </div>
-
-            <div style={styles.scheduleSearchBox}>
-              <input
-                value={scheduleSearch}
-                onChange={(e) => setScheduleSearch(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") searchScheduleByKeyword();
-                }}
-                placeholder="회원 이름 또는 전화번호 검색"
-                style={{ ...styles.whiteInput, marginBottom: 0 }}
-              />
-
-              <button
-                type="button"
-                onClick={searchScheduleByKeyword}
-                style={styles.whiteSaveButton}
-              >
-                검색
-              </button>
-
-              {scheduleSearch.trim() && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setScheduleSearch("");
-                    setScheduleSearchResultList([]);
-                  }}
-                  style={styles.whiteCancelButton}
-                >
-                  초기화
-                </button>
-              )}
-            </div>
-
-            {scheduleCheckList.length === 0 ? (
-              <div style={styles.scheduleCheckEmpty}>
-                이 날짜에 등록된 스케줄이 없습니다.
-              </div>
-            ) : (
-              <div style={styles.scheduleCheckList}>
-                {scheduleCheckList.map((schedule) => renderScheduleCheckItem(schedule, false))}              </div>
-            )}
           </section>
         </div>
       )}
@@ -4931,19 +5040,12 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
                 <div style={styles.detailActionBox}>
                   <p style={styles.detailPtMini}>PT {selectedMember.pt_remaining || 0}회 남음</p>
 
-                  <div style={styles.detailButtonGridClean}>
+                  <div style={styles.detailButtonGridCleanSingle}>
                     <button
                       onClick={() => openPtModal(selectedMember)}
                       style={styles.whiteButton}
                     >
                       이용권 추가
-                    </button>
-
-                    <button
-                      onClick={() => startEdit(selectedMember)}
-                      style={styles.darkButton}
-                    >
-                      수정
                     </button>
                   </div>
                 </div>
@@ -4961,7 +5063,16 @@ function getFilteredScheduleCheckList(list = scheduleCheckList, keyword = schedu
                   );
                 })()}
 
-                <h3 style={styles.subTitle}>회원 관리 정보</h3>
+                <div style={styles.infoTitleRow}>
+                  <h3 style={styles.subTitle}>회원 관리 정보</h3>
+                  <button
+                    type="button"
+                    onClick={() => startEdit(selectedMember)}
+                    style={styles.infoEditButton}
+                  >
+                    회원정보 수정
+                  </button>
+                </div>
                 {renderInfoBlock("키", selectedMember.height ? `${selectedMember.height}cm` : "")}
                 {renderInfoBlock("목표", selectedMember.goal)}
                 {renderInfoBlock("특이사항", selectedMember.note)}
@@ -8703,6 +8814,259 @@ textarea: {
     gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
     gap: 12,
   },
+  scheduleFullOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 9999,
+    background: "rgba(0,0,0,0.72)",
+    padding: 10,
+    display: "flex",
+    alignItems: "stretch",
+    justifyContent: "center",
+  },
+  scheduleFullModalBox: {
+    width: "100%",
+    maxWidth: "100%",
+    height: "calc(100vh - 20px)",
+    background: "#ffffff",
+    color: "#111",
+    borderRadius: 22,
+    padding: 16,
+    boxShadow: "0 20px 60px rgba(0,0,0,.45)",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
+  scheduleFullContent: {
+    flex: 1,
+    minHeight: 0,
+    display: "grid",
+    gridTemplateColumns: "minmax(280px, 38%) minmax(0, 1fr)",
+    gap: 14,
+    overflow: "hidden",
+  },
+  scheduleFullCalendarPanel: {
+    minHeight: 0,
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  },
+  scheduleFullListPanel: {
+    minHeight: 0,
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    border: "1px solid #e5e5e5",
+    borderRadius: 18,
+    padding: 12,
+    background: "#fafafa",
+  },
+  scheduleMiniCalendarBoxCompact: {
+    background: "#f7f7f7",
+    border: "1px solid #e4e4e4",
+    borderRadius: 16,
+    padding: 10,
+    marginBottom: 0,
+    touchAction: "pan-y",
+  },
+  scheduleMonthTitleButton: {
+    background: "transparent",
+    border: "none",
+    color: "#111",
+    fontSize: 18,
+    fontWeight: 1000,
+    textAlign: "center",
+    padding: "8px 4px",
+  },
+  scheduleMonthPicker: {
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: 6,
+    maxHeight: 210,
+    overflowY: "auto",
+    background: "#fff",
+    border: "1px solid #ddd",
+    borderRadius: 14,
+    padding: 8,
+    marginBottom: 10,
+  },
+  scheduleMonthPickerButton: {
+    border: "1px solid #e5e5e5",
+    background: "#fff",
+    color: "#111",
+    borderRadius: 10,
+    padding: "10px 12px",
+    fontSize: 14,
+    fontWeight: 900,
+    textAlign: "left",
+  },
+  scheduleMonthPickerButtonActive: {
+    border: "1px solid #111",
+    background: "#111",
+    color: "#fff",
+    borderRadius: 10,
+    padding: "10px 12px",
+    fontSize: 14,
+    fontWeight: 900,
+    textAlign: "left",
+  },
+  scheduleCheckTopActionsCompact: {
+    display: "grid",
+    gridTemplateColumns: "0.8fr 1.4fr",
+    gap: 8,
+  },
+  scheduleSearchBoxSticky: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto auto",
+    gap: 8,
+    alignItems: "center",
+    flexShrink: 0,
+  },
+  scheduleSelectedDateHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    background: "#111",
+    color: "#fff",
+    borderRadius: 14,
+    padding: "10px 12px",
+    fontSize: 15,
+    fontWeight: 900,
+    flexShrink: 0,
+  },
+  scheduleCheckListScrollable: {
+    flex: 1,
+    minHeight: 0,
+    overflowY: "auto",
+    paddingRight: 4,
+  },
+  scheduleSwipeHint: {
+    margin: 0,
+    color: "#777",
+    fontSize: 12,
+    fontWeight: 800,
+    textAlign: "center",
+  },
+  memberMainCompact: {
+    flex: 1,
+    cursor: "pointer",
+    position: "relative",
+  },
+  memberCardTopLine: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+    marginBottom: 8,
+  },
+  ptCountPill: {
+    borderRadius: 999,
+    padding: "5px 9px",
+    fontSize: 12,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+  },
+  ptCountPillNormal: {
+    background: "#052e16",
+    color: "#bbf7d0",
+    border: "1px solid #16a34a",
+  },
+  ptCountPillWarning: {
+    background: "#33270a",
+    color: "#fde68a",
+    border: "1px solid #ca8a04",
+  },
+  ptCountPillDanger: {
+    background: "#450a0a",
+    color: "#fecaca",
+    border: "1px solid #991b1b",
+  },
+  cardPtAddButtonMini: {
+    background: "#f5f5f5",
+    color: "#111",
+    border: "1px solid #ffffff",
+    borderRadius: 999,
+    padding: "6px 10px",
+    fontSize: 12,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+  },
+  memberTypeRowCompact: {
+    display: "flex",
+    gap: 6,
+    alignItems: "center",
+    marginBottom: 6,
+    flexWrap: "wrap",
+  },
+  phoneSmallCompact: {
+    color: "#b3b3b3",
+    fontSize: 13,
+    margin: 0,
+    marginBottom: 7,
+  },
+  memberCardBottomRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+  },
+  conditionSmsButton: {
+    background: "#172554",
+    color: "#bfdbfe",
+    border: "1px solid #1d4ed8",
+    borderRadius: 999,
+    padding: "7px 10px",
+    fontSize: 12,
+    fontWeight: 1000,
+  },
+  cardDeactivateButtonMini: {
+    background: "#3f1111",
+    color: "#fca5a5",
+    border: "1px solid #7f1d1d",
+    borderRadius: 999,
+    padding: "5px 8px",
+    fontSize: 11,
+    fontWeight: 1000,
+  },
+  cardRestoreButtonMini: {
+    background: "#263a36",
+    color: "#d7fff3",
+    border: "1px solid #3f5f58",
+    borderRadius: 999,
+    padding: "5px 8px",
+    fontSize: 11,
+    fontWeight: 1000,
+  },
+  warningRowCompact: {
+    display: "flex",
+    gap: 6,
+    marginTop: 8,
+    flexWrap: "wrap",
+  },
+  detailButtonGridCleanSingle: {
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: 10,
+  },
+  infoTitleRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 8,
+  },
+  infoEditButton: {
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #333",
+    borderRadius: 999,
+    padding: "8px 12px",
+    fontSize: 13,
+    fontWeight: 1000,
+  },
   whiteModalTop: {
     display: "flex",
     justifyContent: "space-between",
@@ -9199,4 +9563,33 @@ textarea: {
     fontSize: 15,
     fontWeight: 800,
   },
+  cardCompact: {
+    background: "#1c1c1c",
+    border: "1px solid #292929",
+    borderRadius: 18,
+    padding: 12,
+    marginBottom: 8,
+    boxShadow: "0 6px 18px rgba(0,0,0,.18)",
+  },
+  memberNameSmall: {
+    fontSize: 18,
+    margin: 0,
+    fontWeight: 900,
+    color: "#ffffff",
+    wordBreak: "keep-all",
+  },
+  compactInfoRow: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    color: "#93c5fd",
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  memberModalGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+    gap: 8,
+  },
+
 };
