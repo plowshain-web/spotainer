@@ -821,6 +821,13 @@ const [workoutExercises, setWorkoutExercises] = useState([
             <p style={styles.scheduleCheckMemoCompact}>{schedule.memo}</p>
           )}
 
+          {getReRegisterAlert(member) && (
+            <div style={styles.reRegisterInlineAlert}>
+              <strong>{getReRegisterAlert(member).title}</strong>
+              <span>{getReRegisterAlert(member).text}</span>
+            </div>
+          )}
+
           {getLastWorkoutSummary(lastWorkoutMap[schedule.id]) && (
             <div style={styles.lastWorkoutPreviewCompact}>
               <span style={styles.lastWorkoutPreviewStrong}>
@@ -2078,6 +2085,42 @@ const [workoutExercises, setWorkoutExercises] = useState([
     return null;
   }
 
+  function getReRegisterAlert(member) {
+    if (!member) return null;
+
+    const pt = Number(member.pt_remaining || 0);
+
+    if (pt <= 1) {
+      return {
+        level: "urgent",
+        title: "재등록 최우선",
+        text: `PT ${pt}회 남음 · 오늘 상담 권장`,
+      };
+    }
+
+    if (pt <= 3) {
+      return {
+        level: "strong",
+        title: "재등록 권유",
+        text: `PT ${pt}회 남음 · 다음 이용권 안내 필요`,
+      };
+    }
+
+    if (pt <= 5) {
+      return {
+        level: "soft",
+        title: "재등록 상담",
+        text: `PT ${pt}회 남음 · 자연스럽게 상담 시작`,
+      };
+    }
+
+    return null;
+  }
+
+  function isReRegisterTarget(member) {
+    return !!getReRegisterAlert(member);
+  }
+
   function getVisitStatus(member) {
     const days = daysSince(member.latest_visit);
     if (days === null) return { text: "출석 기록 없음", style: styles.visitBadge };
@@ -2831,6 +2874,36 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
     const message = `${member.name || "회원"}님 오늘 몸상태나 컨디션 어떠세요? 불편한 부위 있으면 미리 알려주세요!`;
 
     if (!confirm(`${member.name || "회원"} 회원에게 컨디션 확인 문자를 보낼까요?\n\n확인을 누르면 문자앱이 열리고, 직접 전송 버튼을 눌러야 발송됩니다.`)) {
+      return;
+    }
+
+    window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
+  }
+
+  function sendReRegisterSMS(member) {
+    const phone = normalizePhone(member?.phone);
+
+    if (!member) {
+      alert("회원 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    if (!phone) {
+      alert(`${member.name || "회원"} 회원의 전화번호가 없습니다.`);
+      return;
+    }
+
+    const message = `[스포테이너]
+${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
+
+현재 프로그램 흐름이 좋아서
+남은 횟수 안에 다음 목표까지 이어가면 더 좋은 결과를 기대할 수 있습니다.
+
+편하실 때 다음 이용권 상담 도와드릴게요!`;
+
+    if (!confirm(`${member.name || "회원"} 회원에게 재등록 권유 문자를 보낼까요?
+
+확인을 누르면 문자앱이 열리고, 직접 전송 버튼을 눌러야 발송됩니다.`)) {
       return;
     }
 
@@ -4368,6 +4441,13 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
                         {getScheduleTypeText(schedule.type)} · {member?.name || "회원 정보 없음"}
                         {member ? ` (${member.pt_remaining || 0}회)` : ""}
                       </strong>
+
+                      {getReRegisterAlert(member) && (
+                        <div style={styles.reRegisterInlineAlertDark}>
+                          <strong>{getReRegisterAlert(member).title}</strong>
+                          <span>{getReRegisterAlert(member).text}</span>
+                        </div>
+                      )}
 
                       {getLastWorkoutSummary(lastWorkoutMap[schedule.id]) && (
                         <div style={styles.lastWorkoutPreviewDark}>
@@ -6121,6 +6201,32 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
                     style={styles.textarea}
                   />
                 </div>
+
+                {isReRegisterTarget(workoutMember) && (
+                  <div style={styles.reRegisterWorkoutBox}>
+                    <div style={styles.reRegisterWorkoutText}>
+                      <strong>{getReRegisterAlert(workoutMember).title}</strong>
+                      <span>{getReRegisterAlert(workoutMember).text}</span>
+                    </div>
+
+                    <div style={styles.reRegisterWorkoutActions}>
+                      <button
+                        type="button"
+                        onClick={() => openContactModal(workoutMember, "pending")}
+                        style={styles.reRegisterSubButton}
+                      >
+                        상담 기록
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => sendReRegisterSMS(workoutMember)}
+                        style={styles.reRegisterMainButton}
+                      >
+                        권유 문자
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div style={styles.editActions}>
                   <button onClick={saveWorkout} style={styles.primaryButton}>저장</button>
@@ -10183,6 +10289,81 @@ textarea: {
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
+  },
+  reRegisterInlineAlert: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    flexWrap: "wrap",
+    width: "fit-content",
+    marginTop: 5,
+    padding: "5px 8px",
+    borderRadius: 999,
+    background: "#fff7ed",
+    border: "1px solid #fed7aa",
+    color: "#c2410c",
+    fontSize: 11,
+    fontWeight: 800,
+  },
+  reRegisterInlineAlertDark: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    flexWrap: "wrap",
+    width: "fit-content",
+    marginTop: 5,
+    padding: "5px 8px",
+    borderRadius: 999,
+    background: "rgba(255, 247, 237, 0.95)",
+    border: "1px solid #fed7aa",
+    color: "#c2410c",
+    fontSize: 11,
+    fontWeight: 800,
+  },
+  reRegisterWorkoutBox: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 14,
+    background: "#fff7ed",
+    border: "1px solid #fed7aa",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    flexWrap: "wrap",
+  },
+  reRegisterWorkoutText: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 3,
+    color: "#9a3412",
+    fontSize: 13,
+    fontWeight: 800,
+  },
+  reRegisterWorkoutActions: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  reRegisterSubButton: {
+    border: "1px solid #fdba74",
+    background: "#fff",
+    color: "#9a3412",
+    borderRadius: 10,
+    padding: "8px 10px",
+    fontSize: 12,
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+  reRegisterMainButton: {
+    border: "none",
+    background: "#f97316",
+    color: "#fff",
+    borderRadius: 10,
+    padding: "8px 10px",
+    fontSize: 12,
+    fontWeight: 900,
+    cursor: "pointer",
   },
   lastWorkoutPreviewCompact: {
     display: "flex",
