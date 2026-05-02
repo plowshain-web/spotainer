@@ -5277,6 +5277,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     showCenterModal ||
     showSalesModal ||
     showTrainerLogModal ||
+    freeSmsModalMember ||
+    feedbackModalMember ||
     contactModalMember ||
     summaryModal;
 
@@ -5330,6 +5332,10 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     setConflictSchedules([]);
     setPendingSchedule(null);
     setActionModalSchedule(null);
+    setFreeSmsModalMember(null);
+    setFreeSmsDraft("");
+    setFeedbackModalMember(null);
+    setFeedbackDraft("");
     setShowMemberListModal(false);
     setReturnToMemberListAfterDetail(false);
     setReturnToScheduleCheckAfterAdd(false);
@@ -7990,8 +7996,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       )}
 
       {freeSmsModalMember && (
-        <div style={styles.workoutHistoryOverlay}>
-          <section style={{ ...styles.whiteModalBox, height: "auto", minHeight: 0, maxHeight: "calc(100vh - 120px)" }}>
+        <div style={styles.messageModalOverlay}>
+          <section style={styles.messageModalBox}>
             <div style={styles.whiteModalTop}>
               <div>
                 <h2 style={styles.whiteModalTitle}>{freeSmsModalMember.name} 문자 보내기</h2>
@@ -8028,8 +8034,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       )}
 
       {feedbackModalMember && (
-        <div style={styles.workoutHistoryOverlay}>
-          <section style={{ ...styles.whiteModalBox, height: "auto", minHeight: 0, maxHeight: "calc(100vh - 120px)" }}>
+        <div style={styles.messageModalOverlay}>
+          <section style={styles.messageModalBox}>
             <div style={styles.whiteModalTop}>
               <div>
                 <h2 style={styles.whiteModalTitle}>{feedbackModalMember.name} 피드백 문자</h2>
@@ -11242,6 +11248,30 @@ textarea: {
     alignItems: "center",
     zIndex: 16000,
     padding: 12,
+  },
+  messageModalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,.72)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 30000,
+    padding: 16,
+    overflow: "hidden",
+  },
+  messageModalBox: {
+    width: "calc(100vw - 56px)",
+    maxWidth: "none",
+    height: "auto",
+    maxHeight: "calc(100vh - 96px)",
+    overflowY: "auto",
+    background: "#ffffff",
+    color: "#111",
+    borderRadius: 24,
+    padding: 24,
+    boxShadow: "0 20px 60px rgba(0,0,0,.45)",
+    position: "relative",
   },
   workoutHistoryOverlay: {
     position: "fixed",
