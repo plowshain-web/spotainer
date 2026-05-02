@@ -153,6 +153,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
     { name: "", sets: [{ weight: "", reps: "" }] },
   ]);
   const [showAllWorkoutModal, setShowAllWorkoutModal] = useState(false);
+  const [expandedWorkoutSessionId, setExpandedWorkoutSessionId] = useState(null);
 
   const [editingWorkoutSetId, setEditingWorkoutSetId] = useState(null);
   const [editWorkoutName, setEditWorkoutName] = useState("");
@@ -6273,103 +6274,126 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
             ) : (
               workoutSessions.map((session) => {
                 const groups = groupWorkoutSets(session.workout_sets || []);
+                const isOpen = expandedWorkoutSessionId === session.id;
+                const totalSets = groups.reduce((sum, group) => sum + group.sets.length, 0);
+                const firstName = groups[0]?.exerciseName || "운동 상세 없음";
+                const summaryText = groups.length > 1 ? `${firstName} 외 ${groups.length - 1}개` : firstName;
 
                 return (
                   <div key={session.id} style={styles.whiteWorkoutCard}>
-                    <div style={styles.whiteSessionTop}>
-                      <h3 style={styles.whiteWorkoutDate}>{formatDate(session.workout_date)}</h3>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedWorkoutSessionId((current) =>
+                          current === session.id ? null : session.id
+                        )
+                      }
+                      style={styles.whiteRecordSummaryButton}
+                    >
+                      <div>
+                        <h3 style={styles.whiteWorkoutDate}>{formatDate(session.workout_date)}</h3>
+                        <p style={styles.whiteRecordSummaryTitle}>{summaryText}</p>
+                        <p style={styles.whiteMuted}>총 {totalSets}세트 · 클릭해서 상세 확인</p>
+                      </div>
+                      <strong style={styles.whiteRecordChevron}>{isOpen ? "접기" : "보기"}</strong>
+                    </button>
 
-                      <button
-                        onClick={() => deleteWorkoutSession(session)}
-                        style={styles.whiteDeleteButton}
-                      >
-                        날짜 전체 삭제
-                      </button>
-                    </div>
+                    {isOpen && (
+                      <div style={styles.whiteExpandedArea}>
+                        {groups.length === 0 ? (
+                          <p style={styles.whiteMuted}>운동 상세 없음</p>
+                        ) : (
+                          groups.map((group, groupIndex) => (
+                            <div key={group.key} style={styles.whiteExerciseGroup}>
+                              <p style={styles.whiteExerciseTitle}>
+                                {groupIndex + 1}번 운동 · {group.exerciseName}
+                              </p>
 
-                    {groups.length === 0 ? (
-                      <p style={styles.whiteMuted}>운동 상세 없음</p>
-                    ) : (
-                      groups.map((group, groupIndex) => (
-                        <div key={group.key} style={styles.whiteExerciseGroup}>
-                          <p style={styles.whiteExerciseTitle}>
-                            {groupIndex + 1}번 운동 · {group.exerciseName}
-                          </p>
+                              {group.sets.map((set, setIndex) => (
+                                <div
+                                  key={set.id || `${group.key}-${setIndex}`}
+                                  style={styles.whiteSetRow}
+                                >
+                                  {editingWorkoutSetId === set.id ? (
+                                    <>
+                                      <input
+                                        value={editWorkoutName}
+                                        onChange={(e) => setEditWorkoutName(e.target.value)}
+                                        placeholder="운동명"
+                                        style={styles.whiteInput}
+                                      />
+                                      <input
+                                        value={editWorkoutWeight}
+                                        onChange={(e) => setEditWorkoutWeight(e.target.value)}
+                                        placeholder="중량"
+                                        type="number"
+                                        style={styles.whiteInput}
+                                      />
+                                      <input
+                                        value={editWorkoutReps}
+                                        onChange={(e) => setEditWorkoutReps(e.target.value)}
+                                        placeholder="횟수"
+                                        type="number"
+                                        style={styles.whiteInput}
+                                      />
 
-                          {group.sets.map((set, setIndex) => (
-                            <div
-                              key={set.id || `${group.key}-${setIndex}`}
-                              style={styles.whiteSetRow}
-                            >
-                              {editingWorkoutSetId === set.id ? (
-                                <>
-                                  <input
-                                    value={editWorkoutName}
-                                    onChange={(e) => setEditWorkoutName(e.target.value)}
-                                    placeholder="운동명"
-                                    style={styles.whiteInput}
-                                  />
-                                  <input
-                                    value={editWorkoutWeight}
-                                    onChange={(e) => setEditWorkoutWeight(e.target.value)}
-                                    placeholder="중량"
-                                    type="number"
-                                    style={styles.whiteInput}
-                                  />
-                                  <input
-                                    value={editWorkoutReps}
-                                    onChange={(e) => setEditWorkoutReps(e.target.value)}
-                                    placeholder="횟수"
-                                    type="number"
-                                    style={styles.whiteInput}
-                                  />
+                                      <div style={styles.whiteActionRow}>
+                                        <button
+                                          onClick={() => saveWorkoutSetEdit(set)}
+                                          style={styles.whiteSaveButton}
+                                        >
+                                          저장
+                                        </button>
+                                        <button
+                                          onClick={clearWorkoutEdit}
+                                          style={styles.whiteCancelButton}
+                                        >
+                                          취소
+                                        </button>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <p style={styles.whiteSetText}>
+                                        {set.set_number || setIndex + 1}세트 ·{" "}
+                                        {set.weight ? `${set.weight}kg` : "중량 미입력"} ·{" "}
+                                        {set.reps ? `${set.reps}회` : "횟수 미입력"}
+                                      </p>
 
-                                  <div style={styles.whiteActionRow}>
-                                    <button
-                                      onClick={() => saveWorkoutSetEdit(set)}
-                                      style={styles.whiteSaveButton}
-                                    >
-                                      저장
-                                    </button>
-                                    <button
-                                      onClick={clearWorkoutEdit}
-                                      style={styles.whiteCancelButton}
-                                    >
-                                      취소
-                                    </button>
-                                  </div>
-                                </>
-                              ) : (
-                                <>
-                                  <p style={styles.whiteSetText}>
-                                    {set.set_number || setIndex + 1}세트 ·{" "}
-                                    {set.weight ? `${set.weight}kg` : "중량 미입력"} ·{" "}
-                                    {set.reps ? `${set.reps}회` : "횟수 미입력"}
-                                  </p>
-
-                                  <div style={styles.whiteActionRow}>
-                                    <button
-                                      onClick={() => startWorkoutSetEdit(set)}
-                                      style={styles.whiteEditButton}
-                                    >
-                                      수정
-                                    </button>
-                                    <button
-                                      onClick={() => deleteWorkoutSet(set)}
-                                      style={styles.whiteDeleteButton}
-                                    >
-                                      삭제
-                                    </button>
-                                  </div>
-                                </>
-                              )}
+                                      <div style={styles.whiteActionRow}>
+                                        <button
+                                          onClick={() => startWorkoutSetEdit(set)}
+                                          style={styles.whiteEditButton}
+                                        >
+                                          수정
+                                        </button>
+                                        <button
+                                          onClick={() => deleteWorkoutSet(set)}
+                                          style={styles.whiteDeleteButton}
+                                        >
+                                          삭제
+                                        </button>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
-                      ))
-                    )}
+                          ))
+                        )}
 
-                    {renderTrainerJournal(session, true)}
+                        {renderTrainerJournal(session, true)}
+
+                        <div style={styles.whiteActionRowFull}>
+                          <button
+                            onClick={() => deleteWorkoutSession(session)}
+                            style={styles.whiteDeleteButton}
+                          >
+                            날짜 전체 삭제
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -7884,17 +7908,19 @@ const styles = {
     justifyContent: "center",
     alignItems: "center",
     zIndex: 10000,
-    padding: 20,
+    padding: 12,
   },
   modalBox: {
-    width: "100%",
-    maxWidth: 520,
-    maxHeight: "82vh",
+    width: "calc(100vw - 32px)",
+    maxWidth: "none",
+    height: "calc(100vh - 88px)",
+    maxHeight: "none",
     overflowY: "auto",
-    background: "#181818",
-    border: "1px solid #333",
+    background: "#ffffff",
+    color: "#111",
+    border: "1px solid #e5e5e5",
     borderRadius: 24,
-    padding: 18,
+    padding: 22,
     boxShadow: "0 20px 60px rgba(0,0,0,.45)",
   },
   modalTitle: {
@@ -8231,9 +8257,9 @@ const styles = {
     gap: 12,
   },
   menuButton: {
-    background: "#222",
-    color: "#fff",
-    border: "1px solid #333",
+    background: "#f7f7f7",
+    color: "#111",
+    border: "1px solid #dddddd",
     borderRadius: 18,
     padding: 18,
     fontSize: 18,
@@ -8712,7 +8738,7 @@ textarea: {
     marginBottom: 8,
   },
   muted: {
-    color: "#aaa",
+    color: "#555",
     margin: 0,
     marginBottom: 8,
   },
@@ -9300,7 +9326,7 @@ textarea: {
     justifyContent: "center",
     alignItems: "center",
     zIndex: 16000,
-    padding: 20,
+    padding: 12,
   },
   workoutHistoryOverlay: {
     position: "fixed",
@@ -9310,7 +9336,7 @@ textarea: {
     justifyContent: "center",
     alignItems: "center",
     zIndex: 13000,
-    padding: 20,
+    padding: 12,
   },
   editModalOverlay: {
     position: "fixed",
@@ -9320,7 +9346,7 @@ textarea: {
     justifyContent: "center",
     alignItems: "center",
     zIndex: 12000,
-    padding: 20,
+    padding: 12,
   },
   inbodyModalOverlay: {
     position: "fixed",
@@ -9330,7 +9356,7 @@ textarea: {
     justifyContent: "center",
     alignItems: "center",
     zIndex: 15000,
-    padding: 20,
+    padding: 12,
   },
   ptModalOverlay: {
     position: "fixed",
@@ -9343,15 +9369,49 @@ textarea: {
     padding: 20,
   },
   whiteModalBox: {
-    width: "100%",
-    maxWidth: 560,
-    maxHeight: "84vh",
+    width: "calc(100vw - 32px)",
+    maxWidth: "none",
+    height: "calc(100vh - 88px)",
+    maxHeight: "none",
     overflowY: "auto",
     background: "#ffffff",
     color: "#111",
     borderRadius: 24,
-    padding: 18,
+    padding: 22,
     boxShadow: "0 20px 60px rgba(0,0,0,.45)",
+  },
+
+  whiteRecordSummaryButton: {
+    width: "100%",
+    border: "1px solid #e5e5e5",
+    background: "#fafafa",
+    color: "#111",
+    borderRadius: 18,
+    padding: 16,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    textAlign: "left",
+    cursor: "pointer",
+  },
+  whiteRecordSummaryTitle: {
+    margin: "6px 0 4px",
+    color: "#111",
+    fontSize: 18,
+    fontWeight: 900,
+  },
+  whiteRecordChevron: {
+    color: "#111",
+    background: "#eeeeee",
+    borderRadius: 999,
+    padding: "8px 12px",
+    whiteSpace: "nowrap",
+  },
+  whiteExpandedArea: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTop: "1px solid #eeeeee",
   },
   memberListModalBox: {
     width: "100%",
@@ -9825,14 +9885,16 @@ textarea: {
     fontSize: 15,
   },
   workoutModalBox: {
-    width: "100%",
-    maxWidth: "min(1180px, calc(100vw - 32px))",
-    maxHeight: "88vh",
+    width: "calc(100vw - 32px)",
+    maxWidth: "none",
+    height: "calc(100vh - 88px)",
+    maxHeight: "none",
     overflowY: "auto",
-    background: "#181818",
-    border: "1px solid #333",
+    background: "#ffffff",
+    color: "#111",
+    border: "1px solid #e5e5e5",
     borderRadius: 24,
-    padding: 18,
+    padding: 22,
     boxShadow: "0 20px 60px rgba(0,0,0,.45)",
   },
   workoutTypeGrid: {
