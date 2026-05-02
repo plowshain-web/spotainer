@@ -116,6 +116,9 @@ export default function Page() {
   const [trainerWorkoutType, setTrainerWorkoutType] = useState("weight");
   const [trainerWorkoutBodyParts, setTrainerWorkoutBodyParts] = useState([]);
   const [trainerExerciseSummary, setTrainerExerciseSummary] = useState("");
+  const [trainerWorkoutExercises, setTrainerWorkoutExercises] = useState([
+    createEmptyWorkoutExercise("weight"),
+  ]);
   const [trainerCondition, setTrainerCondition] = useState("normal");
   const [trainerIssue, setTrainerIssue] = useState("");
   const [trainerNextPlan, setTrainerNextPlan] = useState("");
@@ -1014,6 +1017,92 @@ const [workoutExercises, setWorkoutExercises] = useState([
     );
   }
 
+
+  function changeTrainerWorkoutType(type) {
+    setTrainerWorkoutType(type);
+    setTrainerWorkoutExercises([createEmptyWorkoutExercise(type)]);
+    if (type === "circuit") {
+      setTrainerWorkoutBodyParts(["전신"]);
+    }
+  }
+
+  function getCleanTrainerWorkoutExercises() {
+    return trainerWorkoutExercises
+      .map((exercise) => ({
+        name: String(exercise.name || "").trim(),
+        sets: (exercise.sets || [])
+          .map((set) => ({
+            weight: String(set.weight || "").trim(),
+            reps: String(set.reps || "").trim(),
+          }))
+          .filter((set) => set.weight || set.reps),
+      }))
+      .filter((exercise) => exercise.name || exercise.sets.length > 0);
+  }
+
+  function summarizeTrainerExercises(exercises = []) {
+    return exercises
+      .map((exercise) => {
+        const setCount = exercise.sets?.length || 0;
+        return `${exercise.name || "운동명 미입력"}${setCount ? ` ${setCount}세트` : ""}`;
+      })
+      .join(", ");
+  }
+
+  function addTrainerExercise() {
+    setTrainerWorkoutExercises((prev) => [
+      ...prev,
+      createEmptyWorkoutExercise(trainerWorkoutType),
+    ]);
+  }
+
+  function removeTrainerExercise(exerciseIndex) {
+    if (trainerWorkoutExercises.length <= 1) return alert("운동은 최소 1개가 필요합니다.");
+    setTrainerWorkoutExercises((prev) => prev.filter((_, index) => index !== exerciseIndex));
+  }
+
+  function updateTrainerExerciseName(exerciseIndex, value) {
+    setTrainerWorkoutExercises((prev) =>
+      prev.map((exercise, index) =>
+        index === exerciseIndex ? { ...exercise, name: value } : exercise
+      )
+    );
+  }
+
+  function addTrainerSet(exerciseIndex) {
+    setTrainerWorkoutExercises((prev) =>
+      prev.map((exercise, index) =>
+        index === exerciseIndex
+          ? { ...exercise, sets: [...exercise.sets, { weight: "", reps: "" }] }
+          : exercise
+      )
+    );
+  }
+
+  function removeTrainerSet(exerciseIndex, setIndex) {
+    setTrainerWorkoutExercises((prev) =>
+      prev.map((exercise, index) => {
+        if (index !== exerciseIndex) return exercise;
+        if (exercise.sets.length <= 1) return exercise;
+        return { ...exercise, sets: exercise.sets.filter((_, i) => i !== setIndex) };
+      })
+    );
+  }
+
+  function updateTrainerSetValue(exerciseIndex, setIndex, key, value) {
+    setTrainerWorkoutExercises((prev) =>
+      prev.map((exercise, index) => {
+        if (index !== exerciseIndex) return exercise;
+        return {
+          ...exercise,
+          sets: exercise.sets.map((set, i) =>
+            i === setIndex ? { ...set, [key]: value } : set
+          ),
+        };
+      })
+    );
+  }
+
   function resetTrainerInbodyForm() {
     setTrainerInbodyDate(getTodayDateString());
     setTrainerWeight("");
@@ -1028,6 +1117,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setTrainerWorkoutType("weight");
     setTrainerWorkoutBodyParts([]);
     setTrainerExerciseSummary("");
+    setTrainerWorkoutExercises([createEmptyWorkoutExercise("weight")]);
     setTrainerCondition("normal");
     setTrainerIssue("");
     setTrainerNextPlan("");
@@ -1086,16 +1176,20 @@ const [workoutExercises, setWorkoutExercises] = useState([
   }
 
   async function saveTrainerWorkoutLog() {
-    if (!trainerExerciseSummary.trim()) {
-      alert("운동 내용을 입력하세요.");
+    const cleanExercises = getCleanTrainerWorkoutExercises();
+    const summaryText = trainerExerciseSummary.trim() || summarizeTrainerExercises(cleanExercises);
+
+    if (!summaryText && cleanExercises.length === 0) {
+      alert("운동명이나 운동 내용을 입력하세요.");
       return;
     }
 
     const row = {
       workout_date: trainerWorkoutDate || getTodayDateString(),
       workout_type: trainerWorkoutType,
-      body_parts: trainerWorkoutBodyParts,
-      exercise_summary: trainerExerciseSummary.trim(),
+      body_parts: trainerWorkoutType === "circuit" && trainerWorkoutBodyParts.length === 0 ? ["전신"] : trainerWorkoutBodyParts,
+      exercise_summary: summaryText,
+      exercise_items: cleanExercises,
       condition: trainerCondition,
       issue: trainerIssue.trim(),
       next_plan: trainerNextPlan.trim(),
@@ -5451,7 +5545,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                       <button
                         key={type}
                         type="button"
-                        onClick={() => setTrainerWorkoutType(type)}
+                        onClick={() => changeTrainerWorkoutType(type)}
                         style={trainerWorkoutType === type ? styles.whitePillActive : styles.whitePill}
                       >
                         {type === "weight" ? "웨이트" : type === "circuit" ? "서킷" : type === "cardio" ? "유산소" : "스트레칭"}
@@ -5473,11 +5567,76 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                     ))}
                   </div>
 
-                  <label style={styles.whiteLabel}>운동 내용</label>
+                  <div style={styles.personalExerciseTopRow}>
+                    <label style={styles.whiteLabel}>운동명 / 세트</label>
+                    <button type="button" onClick={addTrainerExercise} style={styles.whiteSmallButton}>
+                      + 운동 추가
+                    </button>
+                  </div>
+
+                  <div style={styles.personalExerciseList}>
+                    {trainerWorkoutExercises.map((exercise, exerciseIndex) => (
+                      <div key={exerciseIndex} style={styles.personalExerciseCard}>
+                        <div style={styles.personalExerciseHeader}>
+                          <input
+                            value={exercise.name}
+                            onChange={(e) => updateTrainerExerciseName(exerciseIndex, e.target.value)}
+                            placeholder="운동명"
+                            style={styles.whiteInput}
+                          />
+                          {trainerWorkoutExercises.length > 1 && (
+                            <button type="button" onClick={() => removeTrainerExercise(exerciseIndex)} style={styles.whiteSmallDangerButton}>
+                              삭제
+                            </button>
+                          )}
+                        </div>
+
+                        <div style={styles.personalSetHeader}>
+                          <span>세트</span>
+                          <span>중량</span>
+                          <span>횟수</span>
+                          <span />
+                        </div>
+
+                        {exercise.sets.map((set, setIndex) => (
+                          <div key={setIndex} style={styles.personalSetRow}>
+                            <strong>{setIndex + 1}</strong>
+                            <input
+                              value={set.weight}
+                              onChange={(e) => updateTrainerSetValue(exerciseIndex, setIndex, "weight", e.target.value)}
+                              placeholder="kg"
+                              type="number"
+                              style={styles.whiteInput}
+                            />
+                            <input
+                              value={set.reps}
+                              onChange={(e) => updateTrainerSetValue(exerciseIndex, setIndex, "reps", e.target.value)}
+                              placeholder="회"
+                              type="number"
+                              style={styles.whiteInput}
+                            />
+                            {exercise.sets.length > 1 ? (
+                              <button type="button" onClick={() => removeTrainerSet(exerciseIndex, setIndex)} style={styles.whiteSmallDangerButton}>
+                                ×
+                              </button>
+                            ) : (
+                              <span />
+                            )}
+                          </div>
+                        ))}
+
+                        <button type="button" onClick={() => addTrainerSet(exerciseIndex)} style={styles.whiteSmallButton}>
+                          + 세트
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <label style={styles.whiteLabel}>운동 요약 메모</label>
                   <textarea
                     value={trainerExerciseSummary}
                     onChange={(e) => setTrainerExerciseSummary(e.target.value)}
-                    placeholder="예: 랫풀다운 4세트, 시티드로우 4세트, 유산소 30분"
+                    placeholder="비워두면 운동명/세트 기준으로 자동 요약됩니다."
                     style={styles.whiteTextarea}
                   />
 
@@ -5545,7 +5704,22 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                           {log.workout_type === "weight" ? "웨이트" : log.workout_type === "circuit" ? "서킷" : log.workout_type === "cardio" ? "유산소" : "스트레칭"}
                           {Array.isArray(log.body_parts) && log.body_parts.length > 0 ? ` · ${log.body_parts.join(", ")}` : ""}
                         </p>
-                        <p style={styles.personalLogText}>{log.exercise_summary}</p>
+                        {Array.isArray(log.exercise_items) && log.exercise_items.length > 0 ? (
+                          <div style={styles.personalWorkoutDetailTable}>
+                            {log.exercise_items.map((exercise, exerciseIndex) => (
+                              <div key={`${log.id}-exercise-${exerciseIndex}`} style={styles.personalWorkoutDetailRow}>
+                                <strong>{exercise.name || "운동명 미입력"}</strong>
+                                <span>
+                                  {(exercise.sets || []).map((set, setIndex) => (
+                                    `${setIndex + 1}세트 ${set.weight || "-"}kg ${set.reps || "-"}회`
+                                  )).join(" · ")}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p style={styles.personalLogText}>{log.exercise_summary}</p>
+                        )}
                         {(log.issue || log.next_plan || log.memo) && (
                           <p style={styles.personalLogSub}>
                             {[log.issue ? `이슈: ${log.issue}` : "", log.next_plan ? `다음: ${log.next_plan}` : "", log.memo ? `메모: ${log.memo}` : ""].filter(Boolean).join(" · ")}
@@ -12880,6 +13054,67 @@ textarea: {
     background: "#111",
     color: "#fff",
     fontWeight: 1000,
+  },
+
+  personalExerciseTopRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    marginTop: 10,
+  },
+  personalExerciseList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    marginBottom: 12,
+  },
+  personalExerciseCard: {
+    border: "1px solid #111827",
+    borderRadius: 14,
+    padding: 10,
+    background: "#fff",
+  },
+  personalExerciseHeader: {
+    display: "grid",
+    gridTemplateColumns: "1fr auto",
+    gap: 8,
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  personalSetHeader: {
+    display: "grid",
+    gridTemplateColumns: "44px 1fr 1fr 38px",
+    gap: 6,
+    fontSize: 11,
+    color: "#374151",
+    fontWeight: 800,
+    marginBottom: 5,
+    alignItems: "center",
+  },
+  personalSetRow: {
+    display: "grid",
+    gridTemplateColumns: "44px 1fr 1fr 38px",
+    gap: 6,
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  personalWorkoutDetailTable: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    marginTop: 8,
+  },
+  personalWorkoutDetailRow: {
+    display: "grid",
+    gridTemplateColumns: "130px 1fr",
+    gap: 8,
+    border: "1px solid #d1d5db",
+    borderRadius: 10,
+    padding: "7px 8px",
+    background: "#fff",
+    color: "#111827",
+    fontSize: 12,
   },
   personalLogCard: {
     border: "1px solid #d8d8d8",
