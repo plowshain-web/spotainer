@@ -78,6 +78,7 @@ const commonExercises = [
 ];
 
 const weightBodyPartOptions = ["가슴", "어깨", "등", "하체", "팔", "복부"];
+const workoutPatternOptions = [...weightBodyPartOptions, "전신"];
 
 function createEmptyWorkoutExercise(trainingType = "weight") {
   const defaultSetCount = trainingType === "weight" ? 4 : 1;
@@ -4024,6 +4025,22 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       .filter(Boolean);
   }
 
+  function isCircuitWorkoutSession(session) {
+    const memoText = String(session?.memo || "").toLowerCase();
+    const namesText = getSessionExerciseNames(session).join(" ").toLowerCase();
+
+    return (
+      memoText.includes("서킷") ||
+      memoText.includes("circuit") ||
+      namesText.includes("서킷") ||
+      namesText.includes("점핑잭") ||
+      namesText.includes("케틀벨") ||
+      namesText.includes("하이 니") ||
+      namesText.includes("스텝업") ||
+      namesText.includes("점핑 런지")
+    );
+  }
+
   const exerciseBodyPartKeywordMap = {
     가슴: ["체스트", "벤치", "인클라인", "디클라인", "펙덱", "플라이", "푸쉬업", "덤벨프레스", "케이블플라이", "케이블 플라이"],
     어깨: ["숄더", "레터럴", "프론트", "리어", "델트", "업라이트", "오버헤드"],
@@ -4044,7 +4061,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }
 
   function getWorkoutPatternSummary(sessions = detailWorkoutSessions) {
-    const counts = weightBodyPartOptions.reduce((acc, part) => {
+    const counts = workoutPatternOptions.reduce((acc, part) => {
       acc[part] = 0;
       return acc;
     }, {});
@@ -4053,7 +4070,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       const taggedParts = getWorkoutSessionBodyParts(session);
       const inferredParts = taggedParts.length > 0
         ? taggedParts
-        : inferBodyPartsFromExerciseNames(getSessionExerciseNames(session));
+        : isCircuitWorkoutSession(session)
+          ? ["전신"]
+          : inferBodyPartsFromExerciseNames(getSessionExerciseNames(session));
 
       Array.from(new Set(inferredParts)).forEach((part) => {
         if (Object.prototype.hasOwnProperty.call(counts, part)) {
@@ -4062,8 +4081,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       });
     });
 
-    const entries = weightBodyPartOptions.map((part) => ({
+    const entries = workoutPatternOptions.map((part) => ({
       part,
+      label: part === "전신" ? "전신(서킷)" : part,
       count: counts[part] || 0,
     }));
 
@@ -4106,7 +4126,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
                 return (
                   <div key={item.part} style={styles.workoutPatternRow}>
-                    <span style={styles.workoutPatternPart}>{item.part}</span>
+                    <span style={styles.workoutPatternPart}>{item.label || item.part}</span>
                     <div style={styles.workoutPatternBarTrack}>
                       <div style={{ ...styles.workoutPatternBar, width: `${width}%` }} />
                     </div>
@@ -4343,7 +4363,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
         member_id: workoutMember.id,
         workout_date: getTodayDateString(),
         memo: workoutMemo.trim(),
-        body_parts: workoutTrainingType === "weight" ? workoutBodyParts : [],
+        body_parts: workoutTrainingType === "weight" ? workoutBodyParts : workoutTrainingType === "circuit" ? ["전신"] : [],
         condition: workoutCondition,
         issue: workoutIssue.trim(),
         next_plan: workoutNextPlan.trim(),
