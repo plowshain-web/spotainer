@@ -2083,6 +2083,29 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
   const activeMembers = members.filter((member) => member.is_active !== false);
 
+
+  function getScheduleSelectableMembers(excludedIds = []) {
+    const excludedSet = new Set(excludedIds.filter(Boolean));
+
+    return activeMembers.filter((member) => {
+      if (excludedSet.has(member.id)) return false;
+
+      if (scheduleType === "group") {
+        return member.member_type === "group";
+      }
+
+      return true;
+    });
+  }
+
+  function getScheduleMemberSelectHint() {
+    if (scheduleType === "group") {
+      return "그룹PT는 그룹PT회원만 최대 3명까지 선택할 수 있습니다.";
+    }
+
+    return "PT/OT/상담은 전체 활성 회원 중에서 선택할 수 있습니다.";
+  }
+
   const visibleMembers = members.filter((member) =>
     showInactiveMembers ? member.is_active === false : member.is_active !== false
   );
@@ -5363,13 +5386,14 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
             </div>
 
             <label style={styles.label}>회원 선택</label>
+            <p style={styles.scheduleFormHint}>{getScheduleMemberSelectHint()}</p>
             <select
               value={scheduleMemberId}
               onChange={(e) => setScheduleMemberId(e.target.value)}
               style={styles.input}
             >
               <option value="">회원을 선택하세요</option>
-              {activeMembers.map((member) => (
+              {getScheduleSelectableMembers().map((member) => (
                 <option key={member.id} value={member.id}>
                   {member.name} · {getMemberTypeText(member.member_type)} · PT {member.pt_remaining || 0}회
                 </option>
@@ -5385,8 +5409,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   style={styles.input}
                 >
                   <option value="">두 번째 회원을 선택하세요</option>
-                  {activeMembers
-                    .filter((member) => member.id !== scheduleMemberId && member.id !== scheduleThirdMemberId)
+                  {getScheduleSelectableMembers([scheduleMemberId, scheduleThirdMemberId])
                     .map((member) => (
                       <option key={member.id} value={member.id}>
                         {member.name} · {getMemberTypeText(member.member_type)} · PT {member.pt_remaining || 0}회
@@ -5401,8 +5424,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   style={styles.input}
                 >
                   <option value="">선택사항 · 최대 3명까지</option>
-                  {activeMembers
-                    .filter((member) => member.id !== scheduleMemberId && member.id !== scheduleSecondMemberId)
+                  {getScheduleSelectableMembers([scheduleMemberId, scheduleSecondMemberId])
                     .map((member) => (
                       <option key={member.id} value={member.id}>
                         {member.name} · {getMemberTypeText(member.member_type)} · PT {member.pt_remaining || 0}회
@@ -5506,7 +5528,13 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
               onChange={(e) => {
                 const nextType = e.target.value;
                 setScheduleType(nextType);
-                if (nextType !== "group") {
+
+                if (nextType === "group") {
+                  const selectedMember = activeMembers.find((member) => member.id === scheduleMemberId);
+                  if (selectedMember && selectedMember.member_type !== "group") {
+                    setScheduleMemberId("");
+                  }
+                } else {
                   setScheduleSecondMemberId("");
                   setScheduleThirdMemberId("");
                 }
