@@ -169,6 +169,7 @@ export default function Page() {
   const [workoutMember, setWorkoutMember] = useState(null);
   const [workoutReturnSource, setWorkoutReturnSource] = useState(null);
   const [workoutSessions, setWorkoutSessions] = useState([]);
+  const [detailWorkoutSessions, setDetailWorkoutSessions] = useState([]);
   const [lastWorkoutMap, setLastWorkoutMap] = useState({});
   const [workoutMode, setWorkoutMode] = useState("list");
   const [workoutTrainingType, setWorkoutTrainingType] = useState("weight");
@@ -3373,6 +3374,24 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       .eq("member_id", member.id)
       .order("created_at", { ascending: false });
 
+    const fourWeeksAgo = new Date();
+    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+
+    const { data: detailWorkoutData, error: detailWorkoutError } = await supabase
+      .from("workout_sessions")
+      .select("*, workout_sets(*)")
+      .eq("member_id", member.id)
+      .gte("workout_date", getDateOnlyString(fourWeeksAgo))
+      .order("workout_date", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (detailWorkoutError) {
+      console.error("운동 패턴 불러오기 실패:", detailWorkoutError.message);
+      setDetailWorkoutSessions([]);
+    } else {
+      setDetailWorkoutSessions(detailWorkoutData || []);
+    }
+
     setAttendanceList(attendanceData || []);
     setPtLogList(ptData || []);
     await loadInbodyLogs(member.id);
@@ -3384,6 +3403,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     setShowAllPtModal(false);
     setShowAllAttendanceModal(false);
     setShowAllInbodyModal(false);
+    setDetailWorkoutSessions([]);
 
     if (shouldReturnToMemberList && returnToMemberListAfterDetail) {
       setShowMemberListModal(true);
@@ -4019,6 +4039,85 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       (exerciseBodyPartKeywordMap[part] || []).some((keyword) =>
         combined.includes(String(keyword).toLowerCase())
       )
+    );
+  }
+
+  function getWorkoutPatternSummary(sessions = detailWorkoutSessions) {
+    const counts = weightBodyPartOptions.reduce((acc, part) => {
+      acc[part] = 0;
+      return acc;
+    }, {});
+
+    (sessions || []).forEach((session) => {
+      const taggedParts = getWorkoutSessionBodyParts(session);
+      const inferredParts = taggedParts.length > 0
+        ? taggedParts
+        : inferBodyPartsFromExerciseNames(getSessionExerciseNames(session));
+
+      Array.from(new Set(inferredParts)).forEach((part) => {
+        if (Object.prototype.hasOwnProperty.call(counts, part)) {
+          counts[part] += 1;
+        }
+      });
+    });
+
+    const entries = weightBodyPartOptions.map((part) => ({
+      part,
+      count: counts[part] || 0,
+    }));
+
+    const maxCount = Math.max(...entries.map((item) => item.count), 0);
+    const trainedEntries = entries.filter((item) => item.count > 0);
+    const weakEntries = entries.filter((item) => item.count === 0);
+
+    let suggestion = "최근 4주 운동기록이 부족합니다.";
+    if (trainedEntries.length > 0 && weakEntries.length > 0) {
+      suggestion = `${weakEntries[0].part} 운동 부족 · 다음 수업에서 ${weakEntries[0].part} 추천`;
+    } else if (trainedEntries.length > 0) {
+      const minCount = Math.min(...trainedEntries.map((item) => item.count));
+      const minItem = trainedEntries.find((item) => item.count === minCount);
+      suggestion = `${minItem.part} 비중 낮음 · 다음 수업에서 ${minItem.part} 보강 추천`;
+    }
+
+    return { entries, maxCount, total: trainedEntries.reduce((sum, item) => sum + item.count, 0), suggestion };
+  }
+
+  function renderWorkoutPatternBox() {
+    const pattern = getWorkoutPatternSummary(detailWorkoutSessions);
+
+    return (
+      <div style={styles.workoutPatternBox}>
+        <div style={styles.workoutPatternHeader}>
+          <div>
+            <strong style={styles.workoutPatternTitle}>최근 4주 운동 패턴</strong>
+            <p style={styles.workoutPatternSub}>부위별 운동 빈도 자동 분석</p>
+          </div>
+          <span style={styles.workoutPatternBadge}>28일</span>
+        </div>
+
+        {pattern.total === 0 ? (
+          <p style={styles.workoutPatternEmpty}>최근 4주 운동기록이 없습니다. 기록이 쌓이면 부위별 패턴이 자동으로 보입니다.</p>
+        ) : (
+          <>
+            <div style={styles.workoutPatternList}>
+              {pattern.entries.map((item) => {
+                const width = pattern.maxCount > 0 ? Math.max(8, Math.round((item.count / pattern.maxCount) * 100)) : 0;
+
+                return (
+                  <div key={item.part} style={styles.workoutPatternRow}>
+                    <span style={styles.workoutPatternPart}>{item.part}</span>
+                    <div style={styles.workoutPatternBarTrack}>
+                      <div style={{ ...styles.workoutPatternBar, width: `${width}%` }} />
+                    </div>
+                    <span style={styles.workoutPatternCount}>{item.count}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p style={styles.workoutPatternSuggestion}>{pattern.suggestion}</p>
+          </>
+        )}
+      </div>
     );
   }
 
@@ -6327,6 +6426,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
             {detailMode === "menu" && (
               <>
                 <h3 style={styles.subTitle}>상세 보기</h3>
+
+                {renderWorkoutPatternBox()}
 
                 <div style={styles.menuGrid}>
                   <button onClick={() => setDetailMode("info")} style={styles.menuButton}>
@@ -12726,6 +12827,93 @@ textarea: {
     borderRadius: 12,
     padding: "8px 10px",
     fontWeight: 900,
+  },
+  workoutPatternBox: {
+    border: "1px solid #111",
+    borderRadius: 18,
+    padding: 14,
+    margin: "12px 0 16px",
+    background: "#fff",
+    color: "#111",
+  },
+  workoutPatternHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 10,
+  },
+  workoutPatternTitle: {
+    display: "block",
+    fontSize: 16,
+    fontWeight: 1000,
+    color: "#111",
+  },
+  workoutPatternSub: {
+    margin: "4px 0 0",
+    fontSize: 12,
+    color: "#666",
+  },
+  workoutPatternBadge: {
+    border: "1px solid #111",
+    borderRadius: 999,
+    padding: "5px 9px",
+    fontSize: 12,
+    fontWeight: 900,
+    color: "#111",
+    background: "#fff",
+  },
+  workoutPatternEmpty: {
+    margin: 0,
+    padding: 12,
+    border: "1px dashed #bdbdbd",
+    borderRadius: 14,
+    background: "#fafafa",
+    color: "#555",
+    lineHeight: 1.5,
+  },
+  workoutPatternList: {
+    display: "grid",
+    gap: 8,
+  },
+  workoutPatternRow: {
+    display: "grid",
+    gridTemplateColumns: "42px 1fr 30px",
+    alignItems: "center",
+    gap: 10,
+  },
+  workoutPatternPart: {
+    fontSize: 13,
+    fontWeight: 900,
+    color: "#111",
+  },
+  workoutPatternBarTrack: {
+    height: 10,
+    border: "1px solid #111",
+    borderRadius: 999,
+    background: "#fff",
+    overflow: "hidden",
+  },
+  workoutPatternBar: {
+    height: "100%",
+    borderRadius: 999,
+    background: "#111",
+  },
+  workoutPatternCount: {
+    textAlign: "right",
+    fontSize: 13,
+    fontWeight: 900,
+    color: "#111",
+  },
+  workoutPatternSuggestion: {
+    margin: "12px 0 0",
+    padding: "10px 12px",
+    borderRadius: 14,
+    background: "#fff8dd",
+    border: "1px solid #e2c96b",
+    color: "#111",
+    fontWeight: 900,
+    fontSize: 13,
   },
   recentBodyReferenceBox: {
     background: "#fff",
