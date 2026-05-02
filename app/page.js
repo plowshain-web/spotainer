@@ -139,6 +139,7 @@ export default function Page() {
   const [workoutMember, setWorkoutMember] = useState(null);
   const [workoutReturnSource, setWorkoutReturnSource] = useState(null);
   const [workoutSessions, setWorkoutSessions] = useState([]);
+  const [lastWorkoutMap, setLastWorkoutMap] = useState({});
   const [workoutMode, setWorkoutMode] = useState("list");
   const [workoutTrainingType, setWorkoutTrainingType] = useState("weight");
   const [workoutMemo, setWorkoutMemo] = useState("");
@@ -343,6 +344,62 @@ const [workoutExercises, setWorkoutExercises] = useState([
     }
 
     setSchedules(data || []);
+    await loadLastWorkoutsForSchedules(data || []);
+  }
+
+  async function loadLastWorkoutsForSchedules(scheduleList = []) {
+    const targets = (scheduleList || [])
+      .map((schedule) => ({
+        scheduleId: schedule.id,
+        memberId: schedule.member_id,
+        scheduleDate: schedule.schedule_date || getTodayDateString(),
+      }))
+      .filter((target) => target.scheduleId && target.memberId);
+
+    if (targets.length === 0) return;
+
+    const nextMap = {};
+    const seenKeys = new Set();
+
+    for (const target of targets) {
+      const key = `${target.memberId}-${target.scheduleDate}`;
+
+      if (seenKeys.has(key)) {
+        const reused = Object.values(nextMap).find(
+          (item) => item?.member_id === target.memberId && item?.__baseDate === target.scheduleDate
+        );
+        if (reused) nextMap[target.scheduleId] = reused;
+        continue;
+      }
+
+      seenKeys.add(key);
+
+      const { data, error } = await supabase
+        .from("workout_sessions")
+        .select("*, workout_sets(*)")
+        .eq("member_id", target.memberId)
+        .lt("workout_date", target.scheduleDate)
+        .order("workout_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.error("지난 운동 기록 불러오기 실패:", error.message);
+        continue;
+      }
+
+      if (data?.[0]) {
+        nextMap[target.scheduleId] = {
+          ...data[0],
+          __baseDate: target.scheduleDate,
+        };
+      }
+    }
+
+    setLastWorkoutMap((prev) => ({
+      ...prev,
+      ...nextMap,
+    }));
   }
 
   async function loadSelectedDateSchedules(date = scheduleDate) {
@@ -383,6 +440,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
     }
 
     setScheduleCheckList(data || []);
+    await loadLastWorkoutsForSchedules(data || []);
   }
 
   function getMonthRange(dateText = getTodayDateString()) {
@@ -688,6 +746,43 @@ const [workoutExercises, setWorkoutExercises] = useState([
     );
   }
 
+  function getWorkoutConditionText(condition) {
+    if (condition === "good") return "좋음";
+    if (condition === "bad") return "나쁨";
+    if (condition === "normal") return "보통";
+    return condition || "";
+  }
+
+  function getLastWorkoutSummary(workout) {
+    if (!workout) return null;
+
+    const exerciseNames = Array.from(
+      new Set(
+        (workout.workout_sets || [])
+          .map((set) => String(set.exercise_name || "").trim())
+          .filter(Boolean)
+      )
+    );
+
+    const exerciseText = exerciseNames.length > 0
+      ? `${exerciseNames.slice(0, 3).join(", ")}${exerciseNames.length > 3 ? ` 외 ${exerciseNames.length - 3}개` : ""}`
+      : "기록 있음";
+
+    const conditionText = getWorkoutConditionText(workout.condition);
+    const issueText = String(workout.issue || "").trim();
+    const memoText = String(workout.memo || "").trim();
+    const trainerNoteText = String(workout.trainer_note || "").trim();
+    const conditionLine = [conditionText ? `컨디션 ${conditionText}` : "", issueText].filter(Boolean).join(" · ");
+    const noteLine = memoText || trainerNoteText;
+
+    return {
+      exerciseText,
+      conditionLine,
+      noteLine,
+      workoutDate: workout.workout_date,
+    };
+  }
+
   function renderScheduleCheckItem(schedule, showDate = false) {
     const member = getScheduleMember(schedule) || schedule.members;
     const status = getSchedulePreviewStatus(schedule);
@@ -724,6 +819,24 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
           {schedule.memo && (
             <p style={styles.scheduleCheckMemoCompact}>{schedule.memo}</p>
+          )}
+
+          {getLastWorkoutSummary(lastWorkoutMap[schedule.id]) && (
+            <div style={styles.lastWorkoutPreviewCompact}>
+              <span style={styles.lastWorkoutPreviewStrong}>
+                지난운동: {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).exerciseText}
+              </span>
+              {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).conditionLine && (
+                <span style={styles.lastWorkoutPreviewText}>
+                  {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).conditionLine}
+                </span>
+              )}
+              {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).noteLine && (
+                <span style={styles.lastWorkoutPreviewText}>
+                  {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).noteLine}
+                </span>
+              )}
+            </div>
           )}
 
           <div style={styles.scheduleStatusRowCompact}>
@@ -4255,6 +4368,18 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
                         {getScheduleTypeText(schedule.type)} · {member?.name || "회원 정보 없음"}
                         {member ? ` (${member.pt_remaining || 0}회)` : ""}
                       </strong>
+
+                      {getLastWorkoutSummary(lastWorkoutMap[schedule.id]) && (
+                        <div style={styles.lastWorkoutPreviewDark}>
+                          <span>지난운동: {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).exerciseText}</span>
+                          {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).conditionLine && (
+                            <span>{getLastWorkoutSummary(lastWorkoutMap[schedule.id]).conditionLine}</span>
+                          )}
+                          {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).noteLine && (
+                            <span>{getLastWorkoutSummary(lastWorkoutMap[schedule.id]).noteLine}</span>
+                          )}
+                        </div>
+                      )}
 
                       <div style={styles.scheduleStatusRow}>
                         {isScheduleSMSSent(schedule) && (
@@ -10058,6 +10183,47 @@ textarea: {
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
+  },
+  lastWorkoutPreviewCompact: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 3,
+    marginTop: 6,
+    padding: "7px 8px",
+    background: "#f8fafc",
+    border: "1px solid #e5e7eb",
+    borderRadius: 10,
+    minWidth: 0,
+  },
+  lastWorkoutPreviewStrong: {
+    color: "#111",
+    fontSize: 12,
+    fontWeight: 1000,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  lastWorkoutPreviewText: {
+    color: "#555",
+    fontSize: 11,
+    fontWeight: 800,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  lastWorkoutPreviewDark: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 3,
+    marginTop: 7,
+    padding: "7px 8px",
+    background: "#1b1711",
+    border: "1px solid #3d321f",
+    borderRadius: 10,
+    color: "#f5e9d0",
+    fontSize: 12,
+    fontWeight: 900,
+    lineHeight: 1.35,
   },
   scheduleStatusRowCompact: {
     display: "flex",
