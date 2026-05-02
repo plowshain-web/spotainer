@@ -2262,6 +2262,92 @@ const [workoutExercises, setWorkoutExercises] = useState([
     ? Math.round((reRegisterStats.converted / reRegisterStats.success) * 100)
     : 0;
 
+
+  const todaySmsPendingSchedules = getTodaySMSTargets().sort((a, b) => {
+    const aTime = normalizeTimeValue(a.start_time || "");
+    const bTime = normalizeTimeValue(b.start_time || "");
+    return aTime.localeCompare(bTime);
+  });
+
+  const urgentReRegisterMembers = activeMembers
+    .filter((member) => shouldShowForContact(member) && (member.pt_remaining || 0) <= 2)
+    .sort((a, b) => (a.pt_remaining || 0) - (b.pt_remaining || 0));
+
+  const softReRegisterMembers = activeMembers
+    .filter((member) => {
+      const pt = member.pt_remaining || 0;
+      return shouldShowForContact(member) && pt >= 3 && pt <= 5;
+    })
+    .sort((a, b) => (a.pt_remaining || 0) - (b.pt_remaining || 0));
+
+  const dormantTodoMembers = attentionList
+    .filter((member) => member.attendanceStatus || member.followUpStatus)
+    .filter((member) => !urgentReRegisterMembers.some((m) => m.id === member.id))
+    .filter((member) => !softReRegisterMembers.some((m) => m.id === member.id))
+    .slice(0, 8);
+
+  const todayTodoItems = [
+    ...urgentReRegisterMembers.map((member) => ({
+      key: `urgent-${member.id}`,
+      type: "member",
+      member,
+      badge: "강한 권유",
+      title: member.name,
+      desc: `PT ${member.pt_remaining || 0}회 남음 · 수업 후 바로 상담`,
+      tone: "danger",
+      actionText: "회원 보기",
+    })),
+    ...todaySmsPendingSchedules.map((schedule) => {
+      const member = getScheduleMember(schedule) || schedule.members;
+      return {
+        key: `sms-${schedule.id}`,
+        type: "sms",
+        schedule,
+        member,
+        badge: "문자 미발송",
+        title: member?.name || "회원 정보 없음",
+        desc: `${formatScheduleRange(schedule)} · 수업 안내/컨디션 확인`,
+        tone: "sms",
+        actionText: "문자 큐",
+      };
+    }),
+    ...softReRegisterMembers.map((member) => ({
+      key: `rejoin-${member.id}`,
+      type: "member",
+      member,
+      badge: "재등록 상담",
+      title: member.name,
+      desc: `PT ${member.pt_remaining || 0}회 남음 · 자연스럽게 상담`,
+      tone: "warn",
+      actionText: "회원 보기",
+    })),
+    ...dormantTodoMembers.map((member) => ({
+      key: `dormant-${member.id}`,
+      type: "member",
+      member,
+      badge: member.followUpStatus || member.attendanceStatus || "연락 필요",
+      title: member.name,
+      desc: member.phone || "전화번호 없음",
+      tone: "neutral",
+      actionText: "회원 보기",
+    })),
+  ].slice(0, 8);
+
+  function openTodayTodoItem(item) {
+    if (!item) return;
+
+    if (item.type === "sms" && item.schedule) {
+      setSmsQueue([item.schedule]);
+      setSmsIndex(0);
+      setSmsMode(true);
+      return;
+    }
+
+    if (item.member) {
+      openDetail(item.member, "menu");
+    }
+  }
+
   function getContactCardBorderStyle() {
     if (attentionCounts.urgent > 0) return styles.contactCardRed;
     if (attentionCounts.rejoin > 0) return styles.contactCardBlue;
@@ -4340,6 +4426,42 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
             <strong style={styles.todayTaskValue}>{schedules.length}건</strong>
             <span style={styles.todayTaskHint}>스케줄 확인</span>
           </button>
+        </div>
+
+        <div style={styles.todayTodoPanel}>
+          <div style={styles.todayTodoHeaderRow}>
+            <strong style={styles.todayTodoHeaderTitle}>오늘 우선 처리</strong>
+            <span style={styles.todayTodoHeaderCount}>{todayTodoItems.length}건</span>
+          </div>
+
+          {todayTodoItems.length === 0 ? (
+            <p style={styles.todayTodoEmpty}>오늘 즉시 처리할 항목이 없습니다.</p>
+          ) : (
+            <div style={styles.todayTodoList}>
+              {todayTodoItems.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => openTodayTodoItem(item)}
+                  style={styles.todayTodoItem}
+                >
+                  <span style={{
+                    ...styles.todayTodoBadge,
+                    ...(item.tone === "danger" ? styles.todayTodoBadgeDanger : {}),
+                    ...(item.tone === "warn" ? styles.todayTodoBadgeWarn : {}),
+                    ...(item.tone === "sms" ? styles.todayTodoBadgeSms : {}),
+                  }}>
+                    {item.badge}
+                  </span>
+                  <span style={styles.todayTodoTextWrap}>
+                    <strong style={styles.todayTodoName}>{item.title}</strong>
+                    <span style={styles.todayTodoDesc}>{item.desc}</span>
+                  </span>
+                  <span style={styles.todayTodoAction}>{item.actionText}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -6819,6 +6941,123 @@ const styles = {
     color: "#64748b",
     fontSize: 11,
     fontWeight: 700,
+  },
+
+  todayTodoPanel: {
+    marginTop: 12,
+    background: "rgba(255, 255, 255, 0.98)",
+    border: "1px solid rgba(255, 255, 255, 0.18)",
+    borderRadius: 18,
+    padding: 12,
+    color: "#111827",
+  },
+
+  todayTodoHeaderRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 8,
+  },
+
+  todayTodoHeaderTitle: {
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: 1000,
+  },
+
+  todayTodoHeaderCount: {
+    color: "#4b5563",
+    fontSize: 12,
+    fontWeight: 900,
+  },
+
+  todayTodoEmpty: {
+    margin: 0,
+    color: "#6b7280",
+    fontSize: 13,
+    fontWeight: 700,
+  },
+
+  todayTodoList: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+    gap: 8,
+  },
+
+  todayTodoItem: {
+    appearance: "none",
+    border: "1px solid #d1d5db",
+    background: "#ffffff",
+    color: "#111827",
+    borderRadius: 14,
+    padding: "9px 10px",
+    display: "grid",
+    gridTemplateColumns: "auto minmax(0, 1fr) auto",
+    alignItems: "center",
+    gap: 8,
+    textAlign: "left",
+    cursor: "pointer",
+  },
+
+  todayTodoBadge: {
+    borderRadius: 999,
+    padding: "5px 8px",
+    background: "#f3f4f6",
+    color: "#111827",
+    border: "1px solid #d1d5db",
+    fontSize: 11,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+  },
+
+  todayTodoBadgeDanger: {
+    background: "#fee2e2",
+    color: "#991b1b",
+    border: "1px solid #fecaca",
+  },
+
+  todayTodoBadgeWarn: {
+    background: "#fef3c7",
+    color: "#92400e",
+    border: "1px solid #fde68a",
+  },
+
+  todayTodoBadgeSms: {
+    background: "#dcfce7",
+    color: "#166534",
+    border: "1px solid #bbf7d0",
+  },
+
+  todayTodoTextWrap: {
+    minWidth: 0,
+    display: "grid",
+    gap: 2,
+  },
+
+  todayTodoName: {
+    color: "#111827",
+    fontSize: 13,
+    fontWeight: 1000,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+
+  todayTodoDesc: {
+    color: "#4b5563",
+    fontSize: 11,
+    fontWeight: 700,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+
+  todayTodoAction: {
+    color: "#111827",
+    fontSize: 11,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
   },
 
   header: {
