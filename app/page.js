@@ -3354,7 +3354,77 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
     setSmsIndex((prev) => prev + 1);
   }
 
-  function sendConditionCheckSMS(member) {
+  function isWithinDays(dateText, dayCount) {
+    if (!dateText) return false;
+
+    const target = new Date(dateText);
+    if (Number.isNaN(target.getTime())) return false;
+
+    const now = new Date();
+    const diffDays = (now.getTime() - target.getTime()) / (1000 * 60 * 60 * 24);
+    return diffDays >= 0 && diffDays <= dayCount;
+  }
+
+  function hasRecentClassForFeedback(member) {
+    return isWithinDays(member?.latest_pt, 7) || isWithinDays(member?.latest_visit, 7);
+  }
+
+  function hasRecentMemberContact(member) {
+    return isWithinDays(member?.last_contacted_at, 3);
+  }
+
+  function shouldRecommendFeedback(member) {
+    return hasRecentClassForFeedback(member) && !hasRecentMemberContact(member);
+  }
+
+  async function markMemberContacted(member, noteText = "문자 발송") {
+    if (!member?.id) return;
+
+    const now = new Date().toISOString();
+    const nextDate = addDaysDateString(3);
+
+    await supabase
+      .from("members")
+      .update({
+        last_contacted_at: now,
+        last_contact_result: "pending",
+        next_contact_date: nextDate,
+        contact_note: noteText,
+      })
+      .eq("id", member.id);
+
+    setMembers((prev) =>
+      (prev || []).map((m) =>
+        m.id === member.id
+          ? {
+              ...m,
+              last_contacted_at: now,
+              last_contact_result: "pending",
+              next_contact_date: nextDate,
+              contact_note: noteText,
+            }
+          : m
+      )
+    );
+  }
+
+  function generateMemberCardFeedbackMessage(member) {
+    const latestPart = lastWorkoutMap?.[member?.id]?.body_parts;
+    const partText = Array.isArray(latestPart) && latestPart.length > 0
+      ? latestPart.join(", ")
+      : "오늘 운동";
+
+    return `${member?.name || "회원"}님 오늘 운동 고생 많으셨어요 😊
+
+${partText} 흐름 잘 이어가고 있고
+컨디션에 맞춰서 안정적으로 진행해주셨어요 👍
+
+오늘 좋았던 부분이나 체크할 부분 한 줄만 추가해서 보내주세요.
+
+편하게 쉬시고 다음에 뵐게요 🙂`;
+  }
+
+  async function sendConditionCheckSMS(member) {
     const phone = normalizePhone(member?.phone);
 
     if (!member) {
@@ -3373,6 +3443,7 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
       return;
     }
 
+    await markMemberContacted(member, "컨디션 확인 문자");
     window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
   }
 
@@ -4530,7 +4601,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     setFeedbackDraft("");
   }
 
-  function sendFeedbackSMS() {
+  async function sendFeedbackSMS() {
     const phone = normalizePhone(feedbackModalMember?.phone);
 
     if (!feedbackModalMember) {
@@ -4549,6 +4620,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       return;
     }
 
+    await markMemberContacted(feedbackModalMember, "피드백 문자");
     window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
   }
 
@@ -5008,7 +5080,17 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   }}
                   style={styles.conditionSmsButton}
                 >
-                  컨디션
+                  문자
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openFeedbackModal(member, generateMemberCardFeedbackMessage(member));
+                  }}
+                  style={shouldRecommendFeedback(member) ? styles.feedbackRecommendButtonMini : styles.feedbackButtonMini}
+                >
+                  {shouldRecommendFeedback(member) ? "피드백🔥" : "피드백"}
                 </button>
 
                 {mainBadges.map((badge, index) => (
@@ -11329,6 +11411,24 @@ textarea: {
     background: "#172554",
     color: "#bfdbfe",
     border: "1px solid #1d4ed8",
+    borderRadius: 999,
+    padding: "7px 10px",
+    fontSize: 12,
+    fontWeight: 1000,
+  },
+  feedbackButtonMini: {
+    background: "#ffffff",
+    color: "#111827",
+    border: "1px solid #111827",
+    borderRadius: 999,
+    padding: "7px 10px",
+    fontSize: 12,
+    fontWeight: 1000,
+  },
+  feedbackRecommendButtonMini: {
+    background: "#fef3c7",
+    color: "#92400e",
+    border: "1px solid #f59e0b",
     borderRadius: 999,
     padding: "7px 10px",
     fontSize: 12,
