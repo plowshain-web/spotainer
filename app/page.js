@@ -190,6 +190,7 @@ export default function Page() {
   const [freeSmsDraft, setFreeSmsDraft] = useState("");
   const [completedTodayTodoKeys, setCompletedTodayTodoKeys] = useState({});
   const [activeTodayTodoKey, setActiveTodayTodoKey] = useState(null);
+  const [showTodayTodoModal, setShowTodayTodoModal] = useState(false);
   const [exerciseSuggestions, setExerciseSuggestions] = useState([]);
 const [activeExerciseIndex, setActiveExerciseIndex] = useState(null);
 const [workoutExercises, setWorkoutExercises] = useState([
@@ -2732,10 +2733,13 @@ const [workoutExercises, setWorkoutExercises] = useState([
       tone: "neutral",
       actionText: "회원 보기",
     })),
-  ].slice(0, 8).map((item) => ({
+  ].slice(0, 12).map((item) => ({
     ...item,
     done: Boolean(completedTodayTodoKeys[item.key]),
   }));
+
+  const pendingTodayTodoItems = todayTodoItems.filter((item) => !item.done);
+  const doneTodayTodoItems = todayTodoItems.filter((item) => item.done);
 
   function markTodayTodoDone(item) {
     if (!item?.key) return;
@@ -5454,131 +5458,135 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
         <div style={styles.todayDashboardTop}>
           <div>
             <h2 style={styles.todayDashboardTitle}>오늘 할 일</h2>
-            <p style={styles.todayDashboardDesc}>앱을 켜자마자 바로 처리해야 할 일을 확인하세요.</p>
+            <p style={styles.todayDashboardDesc}>메인은 깔끔하게 보고, 필요한 작업은 전체화면에서 처리합니다.</p>
           </div>
           <span style={styles.todayDashboardBadge}>{getTodayDateString()}</span>
         </div>
 
-        <div style={styles.todayDashboardGrid}>
-          <button
-            type="button"
-            onClick={() => setShowContactListModal(true)}
-            style={styles.todayTaskCard}
-          >
-            <span style={styles.todayTaskLabel}>연락 작업</span>
-            <strong style={styles.todayTaskValue}>{attentionList.length}명</strong>
-            <span style={styles.todayTaskHint}>오늘 처리</span>
-          </button>
+        <button
+          type="button"
+          onClick={() => setShowTodayTodoModal(true)}
+          style={styles.todayTodoOpenButton}
+        >
+          <span style={styles.todayTodoOpenTextWrap}>
+            <strong style={styles.todayTodoOpenTitle}>오늘 할 일 열기</strong>
+            <span style={styles.todayTodoOpenDesc}>
+              처리할 일 {pendingTodayTodoItems.length}건
+              {doneTodayTodoItems.length > 0 ? ` · 완료 ${doneTodayTodoItems.length}건` : ""}
+            </span>
+          </span>
+          <span style={styles.todayTodoOpenCount}>{pendingTodayTodoItems.length}건</span>
+        </button>
+      </section>
 
-          <button
-            type="button"
-            onClick={() => setSummaryModal("rejoin")}
-            style={styles.todayTaskCard}
-          >
-            <span style={styles.todayTaskLabel}>재등록 상담</span>
-            <strong style={styles.todayTaskValue}>{summaryGroups.rejoin.length}명</strong>
-            <span style={styles.todayTaskHint}>3~5회 남음</span>
-          </button>
+      {showTodayTodoModal && (
+        <div style={styles.fullScreenOverlay}>
+          <div style={styles.todayTodoFullModal}>
+            <div style={styles.todayTodoModalHeader}>
+              <div>
+                <h2 style={styles.todayTodoModalTitle}>오늘 할 일</h2>
+                <p style={styles.todayTodoModalDesc}>문자, 상담기록, 완료 처리를 여기서 바로 끝냅니다.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTodayTodoModal(false)}
+                style={styles.blackCloseButton}
+              >
+                닫기
+              </button>
+            </div>
 
-          <button
-            type="button"
-            onClick={() => setSummaryModal("urgent")}
-            style={styles.todayTaskCard}
-          >
-            <span style={styles.todayTaskLabel}>강한 경고</span>
-            <strong style={styles.todayTaskValue}>{summaryGroups.urgent.length}명</strong>
-            <span style={styles.todayTaskHint}>0~2회 남음</span>
-          </button>
+            <div style={styles.todayTodoModalSummaryRow}>
+              <div style={styles.todayTodoModalSummaryCard}>
+                <span>처리할 일</span>
+                <strong>{pendingTodayTodoItems.length}건</strong>
+              </div>
+              <div style={styles.todayTodoModalSummaryCard}>
+                <span>완료 표시</span>
+                <strong>{doneTodayTodoItems.length}건</strong>
+              </div>
+              <div style={styles.todayTodoModalSummaryCard}>
+                <span>오늘 수업</span>
+                <strong>{schedules.length}건</strong>
+              </div>
+            </div>
 
-          <button
-            type="button"
-            onClick={openScheduleCheckModal}
-            style={styles.todayTaskCard}
-          >
-            <span style={styles.todayTaskLabel}>오늘 수업</span>
-            <strong style={styles.todayTaskValue}>{schedules.length}건</strong>
-            <span style={styles.todayTaskHint}>스케줄 확인</span>
-          </button>
-        </div>
+            {todayTodoItems.length === 0 ? (
+              <div style={styles.todayTodoModalEmpty}>
+                오늘 즉시 처리할 항목이 없습니다.
+              </div>
+            ) : (
+              <div style={styles.todayTodoModalList}>
+                {todayTodoItems.map((item) => (
+                  <div
+                    key={item.key}
+                    style={{
+                      ...styles.todayTodoModalItem,
+                      ...(item.done ? styles.todayTodoModalItemDone : {}),
+                    }}
+                  >
+                    <div style={styles.todayTodoModalLeft}>
+                      <span style={{
+                        ...styles.todayTodoBadge,
+                        ...(item.tone === "danger" ? styles.todayTodoBadgeDanger : {}),
+                        ...(item.tone === "warn" ? styles.todayTodoBadgeWarn : {}),
+                        ...(item.tone === "sms" ? styles.todayTodoBadgeSms : {}),
+                        ...(item.done ? styles.todayTodoBadgeDone : {}),
+                      }}>
+                        {item.done ? "오늘 처리 완료" : item.badge}
+                      </span>
+                      <div style={styles.todayTodoTextWrap}>
+                        <strong style={styles.todayTodoModalName}>{item.title}</strong>
+                        <span style={styles.todayTodoModalDescText}>{item.desc}</span>
+                      </div>
+                    </div>
 
-        <div style={styles.todayTodoPanel}>
-          <div style={styles.todayTodoHeaderRow}>
-            <strong style={styles.todayTodoHeaderTitle}>오늘 우선 처리</strong>
-            <span style={styles.todayTodoHeaderCount}>{todayTodoItems.length}건</span>
-          </div>
-
-          {todayTodoItems.length === 0 ? (
-            <p style={styles.todayTodoEmpty}>오늘 즉시 처리할 항목이 없습니다.</p>
-          ) : (
-            <div style={styles.todayTodoList}>
-              {todayTodoItems.map((item) => (
-                <div
-                  key={item.key}
-                  style={{
-                    ...styles.todayTodoItem,
-                    ...(item.done ? styles.todayTodoItemDone : {}),
-                  }}
-                >
-                  <div style={styles.todayTodoMainRow}>
-                    <span style={{
-                      ...styles.todayTodoBadge,
-                      ...(item.tone === "danger" ? styles.todayTodoBadgeDanger : {}),
-                      ...(item.tone === "warn" ? styles.todayTodoBadgeWarn : {}),
-                      ...(item.tone === "sms" ? styles.todayTodoBadgeSms : {}),
-                    }}>
-                      {item.done ? "오늘 처리 완료" : item.badge}
-                    </span>
-                    <span style={styles.todayTodoTextWrap}>
-                      <strong style={styles.todayTodoName}>{item.title}</strong>
-                      <span style={styles.todayTodoDesc}>{item.desc}</span>
-                    </span>
-                  </div>
-
-                  {item.done ? (
-                    <span style={styles.todayTodoDoneText}>완료 표시 유지</span>
-                  ) : (
-                    <div style={styles.todayTodoActionRow}>
-                      {item.type === "sms" ? (
-                        <button
-                          type="button"
-                          onClick={() => sendTodayTodoScheduleSMS(item)}
-                          style={styles.todayTodoActionButtonPrimary}
-                        >
-                          문자
-                        </button>
-                      ) : (
-                        <>
+                    {item.done ? (
+                      <span style={styles.todayTodoDoneText}>완료 표시 유지</span>
+                    ) : (
+                      <div style={styles.todayTodoActionRow}>
+                        {item.type === "sms" ? (
                           <button
                             type="button"
-                            onClick={() => openTodayTodoFreeSms(item)}
-                            style={styles.todayTodoActionButton}
+                            onClick={() => sendTodayTodoScheduleSMS(item)}
+                            style={styles.todayTodoActionButtonPrimary}
                           >
                             문자
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => openTodayTodoContact(item, item.badge === "강한 권유" || item.badge === "재등록 상담" ? "pending" : "pending")}
-                            style={styles.todayTodoActionButtonPrimary}
-                          >
-                            상담기록
-                          </button>
-                        </>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => markTodayTodoDone(item)}
-                        style={styles.todayTodoActionButtonSoft}
-                      >
-                        완료
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => openTodayTodoFreeSms(item)}
+                              style={styles.todayTodoActionButton}
+                            >
+                              문자
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openTodayTodoContact(item, "pending")}
+                              style={styles.todayTodoActionButtonPrimary}
+                            >
+                              상담기록
+                            </button>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => markTodayTodoDone(item)}
+                          style={styles.todayTodoActionButtonSoft}
+                        >
+                          완료
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </section>
+      )}
 
       <section style={styles.incompleteBox}>
         <div style={styles.incompleteTop}>
@@ -8529,6 +8537,174 @@ const styles = {
     padding: "6px 10px",
     fontSize: 11,
     fontWeight: 800,
+  },
+
+  todayTodoOpenButton: {
+    width: "100%",
+    border: "1px solid rgba(255,255,255,0.22)",
+    background: "#ffffff",
+    color: "#111827",
+    borderRadius: 18,
+    padding: "16px 18px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 14,
+    cursor: "pointer",
+    boxShadow: "0 10px 24px rgba(15,23,42,0.16)",
+  },
+
+  todayTodoOpenTextWrap: {
+    display: "grid",
+    gap: 4,
+    textAlign: "left",
+  },
+
+  todayTodoOpenTitle: {
+    fontSize: 18,
+    fontWeight: 1000,
+    color: "#111827",
+  },
+
+  todayTodoOpenDesc: {
+    fontSize: 13,
+    fontWeight: 800,
+    color: "#64748b",
+  },
+
+  todayTodoOpenCount: {
+    flexShrink: 0,
+    borderRadius: 999,
+    background: "#111827",
+    color: "#ffffff",
+    padding: "9px 14px",
+    fontSize: 14,
+    fontWeight: 1000,
+  },
+
+  todayTodoFullModal: {
+    width: "calc(100vw - 40px)",
+    height: "calc(100vh - 70px)",
+    maxWidth: 1480,
+    background: "#ffffff",
+    color: "#111827",
+    borderRadius: 24,
+    padding: 26,
+    boxShadow: "0 24px 80px rgba(0,0,0,0.45)",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
+
+  todayTodoModalHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 16,
+    paddingBottom: 16,
+    borderBottom: "1px solid #e5e7eb",
+    marginBottom: 16,
+  },
+
+  todayTodoModalTitle: {
+    margin: 0,
+    fontSize: 34,
+    lineHeight: 1.1,
+    fontWeight: 1000,
+    color: "#111827",
+  },
+
+  todayTodoModalDesc: {
+    margin: "8px 0 0",
+    color: "#6b7280",
+    fontSize: 15,
+    fontWeight: 800,
+  },
+
+  todayTodoModalSummaryRow: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 10,
+    marginBottom: 14,
+  },
+
+  todayTodoModalSummaryCard: {
+    background: "#f9fafb",
+    border: "1px solid #e5e7eb",
+    borderRadius: 16,
+    padding: "12px 14px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 10,
+    color: "#111827",
+    fontWeight: 900,
+  },
+
+  todayTodoModalEmpty: {
+    border: "1px solid #e5e7eb",
+    background: "#f9fafb",
+    borderRadius: 18,
+    padding: 28,
+    color: "#6b7280",
+    fontSize: 18,
+    fontWeight: 900,
+    textAlign: "center",
+  },
+
+  todayTodoModalList: {
+    display: "grid",
+    gap: 10,
+    overflowY: "auto",
+    paddingRight: 4,
+  },
+
+  todayTodoModalItem: {
+    border: "1px solid #d1d5db",
+    background: "#ffffff",
+    color: "#111827",
+    borderRadius: 16,
+    padding: "12px 14px",
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  todayTodoModalItemDone: {
+    background: "#f8fafc",
+    opacity: 0.72,
+  },
+
+  todayTodoModalLeft: {
+    minWidth: 0,
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  },
+
+  todayTodoModalName: {
+    color: "#111827",
+    fontSize: 16,
+    fontWeight: 1000,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+
+  todayTodoModalDescText: {
+    color: "#4b5563",
+    fontSize: 13,
+    fontWeight: 800,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+
+  todayTodoBadgeDone: {
+    background: "#e0f2fe",
+    color: "#075985",
+    border: "1px solid #bae6fd",
   },
 
   todayDashboardGrid: {
