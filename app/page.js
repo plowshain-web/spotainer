@@ -3482,6 +3482,21 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     clearWorkoutEdit();
   }
 
+
+  function goBackFromWorkout() {
+    if (workoutMode === "add") {
+      setWorkoutMode("select");
+      return;
+    }
+
+    if (workoutMode === "select") {
+      setWorkoutMode("list");
+      return;
+    }
+
+    closeWorkout();
+  }
+
   async function loadWorkoutSessions(memberId) {
     const { data, error } = await supabase
       .from("workout_sessions")
@@ -6233,6 +6248,13 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
               </>
             )}
           </section>
+          <button
+            type="button"
+            onClick={goBackFromWorkout}
+            style={styles.detailFloatingBackButton}
+          >
+            뒤로
+          </button>
         </div>
       )}
 
@@ -6811,11 +6833,15 @@ const styles = {
     margin: 0,
     fontWeight: 900,
     letterSpacing: -1,
+    color: "#ffffff",
+    textShadow: "0 2px 12px rgba(0,0,0,0.55)",
   },
   subtitle: {
-    color: "#a3a3a3",
+    color: "#ffffff",
     marginTop: 8,
     fontSize: 16,
+    opacity: 0.92,
+    textShadow: "0 1px 8px rgba(0,0,0,0.45)",
   },
   adminBadge: {
     background: "#1f1f1f",
