@@ -4682,9 +4682,14 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
           <h1 style={styles.title}>Spotainer</h1>
           <p style={styles.subtitle}>여성전용 PT 회원관리</p>
         </div>
-        <button onClick={openCenterModal} style={styles.adminBadge}>
-          관리자
-        </button>
+        <div style={styles.headerActions}>
+          <button onClick={openTrainerLogModal} style={styles.trainerQuickButton}>
+            개인 기록
+          </button>
+          <button onClick={openCenterModal} style={styles.adminBadge}>
+            관리자
+          </button>
+        </div>
       </header>
 
 
@@ -5053,14 +5058,6 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
             </div>
 
             <div style={styles.adminMenuBox}>
-              <button
-                type="button"
-                onClick={openTrainerLogModal}
-                style={styles.adminMenuButton}
-              >
-                대표 개인 기록
-              </button>
-
               <button
                 type="button"
                 onClick={openInactiveMembersFromAdmin}
@@ -7689,6 +7686,21 @@ const styles = {
     fontSize: 16,
     opacity: 0.92,
     textShadow: "0 1px 8px rgba(0,0,0,0.45)",
+  },
+  headerActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  },
+  trainerQuickButton: {
+    background: "#ffffff",
+    border: "1px solid rgba(255,255,255,0.75)",
+    padding: "10px 16px",
+    borderRadius: 999,
+    fontWeight: 900,
+    color: "#111",
+    cursor: "pointer",
+    boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
   },
   adminBadge: {
     background: "#1f1f1f",
