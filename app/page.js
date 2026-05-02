@@ -186,6 +186,8 @@ export default function Page() {
   const [workoutTrainerNote, setWorkoutTrainerNote] = useState("");
   const [feedbackModalMember, setFeedbackModalMember] = useState(null);
   const [feedbackDraft, setFeedbackDraft] = useState("");
+  const [freeSmsModalMember, setFreeSmsModalMember] = useState(null);
+  const [freeSmsDraft, setFreeSmsDraft] = useState("");
   const [exerciseSuggestions, setExerciseSuggestions] = useState([]);
 const [activeExerciseIndex, setActiveExerciseIndex] = useState(null);
 const [workoutExercises, setWorkoutExercises] = useState([
@@ -3408,20 +3410,87 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
     );
   }
 
-  function generateMemberCardFeedbackMessage(member) {
-    const latestPart = lastWorkoutMap?.[member?.id]?.body_parts;
-    const partText = Array.isArray(latestPart) && latestPart.length > 0
-      ? latestPart.join(", ")
-      : "오늘 운동";
+  function getExerciseSummaryFromSession(session) {
+    const names = Array.from(
+      new Set(
+        (session?.workout_sets || [])
+          .map((set) => String(set.exercise_name || "").trim())
+          .filter(Boolean)
+      )
+    );
+
+    if (names.length === 0) return "운동";
+    return `${names.slice(0, 3).join(", ")}${names.length > 3 ? ` 외 ${names.length - 3}개` : ""}`;
+  }
+
+  async function getLatestWorkoutSessionForMember(memberId) {
+    if (!memberId) return null;
+
+    const { data, error } = await supabase
+      .from("workout_sessions")
+      .select("*, workout_sets(*)")
+      .eq("member_id", memberId)
+      .order("workout_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (error) {
+      console.error("최근 운동기록 불러오기 실패:", error.message);
+      return null;
+    }
+
+    return data?.[0] || null;
+  }
+
+  function generateMemberCardFeedbackMessage(member, session) {
+    if (!session) return "";
+
+    const bodyParts = Array.isArray(session.body_parts)
+      ? session.body_parts.filter(Boolean)
+      : [];
+    const partText = bodyParts.length > 0
+      ? bodyParts.join(", ")
+      : getExerciseSummaryFromSession(session);
+
+    const conditionLine = (() => {
+      if (session.condition === "good") return "컨디션도 좋아서 운동 흐름이 잘 들어갔어요 👍";
+      if (session.condition === "bad") return "오늘 컨디션에 맞춰 무리하지 않고 잘 조절하면서 진행했어요 👍";
+      return "컨디션 잘 유지하면서 안정적으로 진행했어요 👍";
+    })();
+
+    const issue = cleanFeedbackText(session.issue);
+    const issueLine = issue
+      ? `${softenFeedbackExpression(issue)} 있어서 무리하지 않고 체크하면서 진행했어요\n조금만 더 안정 잡히면 훨씬 좋아질 것 같아요`
+      : "오늘 전체적으로 흐름 좋게 잘 진행됐어요";
+
+    const next = cleanFeedbackText(session.next_plan);
+    const nextLine = next
+      ? `다음 수업은 ${next} 방향으로 이어가볼게요!`
+      : "다음 수업도 오늘 흐름 이어서 더 좋게 만들어볼게요!";
 
     return `${member?.name || "회원"}님 오늘 운동 고생 많으셨어요 😊
 
-${partText} 흐름 잘 이어가고 있고
-컨디션에 맞춰서 안정적으로 진행해주셨어요 👍
+오늘은 ${partText} 위주로 진행했고
+${conditionLine}
 
-오늘 좋았던 부분이나 체크할 부분 한 줄만 추가해서 보내주세요.
+${issueLine}
+
+${nextLine}
 
 편하게 쉬시고 다음에 뵐게요 🙂`;
+  }
+
+  async function openMemberCardFeedback(member) {
+    if (!member) return;
+
+    const latestWorkout = await getLatestWorkoutSessionForMember(member.id);
+
+    if (!latestWorkout) {
+      alert(`${member.name || "회원"} 회원의 최근 운동기록이 없어 피드백 초안을 만들 수 없습니다.\n운동기록 저장 후 사용하세요.`);
+      return;
+    }
+
+    openFeedbackModal(member, generateMemberCardFeedbackMessage(member, latestWorkout));
   }
 
   async function sendConditionCheckSMS(member) {
@@ -3437,7 +3506,7 @@ ${partText} 흐름 잘 이어가고 있고
       return;
     }
 
-    const message = `${member.name || "회원"}님 오늘 몸상태나 컨디션 어떠세요? 불편한 부위 있으면 미리 알려주세요!`;
+    const message = `${member.name || "회원"}님 오늘 몸상태나 컨디션 어떠세요? 😊\n불편한 부위나 컨디션 있으면 미리 알려주세요!`;
 
     if (!confirm(`${member.name || "회원"} 회원에게 컨디션 확인 문자를 보낼까요?\n\n확인을 누르면 문자앱이 열리고, 직접 전송 버튼을 눌러야 발송됩니다.`)) {
       return;
@@ -3448,34 +3517,48 @@ ${partText} 흐름 잘 이어가고 있고
   }
 
 
-  async function sendFreeMemberSMS(member) {
-    const phone = normalizePhone(member?.phone);
-
+  function sendFreeMemberSMS(member) {
     if (!member) {
       alert("회원 정보를 찾을 수 없습니다.");
       return;
     }
 
+    const phone = normalizePhone(member?.phone);
     if (!phone) {
       alert(`${member.name || "회원"} 회원의 전화번호가 없습니다.`);
       return;
     }
 
-    const message = prompt(
-      `${member.name || "회원"} 회원에게 보낼 문자를 입력하세요.`,
-      ""
-    );
+    setFreeSmsModalMember(member);
+    setFreeSmsDraft("");
+  }
 
-    if (message === null) return;
+  function closeFreeSmsModal() {
+    setFreeSmsModalMember(null);
+    setFreeSmsDraft("");
+  }
 
-    const finalMessage = String(message || "").trim();
-    if (!finalMessage) {
+  async function sendFreeSmsDraft() {
+    const phone = normalizePhone(freeSmsModalMember?.phone);
+
+    if (!freeSmsModalMember) {
+      alert("회원 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    if (!phone) {
+      alert(`${freeSmsModalMember.name || "회원"} 회원의 전화번호가 없습니다.`);
+      return;
+    }
+
+    const message = String(freeSmsDraft || "").trim();
+    if (!message) {
       alert("보낼 문자를 입력하세요.");
       return;
     }
 
-    await markMemberContacted(member, "일반 문자");
-    window.location.href = `sms:${phone}?body=${encodeURIComponent(finalMessage)}`;
+    await markMemberContacted(freeSmsModalMember, "일반 문자");
+    window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
   }
 
   function sendReRegisterSMS(member) {
@@ -4655,7 +4738,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
   }
 
-  async function saveWorkout() {
+  async function saveWorkout(options = {}) {
+    const shouldOpenFeedback = options?.openFeedback === true;
     if (!workoutMember) return;
 
     const validExercises = workoutExercises
@@ -4736,7 +4820,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     setWorkoutMode("list");
 
     await loadWorkoutSessions(workoutMember.id);
-    openFeedbackModal(workoutMember, feedbackMessage);
+    if (shouldOpenFeedback) {
+      openFeedbackModal(workoutMember, feedbackMessage);
+    }
   }
 
   function getConditionText(condition) {
@@ -5129,7 +5215,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    openFeedbackModal(member, generateMemberCardFeedbackMessage(member));
+                    openMemberCardFeedback(member);
                   }}
                   style={shouldRecommendFeedback(member) ? styles.feedbackRecommendButtonMini : styles.feedbackButtonMini}
                   title="수업 후 피드백 문자"
@@ -7727,13 +7813,13 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 )}
 
                 <div style={styles.editActions}>
-                  <button onClick={saveWorkout} style={styles.primaryButton}>저장 후 피드백</button>
+                  <button onClick={() => saveWorkout({ openFeedback: false })} style={styles.primaryButton}>저장</button>
                   <button
                     type="button"
-                    onClick={() => openFeedbackModal(workoutMember)}
+                    onClick={() => saveWorkout({ openFeedback: true })}
                     style={styles.whiteActionButton}
                   >
-                    피드백 초안
+                    저장 후 피드백
                   </button>
                   <button onClick={() => setWorkoutMode("select")} style={styles.cancelButton}>
                     취소
@@ -7903,14 +7989,52 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
         </div>
       )}
 
+      {freeSmsModalMember && (
+        <div style={styles.workoutHistoryOverlay}>
+          <section style={{ ...styles.whiteModalBox, height: "auto", minHeight: 0, maxHeight: "calc(100vh - 120px)" }}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>{freeSmsModalMember.name} 문자 보내기</h2>
+                <p style={styles.whiteMuted}>
+                  일정 변경, 안내, 개인 연락 등 자유롭게 작성해서 보내세요.
+                </p>
+              </div>
+
+              <button type="button" onClick={closeFreeSmsModal} style={styles.whiteCloseButton}>
+                닫기
+              </button>
+            </div>
+
+            <div style={styles.whiteInfoBox}>
+              <strong style={styles.whiteSectionTitle}>문자 내용</strong>
+              <textarea
+                value={freeSmsDraft}
+                onChange={(e) => setFreeSmsDraft(e.target.value)}
+                placeholder="보낼 문자를 입력하세요."
+                style={{ ...styles.textarea, minHeight: 220, background: "#fff", color: "#111", border: "1px solid #111" }}
+              />
+            </div>
+
+            <div style={styles.whiteActionRowFull}>
+              <button type="button" onClick={sendFreeSmsDraft} style={styles.primaryButton}>
+                문자 보내기
+              </button>
+              <button type="button" onClick={closeFreeSmsModal} style={styles.cancelButton}>
+                취소
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {feedbackModalMember && (
         <div style={styles.workoutHistoryOverlay}>
-          <section style={styles.whiteModalBox}>
+          <section style={{ ...styles.whiteModalBox, height: "auto", minHeight: 0, maxHeight: "calc(100vh - 120px)" }}>
             <div style={styles.whiteModalTop}>
               <div>
                 <h2 style={styles.whiteModalTitle}>{feedbackModalMember.name} 피드백 문자</h2>
                 <p style={styles.whiteMuted}>
-                  수업 후에만 사용하는 피드백 초안입니다. 회원에게 실제로 보낼 말투로 가볍게 수정해서 보내세요.
+                  최근 운동기록을 바탕으로 만든 수업 후 피드백입니다. 실제로 보낼 말투로 가볍게 수정해서 보내세요.
                 </p>
               </div>
 
