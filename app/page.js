@@ -4030,6 +4030,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   function renderMemberCard(member) {
     const ptStatus = getPtStatus(member);
     const visitStatus = getVisitStatus(member);
+    const mainBadges = [ptStatus, visitStatus].filter(Boolean).slice(0, 2);
 
     return (
       <article
@@ -4075,21 +4076,22 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
           </div>
         ) : (
           <div onClick={() => openDetailFromMemberList(member)} style={styles.memberMainCompact}>
-            <div style={styles.memberCardTopLine}>
-              <h3 style={styles.memberNameSmall}>{member.name}</h3>
-
-              <span
-                style={{
-                  ...styles.ptCountPill,
-                  ...(member.pt_remaining || 0) <= 2
-                    ? styles.ptCountPillDanger
-                    : (member.pt_remaining || 0) <= 5
-                      ? styles.ptCountPillWarning
-                      : styles.ptCountPillNormal,
-                }}
-              >
-                PT {member.pt_remaining || 0}회 남음
-              </span>
+            <div style={styles.memberCardHeaderCompact}>
+              <div style={styles.memberTitleLineCompact}>
+                <h3 style={styles.memberNameSmall}>{member.name}</h3>
+                <span
+                  style={{
+                    ...styles.ptCountPill,
+                    ...(member.pt_remaining || 0) <= 2
+                      ? styles.ptCountPillDanger
+                      : (member.pt_remaining || 0) <= 5
+                        ? styles.ptCountPillWarning
+                        : styles.ptCountPillNormal,
+                  }}
+                >
+                  PT {member.pt_remaining || 0}
+                </span>
+              </div>
 
               <button
                 onClick={(e) => {
@@ -4103,34 +4105,37 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
               </button>
             </div>
 
-            <div style={styles.memberTypeRowCompact}>
+            <div style={styles.memberMetaLineCompact}>
               <span style={getMemberTypeStyle(member.member_type)}>
                 {getMemberTypeText(member.member_type)}
               </span>
               {member.is_vip && <span style={styles.vipBadge}>VIP</span>}
+              <span>{member.age ? `${member.age}세` : "나이 없음"}</span>
+              {member.height && <span>{member.height}cm</span>}
+              <span>{member.phone || "전화번호 없음"}</span>
             </div>
-
-            <p style={styles.phoneSmallCompact}>
-              {member.age ? `${member.age}세 · ` : ""}
-              {member.height ? `${member.height}cm · ` : ""}
-              {member.phone || "전화번호 없음"}
-            </p>
 
             <div style={styles.compactInfoRow}>
               <span>출석 {formatDate(member.latest_visit)}</span>
               <span>PT {formatDate(member.latest_pt)}</span>
             </div>
 
-            <div style={styles.memberCardBottomRow}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  sendConditionCheckSMS(member);
-                }}
-                style={styles.conditionSmsButton}
-              >
-                컨디션 확인
-              </button>
+            <div style={styles.memberActionLineCompact}>
+              <div style={styles.memberLeftActionsCompact}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    sendConditionCheckSMS(member);
+                  }}
+                  style={styles.conditionSmsButton}
+                >
+                  컨디션
+                </button>
+
+                {mainBadges.map((badge, index) => (
+                  <span key={index} style={styles.compactStatusBadge}>{badge.text}</span>
+                ))}
+              </div>
 
               {member.is_active === false ? (
                 <button
@@ -4153,12 +4158,6 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   비활성
                 </button>
               )}
-            </div>
-
-            <div style={styles.warningRowCompact}>
-              {[ptStatus, visitStatus].filter(Boolean).slice(0, 2).map((badge, index) => (
-                <span key={index} style={badge.style}>{badge.text}</span>
-              ))}
             </div>
           </div>
         )}
@@ -11329,6 +11328,191 @@ textarea: {
   },
   safeExitButton: {
     display: "none",
+  },
+
+
+  /* =========================
+     Member card density optimization overrides
+     ========================= */
+  memberModalGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(245px, 1fr))",
+    gap: 8,
+  },
+  cardCompact: {
+    background: "#ffffff",
+    border: "1px solid #d6d6d6",
+    borderRadius: 16,
+    padding: 10,
+    marginBottom: 6,
+    boxShadow: "0 6px 14px rgba(0,0,0,.07)",
+    color: "#111",
+    minHeight: 132,
+  },
+  memberMainCompact: {
+    flex: 1,
+    cursor: "pointer",
+    position: "relative",
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    height: "100%",
+  },
+  memberCardHeaderCompact: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
+  },
+  memberTitleLineCompact: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    minWidth: 0,
+    flex: 1,
+  },
+  memberNameSmall: {
+    fontSize: 18,
+    margin: 0,
+    fontWeight: 1000,
+    color: "#111",
+    wordBreak: "keep-all",
+    lineHeight: 1.1,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    maxWidth: 120,
+  },
+  ptCountPill: {
+    borderRadius: 999,
+    padding: "4px 7px",
+    fontSize: 10,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+    lineHeight: 1,
+  },
+  cardPtAddButtonMini: {
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #111",
+    borderRadius: 999,
+    padding: "5px 8px",
+    fontSize: 10,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+    flexShrink: 0,
+  },
+  memberMetaLineCompact: {
+    display: "flex",
+    alignItems: "center",
+    gap: 5,
+    flexWrap: "wrap",
+    color: "#333",
+    fontSize: 11,
+    fontWeight: 800,
+    lineHeight: 1.25,
+  },
+  generalMemberBadge: {
+    background: "#fff",
+    color: "#111",
+    border: "1px solid #cfcfcf",
+    borderRadius: 999,
+    padding: "3px 7px",
+    fontSize: 10,
+    fontWeight: 1000,
+  },
+  ptMemberBadge: {
+    background: "#eff6ff",
+    color: "#1e3a8a",
+    border: "1px solid #93c5fd",
+    borderRadius: 999,
+    padding: "3px 7px",
+    fontSize: 10,
+    fontWeight: 1000,
+  },
+  groupMemberBadge: {
+    background: "#faf5ff",
+    color: "#6b21a8",
+    border: "1px solid #d8b4fe",
+    borderRadius: 999,
+    padding: "3px 7px",
+    fontSize: 10,
+    fontWeight: 1000,
+  },
+  vipBadge: {
+    background: "#fef3c7",
+    color: "#92400e",
+    border: "1px solid #f59e0b",
+    borderRadius: 999,
+    padding: "3px 7px",
+    fontSize: 10,
+    fontWeight: 1000,
+  },
+  compactInfoRow: {
+    display: "flex",
+    gap: 7,
+    flexWrap: "wrap",
+    color: "#1d4ed8",
+    fontSize: 11,
+    marginBottom: 0,
+    fontWeight: 900,
+    lineHeight: 1.2,
+  },
+  memberActionLineCompact: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 6,
+    marginTop: "auto",
+  },
+  memberLeftActionsCompact: {
+    display: "flex",
+    alignItems: "center",
+    gap: 5,
+    flexWrap: "wrap",
+    minWidth: 0,
+  },
+  conditionSmsButton: {
+    background: "#eff6ff",
+    color: "#1e3a8a",
+    border: "1px solid #93c5fd",
+    borderRadius: 999,
+    padding: "5px 8px",
+    fontSize: 10,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+  },
+  compactStatusBadge: {
+    background: "#fffbeb",
+    color: "#92400e",
+    border: "1px solid #f59e0b",
+    borderRadius: 999,
+    padding: "5px 8px",
+    fontSize: 10,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+  },
+  cardDeactivateButtonMini: {
+    background: "#fff1f2",
+    color: "#991b1b",
+    border: "1px solid #fca5a5",
+    borderRadius: 999,
+    padding: "5px 7px",
+    fontSize: 10,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+    flexShrink: 0,
+  },
+  cardRestoreButtonMini: {
+    background: "#ecfdf3",
+    color: "#166534",
+    border: "1px solid #86efac",
+    borderRadius: 999,
+    padding: "5px 7px",
+    fontSize: 10,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+    flexShrink: 0,
   },
 
 };
