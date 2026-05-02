@@ -77,6 +77,17 @@ const commonExercises = [
   "스트레칭",
 ];
 
+const weightBodyPartOptions = ["가슴", "어깨", "등", "하체", "팔", "복부"];
+
+function createEmptyWorkoutExercise(trainingType = "weight") {
+  const defaultSetCount = trainingType === "weight" ? 4 : 1;
+
+  return {
+    name: "",
+    sets: Array.from({ length: defaultSetCount }, () => ({ weight: "", reps: "" })),
+  };
+}
+
 export default function Page() {
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");
@@ -142,6 +153,7 @@ export default function Page() {
   const [lastWorkoutMap, setLastWorkoutMap] = useState({});
   const [workoutMode, setWorkoutMode] = useState("list");
   const [workoutTrainingType, setWorkoutTrainingType] = useState("weight");
+  const [workoutBodyParts, setWorkoutBodyParts] = useState([]);
   const [workoutMemo, setWorkoutMemo] = useState("");
   const [workoutCondition, setWorkoutCondition] = useState("normal");
   const [workoutIssue, setWorkoutIssue] = useState("");
@@ -150,7 +162,7 @@ export default function Page() {
   const [exerciseSuggestions, setExerciseSuggestions] = useState([]);
 const [activeExerciseIndex, setActiveExerciseIndex] = useState(null);
 const [workoutExercises, setWorkoutExercises] = useState([
-    { name: "", sets: [{ weight: "", reps: "" }] },
+    createEmptyWorkoutExercise("weight"),
   ]);
   const [showAllWorkoutModal, setShowAllWorkoutModal] = useState(false);
   const [expandedWorkoutSessionId, setExpandedWorkoutSessionId] = useState(null);
@@ -783,6 +795,11 @@ const [workoutExercises, setWorkoutExercises] = useState([
       ? `${exerciseNames.slice(0, 3).join(", ")}${exerciseNames.length > 3 ? ` 외 ${exerciseNames.length - 3}개` : ""}`
       : "기록 있음";
 
+    const bodyParts = Array.isArray(workout.body_parts)
+      ? workout.body_parts.filter(Boolean)
+      : [];
+    const bodyPartText = bodyParts.length > 0 ? bodyParts.join(", ") : "";
+
     const conditionText = getWorkoutConditionText(workout.condition);
     const issueText = String(workout.issue || "").trim();
     const memoText = String(workout.memo || "").trim();
@@ -792,6 +809,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     return {
       exerciseText,
+      bodyPartText,
       conditionLine,
       noteLine,
       workoutDate: workout.workout_date,
@@ -847,6 +865,11 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
           {getLastWorkoutSummary(lastWorkoutMap[schedule.id]) && (
             <div style={styles.lastWorkoutPreviewCompact}>
+              {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).bodyPartText && (
+                <span style={styles.lastWorkoutPreviewStrong}>
+                  지난부위: {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).bodyPartText}
+                </span>
+              )}
               <span style={styles.lastWorkoutPreviewStrong}>
                 지난운동: {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).exerciseText}
               </span>
@@ -3666,12 +3689,13 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     setWorkoutReturnSource(source);
     setWorkoutMode("list");
     setWorkoutTrainingType("weight");
+    setWorkoutBodyParts([]);
     setWorkoutMemo("");
     setWorkoutCondition("normal");
     setWorkoutIssue("");
     setWorkoutNextPlan("");
     setWorkoutTrainerNote("");
-    setWorkoutExercises([{ name: "", sets: [{ weight: "", reps: "" }] }]);
+    setWorkoutExercises([createEmptyWorkoutExercise("weight")]);
     setShowAllWorkoutModal(false);
     clearWorkoutEdit();
 
@@ -3684,12 +3708,13 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     setWorkoutSessions([]);
     setWorkoutMode("list");
     setWorkoutTrainingType("weight");
+    setWorkoutBodyParts([]);
     setWorkoutMemo("");
     setWorkoutCondition("normal");
     setWorkoutIssue("");
     setWorkoutNextPlan("");
     setWorkoutTrainerNote("");
-    setWorkoutExercises([{ name: "", sets: [{ weight: "", reps: "" }] }]);
+    setWorkoutExercises([createEmptyWorkoutExercise("weight")]);
     setShowAllWorkoutModal(false);
     clearWorkoutEdit();
   }
@@ -3728,8 +3753,16 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   function addExercise() {
     setWorkoutExercises((prev) => [
       ...prev,
-      { name: "", sets: [{ weight: "", reps: "" }] },
+      createEmptyWorkoutExercise(workoutTrainingType),
     ]);
+  }
+
+  function toggleWorkoutBodyPart(part) {
+    setWorkoutBodyParts((prev) =>
+      prev.includes(part)
+        ? prev.filter((item) => item !== part)
+        : [...prev, part]
+    );
   }
 
   function removeExercise(exerciseIndex) {
@@ -3921,6 +3954,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
         member_id: workoutMember.id,
         workout_date: getTodayDateString(),
         memo: workoutMemo.trim(),
+        body_parts: workoutTrainingType === "weight" ? workoutBodyParts : [],
         condition: workoutCondition,
         issue: workoutIssue.trim(),
         next_plan: workoutNextPlan.trim(),
@@ -3957,12 +3991,13 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       return;
     }
 
+    setWorkoutBodyParts([]);
     setWorkoutMemo("");
     setWorkoutCondition("normal");
     setWorkoutIssue("");
     setWorkoutNextPlan("");
     setWorkoutTrainerNote("");
-    setWorkoutExercises([{ name: "", sets: [{ weight: "", reps: "" }] }]);
+    setWorkoutExercises([createEmptyWorkoutExercise("weight")]);
     setWorkoutMode("list");
 
     await loadWorkoutSessions(workoutMember.id);
@@ -4716,6 +4751,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
                       {getLastWorkoutSummary(lastWorkoutMap[schedule.id]) && (
                         <div style={styles.lastWorkoutPreviewDark}>
+                          {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).bodyPartText && (
+                            <span>지난부위: {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).bodyPartText}</span>
+                          )}
                           <span>지난운동: {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).exerciseText}</span>
                           {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).conditionLine && (
                             <span>{getLastWorkoutSummary(lastWorkoutMap[schedule.id]).conditionLine}</span>
@@ -6225,7 +6263,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                     type="button"
                     onClick={() => {
                       setWorkoutTrainingType("weight");
-                      setWorkoutExercises([{ name: "", sets: [{ weight: "", reps: "" }] }]);
+                      setWorkoutBodyParts([]);
+                      setWorkoutExercises([createEmptyWorkoutExercise("weight")]);
                       setWorkoutMode("add");
                     }}
                     style={styles.workoutTypeButton}
@@ -6238,7 +6277,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                     type="button"
                     onClick={() => {
                       setWorkoutTrainingType("circuit");
-                      setWorkoutExercises([{ name: "", sets: [{ weight: "", reps: "" }] }]);
+                      setWorkoutBodyParts([]);
+                      setWorkoutExercises([createEmptyWorkoutExercise("circuit")]);
                       setWorkoutMode("add");
                     }}
                     style={styles.workoutTypeButton}
@@ -6278,6 +6318,32 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                     방식 변경
                   </button>
                 </div>
+
+                {workoutTrainingType === "weight" && (
+                  <div style={styles.weightBodyPartBox}>
+                    <div style={styles.weightBodyPartHeader}>
+                      <strong>오늘 운동부위</strong>
+                      <span>중복 선택 가능</span>
+                    </div>
+
+                    <div style={styles.weightBodyPartGrid}>
+                      {weightBodyPartOptions.map((part) => {
+                        const selected = workoutBodyParts.includes(part);
+
+                        return (
+                          <button
+                            key={part}
+                            type="button"
+                            onClick={() => toggleWorkoutBodyPart(part)}
+                            style={selected ? styles.weightBodyPartButtonActive : styles.weightBodyPartButton}
+                          >
+                            {part}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {workoutTrainingType === "circuit" && (
                 <div style={styles.circuitProgramBox}>
@@ -6578,6 +6644,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                     >
                       <div>
                         <h3 style={styles.whiteWorkoutDate}>{formatDate(session.workout_date)}</h3>
+                        {Array.isArray(session.body_parts) && session.body_parts.length > 0 && (
+                          <p style={styles.whiteRecordBodyParts}>부위: {session.body_parts.join(", ")}</p>
+                        )}
                         <p style={styles.whiteRecordSummaryTitle}>{summaryText}</p>
                         <p style={styles.whiteMuted}>총 {totalSets}세트 · 클릭해서 상세 확인</p>
                       </div>
