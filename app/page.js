@@ -4451,39 +4451,59 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     return "컨디션을 잘 유지하면서 진행했습니다";
   }
 
-  function toPositiveIssueSentence(issue) {
-    const text = String(issue || "").trim();
-    if (!text) return "";
+  function cleanFeedbackText(value) {
+    return String(value || "")
+      .replace(/[.!?。？！]+$/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
 
-    const softened = text
+  function softenFeedbackExpression(value) {
+    return cleanFeedbackText(value)
       .replace(/부상위험|부상 위험|다칠 수 있음|다쳐요|위험/gi, "조금 더 안정적으로 잡아갈 부분")
       .replace(/안 좋음|안좋음|나쁨|문제/gi, "체크할 부분")
       .replace(/통증/gi, "불편감")
+      .replace(/아픔|아파함/gi, "불편감")
+      .replace(/불안해 함|불안해함|불안함|불안/gi, "긴장감이 있는 부분")
+      .replace(/무서워함|겁냄/gi, "조심스러운 부분")
+      .replace(/힘들어함/gi, "컨디션에 맞춰 조절할 부분")
       .replace(/부족/gi, "더 좋아질 부분")
       .replace(/불안정/gi, "안정성을 더 잡아갈 부분")
       .trim();
+  }
 
-    return `${softened} 부분은 체크하면서 진행했고, 조금 더 안정성을 잡아주면 운동 효과가 더 좋아질 것 같아요.`;
+  function toPositiveIssueSentence(issue) {
+    const text = softenFeedbackExpression(issue);
+    if (!text) return "";
+
+    return `${text}은 체크하면서 진행했고, 조금 더 안정성을 잡아주면 운동 효과가 더 좋아질 것 같아요.`;
+  }
+
+  function toPositiveTrainerNoteSentence(trainerNote) {
+    const text = softenFeedbackExpression(trainerNote);
+    if (!text) return "";
+
+    return `${text}도 확인했습니다. 다음 수업에서도 편안하게 움직일 수 있도록 흐름을 잘 맞춰가겠습니다.`;
   }
 
   function toPositiveNextPlanSentence(nextPlan) {
-    const text = String(nextPlan || "").trim();
+    const text = cleanFeedbackText(nextPlan);
     if (!text) return "다음 수업에서도 오늘 흐름을 이어가면서 더 좋은 움직임을 만들어보겠습니다.";
-    return `다음 수업에서는 ${text} 중심으로 더 좋은 흐름을 만들어보겠습니다.`;
+    return `다음 수업에서는 ${text} 방향으로 더 좋은 흐름을 만들어보겠습니다.`;
   }
 
   function generateWorkoutFeedbackMessage({ member, trainingType, bodyParts, condition, issue, nextPlan, trainerNote }) {
     const partText = getWorkoutFeedbackPartText(trainingType, bodyParts);
     const conditionText = getPositiveConditionSentence(condition);
     const issueText = toPositiveIssueSentence(issue);
+    const trainerNoteText = toPositiveTrainerNoteSentence(trainerNote);
     const nextText = toPositiveNextPlanSentence(nextPlan);
-    const noteText = String(trainerNote || "").trim();
 
     return [
       `${member?.name || "회원"}님 오늘 운동 고생 많으셨어요 😊`,
       `오늘은 ${partText} 운동 진행했고,\n${conditionText}.`,
       issueText,
-      noteText ? `오늘 ${noteText} 부분도 좋았습니다.` : "",
+      trainerNoteText,
       nextText,
       "편안한 시간 보내시고 다음 수업 때 뵐게요!",
     ]
@@ -4968,7 +4988,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
               <span style={getMemberTypeStyle(member.member_type)}>
                 {getMemberTypeText(member.member_type)}
               </span>
-              {member.is_vip && <span style={styles.vipBadge}>VIP</span>}
+              {member.is_vip && member.member_type !== "vip" && <span style={styles.vipBadge}>VIP</span>}
               <span>{member.age ? `${member.age}세` : "나이 없음"}</span>
               {member.height && <span>{member.height}cm</span>}
               <span>{member.phone || "전화번호 없음"}</span>
