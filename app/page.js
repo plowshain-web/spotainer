@@ -99,6 +99,25 @@ export default function Page() {
   const [centerPhone, setCenterPhone] = useState("");
   const [centerAddress, setCenterAddress] = useState("");
   const [centerMemo, setCenterMemo] = useState("");
+
+  const [showTrainerLogModal, setShowTrainerLogModal] = useState(false);
+  const [trainerLogTab, setTrainerLogTab] = useState("workout");
+  const [trainerInbodyList, setTrainerInbodyList] = useState([]);
+  const [trainerWorkoutList, setTrainerWorkoutList] = useState([]);
+  const [trainerInbodyDate, setTrainerInbodyDate] = useState(getTodayDateString());
+  const [trainerWeight, setTrainerWeight] = useState("");
+  const [trainerSkeletalMuscle, setTrainerSkeletalMuscle] = useState("");
+  const [trainerBodyFatMass, setTrainerBodyFatMass] = useState("");
+  const [trainerBodyFatPercent, setTrainerBodyFatPercent] = useState("");
+  const [trainerInbodyMemo, setTrainerInbodyMemo] = useState("");
+  const [trainerWorkoutDate, setTrainerWorkoutDate] = useState(getTodayDateString());
+  const [trainerWorkoutType, setTrainerWorkoutType] = useState("weight");
+  const [trainerWorkoutBodyParts, setTrainerWorkoutBodyParts] = useState([]);
+  const [trainerExerciseSummary, setTrainerExerciseSummary] = useState("");
+  const [trainerCondition, setTrainerCondition] = useState("normal");
+  const [trainerIssue, setTrainerIssue] = useState("");
+  const [trainerNextPlan, setTrainerNextPlan] = useState("");
+  const [trainerWorkoutMemo, setTrainerWorkoutMemo] = useState("");
   const [contactModalMember, setContactModalMember] = useState(null);
   const [contactResult, setContactResult] = useState("pending");
   const [contactNote, setContactNote] = useState("");
@@ -974,6 +993,136 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
   function closeCenterModal() {
     setShowCenterModal(false);
+  }
+
+  function openTrainerLogModal() {
+    setShowCenterModal(false);
+    setShowTrainerLogModal(true);
+    loadTrainerLogs();
+  }
+
+  function closeTrainerLogModal() {
+    setShowTrainerLogModal(false);
+  }
+
+  function toggleTrainerWorkoutBodyPart(part) {
+    setTrainerWorkoutBodyParts((prev) =>
+      prev.includes(part) ? prev.filter((item) => item !== part) : [...prev, part]
+    );
+  }
+
+  function resetTrainerInbodyForm() {
+    setTrainerInbodyDate(getTodayDateString());
+    setTrainerWeight("");
+    setTrainerSkeletalMuscle("");
+    setTrainerBodyFatMass("");
+    setTrainerBodyFatPercent("");
+    setTrainerInbodyMemo("");
+  }
+
+  function resetTrainerWorkoutForm() {
+    setTrainerWorkoutDate(getTodayDateString());
+    setTrainerWorkoutType("weight");
+    setTrainerWorkoutBodyParts([]);
+    setTrainerExerciseSummary("");
+    setTrainerCondition("normal");
+    setTrainerIssue("");
+    setTrainerNextPlan("");
+    setTrainerWorkoutMemo("");
+  }
+
+  async function loadTrainerLogs() {
+    const [inbodyResult, workoutResult] = await Promise.all([
+      supabase
+        .from("trainer_inbody_logs")
+        .select("*")
+        .order("measured_at", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(30),
+      supabase
+        .from("trainer_workout_logs")
+        .select("*")
+        .order("workout_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(50),
+    ]);
+
+    if (inbodyResult.error) {
+      console.error("대표 인바디 기록 불러오기 실패:", inbodyResult.error.message);
+    } else {
+      setTrainerInbodyList(inbodyResult.data || []);
+    }
+
+    if (workoutResult.error) {
+      console.error("대표 운동 기록 불러오기 실패:", workoutResult.error.message);
+    } else {
+      setTrainerWorkoutList(workoutResult.data || []);
+    }
+  }
+
+  async function saveTrainerInbodyLog() {
+    const row = {
+      measured_at: trainerInbodyDate || getTodayDateString(),
+      weight: trainerWeight ? Number(trainerWeight) : null,
+      skeletal_muscle: trainerSkeletalMuscle ? Number(trainerSkeletalMuscle) : null,
+      body_fat_mass: trainerBodyFatMass ? Number(trainerBodyFatMass) : null,
+      body_fat_percent: trainerBodyFatPercent ? Number(trainerBodyFatPercent) : null,
+      memo: trainerInbodyMemo.trim(),
+    };
+
+    const { error } = await supabase.from("trainer_inbody_logs").insert(row);
+
+    if (error) {
+      alert("대표 인바디 저장 실패: " + error.message);
+      return;
+    }
+
+    resetTrainerInbodyForm();
+    await loadTrainerLogs();
+    alert("대표 인바디 기록이 저장되었습니다.");
+  }
+
+  async function saveTrainerWorkoutLog() {
+    if (!trainerExerciseSummary.trim()) {
+      alert("운동 내용을 입력하세요.");
+      return;
+    }
+
+    const row = {
+      workout_date: trainerWorkoutDate || getTodayDateString(),
+      workout_type: trainerWorkoutType,
+      body_parts: trainerWorkoutBodyParts,
+      exercise_summary: trainerExerciseSummary.trim(),
+      condition: trainerCondition,
+      issue: trainerIssue.trim(),
+      next_plan: trainerNextPlan.trim(),
+      memo: trainerWorkoutMemo.trim(),
+    };
+
+    const { error } = await supabase.from("trainer_workout_logs").insert(row);
+
+    if (error) {
+      alert("대표 운동 기록 저장 실패: " + error.message);
+      return;
+    }
+
+    resetTrainerWorkoutForm();
+    await loadTrainerLogs();
+    alert("대표 운동 기록이 저장되었습니다.");
+  }
+
+  async function deleteTrainerInbodyLog(id) {
+    if (!confirm("이 인바디 기록을 삭제할까요?")) return;
+    const { error } = await supabase.from("trainer_inbody_logs").delete().eq("id", id);
+    if (error) return alert("대표 인바디 삭제 실패: " + error.message);
+    await loadTrainerLogs();
+  }
+
+  async function deleteTrainerWorkoutLog(id) {
+    if (!confirm("이 운동 기록을 삭제할까요?")) return;
+    const { error } = await supabase.from("trainer_workout_logs").delete().eq("id", id);
+    if (error) return alert("대표 운동 기록 삭제 실패: " + error.message);
+    await loadTrainerLogs();
   }
 
   function openInactiveMembersFromAdmin() {
@@ -4431,6 +4580,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     showAllAttendanceModal ||
     showContactListModal ||
     showCenterModal ||
+    showTrainerLogModal ||
     contactModalMember ||
     summaryModal;
 
@@ -4905,6 +5055,14 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
             <div style={styles.adminMenuBox}>
               <button
                 type="button"
+                onClick={openTrainerLogModal}
+                style={styles.adminMenuButton}
+              >
+                대표 개인 기록
+              </button>
+
+              <button
+                type="button"
                 onClick={openInactiveMembersFromAdmin}
                 style={styles.adminMenuButton}
               >
@@ -4961,6 +5119,234 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 취소
               </button>
             </div>
+          </section>
+        </div>
+      )}
+
+      {showTrainerLogModal && (
+        <div style={styles.whiteModalOverlay}>
+          <section style={styles.whiteModalBox}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>대표 개인 기록</h2>
+                <p style={styles.whiteMuted}>대표님의 인바디와 개인 운동일지를 따로 기록합니다. 회원 기록과 섞이지 않습니다.</p>
+              </div>
+
+              <button onClick={closeTrainerLogModal} style={styles.whiteCloseButton}>
+                닫기
+              </button>
+            </div>
+
+            <div style={styles.whiteTabRow}>
+              <button
+                type="button"
+                onClick={() => setTrainerLogTab("workout")}
+                style={trainerLogTab === "workout" ? styles.whiteTabActive : styles.whiteTab}
+              >
+                개인 운동일지
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrainerLogTab("inbody")}
+                style={trainerLogTab === "inbody" ? styles.whiteTabActive : styles.whiteTab}
+              >
+                개인 인바디
+              </button>
+            </div>
+
+            {trainerLogTab === "workout" ? (
+              <div style={styles.personalLogGrid}>
+                <section style={styles.personalFormBox}>
+                  <h3 style={styles.personalSectionTitle}>오늘 운동 기록</h3>
+
+                  <label style={styles.whiteLabel}>날짜</label>
+                  <input
+                    type="date"
+                    value={trainerWorkoutDate}
+                    onChange={(e) => setTrainerWorkoutDate(e.target.value)}
+                    style={styles.whiteInput}
+                  />
+
+                  <label style={styles.whiteLabel}>운동 유형</label>
+                  <div style={styles.whitePillRow}>
+                    {["weight", "circuit", "cardio", "stretch"].map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setTrainerWorkoutType(type)}
+                        style={trainerWorkoutType === type ? styles.whitePillActive : styles.whitePill}
+                      >
+                        {type === "weight" ? "웨이트" : type === "circuit" ? "서킷" : type === "cardio" ? "유산소" : "스트레칭"}
+                      </button>
+                    ))}
+                  </div>
+
+                  <label style={styles.whiteLabel}>운동 부위</label>
+                  <div style={styles.whitePillRow}>
+                    {weightBodyPartOptions.map((part) => (
+                      <button
+                        key={part}
+                        type="button"
+                        onClick={() => toggleTrainerWorkoutBodyPart(part)}
+                        style={trainerWorkoutBodyParts.includes(part) ? styles.whitePillActive : styles.whitePill}
+                      >
+                        {trainerWorkoutBodyParts.includes(part) ? `✓ ${part}` : part}
+                      </button>
+                    ))}
+                  </div>
+
+                  <label style={styles.whiteLabel}>운동 내용</label>
+                  <textarea
+                    value={trainerExerciseSummary}
+                    onChange={(e) => setTrainerExerciseSummary(e.target.value)}
+                    placeholder="예: 랫풀다운 4세트, 시티드로우 4세트, 유산소 30분"
+                    style={styles.whiteTextarea}
+                  />
+
+                  <label style={styles.whiteLabel}>컨디션</label>
+                  <div style={styles.whitePillRow}>
+                    {[
+                      ["good", "좋음"],
+                      ["normal", "보통"],
+                      ["bad", "나쁨"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setTrainerCondition(value)}
+                        style={trainerCondition === value ? styles.whitePillActive : styles.whitePill}
+                      >
+                        {trainerCondition === value ? `✓ ${label}` : label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <label style={styles.whiteLabel}>오늘 이슈</label>
+                  <input
+                    value={trainerIssue}
+                    onChange={(e) => setTrainerIssue(e.target.value)}
+                    placeholder="예: 허리 불편, 수면 부족, 집중력 좋음"
+                    style={styles.whiteInput}
+                  />
+
+                  <label style={styles.whiteLabel}>다음 운동 포인트</label>
+                  <input
+                    value={trainerNextPlan}
+                    onChange={(e) => setTrainerNextPlan(e.target.value)}
+                    placeholder="예: 하체 보강, 중량 유지, 어깨 가동성"
+                    style={styles.whiteInput}
+                  />
+
+                  <label style={styles.whiteLabel}>메모</label>
+                  <textarea
+                    value={trainerWorkoutMemo}
+                    onChange={(e) => setTrainerWorkoutMemo(e.target.value)}
+                    placeholder="개인적으로 남길 메모"
+                    style={styles.whiteTextarea}
+                  />
+
+                  <button type="button" onClick={saveTrainerWorkoutLog} style={styles.whiteSaveLargeButton}>
+                    개인 운동 저장
+                  </button>
+                </section>
+
+                <section style={styles.personalListBox}>
+                  <h3 style={styles.personalSectionTitle}>최근 개인 운동</h3>
+                  {trainerWorkoutList.length === 0 ? (
+                    <p style={styles.whiteMuted}>아직 개인 운동 기록이 없습니다.</p>
+                  ) : (
+                    trainerWorkoutList.map((log) => (
+                      <div key={log.id} style={styles.personalLogCard}>
+                        <div style={styles.personalLogCardTop}>
+                          <strong>{formatDate(log.workout_date)}</strong>
+                          <button type="button" onClick={() => deleteTrainerWorkoutLog(log.id)} style={styles.whiteSmallDangerButton}>
+                            삭제
+                          </button>
+                        </div>
+                        <p style={styles.personalLogMain}>
+                          {log.workout_type === "weight" ? "웨이트" : log.workout_type === "circuit" ? "서킷" : log.workout_type === "cardio" ? "유산소" : "스트레칭"}
+                          {Array.isArray(log.body_parts) && log.body_parts.length > 0 ? ` · ${log.body_parts.join(", ")}` : ""}
+                        </p>
+                        <p style={styles.personalLogText}>{log.exercise_summary}</p>
+                        {(log.issue || log.next_plan || log.memo) && (
+                          <p style={styles.personalLogSub}>
+                            {[log.issue ? `이슈: ${log.issue}` : "", log.next_plan ? `다음: ${log.next_plan}` : "", log.memo ? `메모: ${log.memo}` : ""].filter(Boolean).join(" · ")}
+                          </p>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </section>
+              </div>
+            ) : (
+              <div style={styles.personalLogGrid}>
+                <section style={styles.personalFormBox}>
+                  <h3 style={styles.personalSectionTitle}>개인 인바디 추가</h3>
+
+                  <label style={styles.whiteLabel}>측정일</label>
+                  <input
+                    type="date"
+                    value={trainerInbodyDate}
+                    onChange={(e) => setTrainerInbodyDate(e.target.value)}
+                    style={styles.whiteInput}
+                  />
+
+                  <div style={styles.personalTwoCol}>
+                    <div>
+                      <label style={styles.whiteLabel}>체중</label>
+                      <input value={trainerWeight} onChange={(e) => setTrainerWeight(e.target.value)} placeholder="kg" style={styles.whiteInput} />
+                    </div>
+                    <div>
+                      <label style={styles.whiteLabel}>골격근량</label>
+                      <input value={trainerSkeletalMuscle} onChange={(e) => setTrainerSkeletalMuscle(e.target.value)} placeholder="kg" style={styles.whiteInput} />
+                    </div>
+                    <div>
+                      <label style={styles.whiteLabel}>체지방량</label>
+                      <input value={trainerBodyFatMass} onChange={(e) => setTrainerBodyFatMass(e.target.value)} placeholder="kg" style={styles.whiteInput} />
+                    </div>
+                    <div>
+                      <label style={styles.whiteLabel}>체지방률</label>
+                      <input value={trainerBodyFatPercent} onChange={(e) => setTrainerBodyFatPercent(e.target.value)} placeholder="%" style={styles.whiteInput} />
+                    </div>
+                  </div>
+
+                  <label style={styles.whiteLabel}>메모</label>
+                  <textarea
+                    value={trainerInbodyMemo}
+                    onChange={(e) => setTrainerInbodyMemo(e.target.value)}
+                    placeholder="예: 감량기 시작, 유지기, 컨디션 좋음"
+                    style={styles.whiteTextarea}
+                  />
+
+                  <button type="button" onClick={saveTrainerInbodyLog} style={styles.whiteSaveLargeButton}>
+                    개인 인바디 저장
+                  </button>
+                </section>
+
+                <section style={styles.personalListBox}>
+                  <h3 style={styles.personalSectionTitle}>최근 개인 인바디</h3>
+                  {trainerInbodyList.length === 0 ? (
+                    <p style={styles.whiteMuted}>아직 개인 인바디 기록이 없습니다.</p>
+                  ) : (
+                    trainerInbodyList.map((log) => (
+                      <div key={log.id} style={styles.personalLogCard}>
+                        <div style={styles.personalLogCardTop}>
+                          <strong>{formatDate(log.measured_at)}</strong>
+                          <button type="button" onClick={() => deleteTrainerInbodyLog(log.id)} style={styles.whiteSmallDangerButton}>
+                            삭제
+                          </button>
+                        </div>
+                        <p style={styles.personalLogMain}>
+                          체중 {log.weight ?? "-"}kg · 골격근 {log.skeletal_muscle ?? "-"}kg · 체지방률 {log.body_fat_percent ?? "-"}%
+                        </p>
+                        <p style={styles.personalLogSub}>체지방량 {log.body_fat_mass ?? "-"}kg</p>
+                        {log.memo && <p style={styles.personalLogText}>{log.memo}</p>}
+                      </div>
+                    ))
+                  )}
+                </section>
+              </div>
+            )}
           </section>
         </div>
       )}
@@ -12017,6 +12403,125 @@ textarea: {
     borderRadius: 12,
     padding: "11px 10px",
     fontSize: 15,
+    fontWeight: 900,
+  },
+
+  whiteTabRow: {
+    display: "flex",
+    gap: 10,
+    marginBottom: 16,
+  },
+  whiteTab: {
+    flex: 1,
+    padding: "14px 16px",
+    borderRadius: 16,
+    border: "1px solid #d8d8d8",
+    background: "#fff",
+    color: "#111",
+    fontWeight: 900,
+    fontSize: 16,
+  },
+  whiteTabActive: {
+    flex: 1,
+    padding: "14px 16px",
+    borderRadius: 16,
+    border: "1px solid #111",
+    background: "#111",
+    color: "#fff",
+    fontWeight: 900,
+    fontSize: 16,
+  },
+  personalLogGrid: {
+    display: "grid",
+    gridTemplateColumns: "minmax(360px, 0.9fr) minmax(420px, 1.1fr)",
+    gap: 18,
+    alignItems: "start",
+  },
+  personalFormBox: {
+    border: "1px solid #d8d8d8",
+    borderRadius: 20,
+    background: "#fff",
+    padding: 18,
+  },
+  personalListBox: {
+    border: "1px solid #d8d8d8",
+    borderRadius: 20,
+    background: "#fff",
+    padding: 18,
+    maxHeight: "62vh",
+    overflowY: "auto",
+  },
+  personalSectionTitle: {
+    margin: "0 0 14px",
+    fontSize: 22,
+    fontWeight: 1000,
+    color: "#111",
+  },
+  personalTwoCol: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+  },
+  whitePillRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
+  whitePill: {
+    padding: "10px 14px",
+    borderRadius: 14,
+    border: "1px solid #d8d8d8",
+    background: "#fff",
+    color: "#111",
+    fontWeight: 900,
+  },
+  whitePillActive: {
+    padding: "10px 14px",
+    borderRadius: 14,
+    border: "1px solid #111",
+    background: "#111",
+    color: "#fff",
+    fontWeight: 1000,
+  },
+  personalLogCard: {
+    border: "1px solid #d8d8d8",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+    background: "#fff",
+    color: "#111",
+  },
+  personalLogCardTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 8,
+  },
+  personalLogMain: {
+    margin: "4px 0",
+    fontWeight: 900,
+    color: "#111",
+  },
+  personalLogText: {
+    margin: "6px 0",
+    color: "#222",
+    lineHeight: 1.5,
+    whiteSpace: "pre-wrap",
+  },
+  personalLogSub: {
+    margin: "6px 0 0",
+    color: "#666",
+    fontSize: 13,
+    lineHeight: 1.5,
+  },
+  whiteSmallDangerButton: {
+    border: "1px solid #f0b6b6",
+    background: "#fff1f1",
+    color: "#9a1c1c",
+    borderRadius: 12,
+    padding: "8px 10px",
     fontWeight: 900,
   },
 
