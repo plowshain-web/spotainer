@@ -184,6 +184,8 @@ export default function Page() {
   const [workoutIssue, setWorkoutIssue] = useState("");
   const [workoutNextPlan, setWorkoutNextPlan] = useState("");
   const [workoutTrainerNote, setWorkoutTrainerNote] = useState("");
+  const [feedbackModalMember, setFeedbackModalMember] = useState(null);
+  const [feedbackDraft, setFeedbackDraft] = useState("");
   const [exerciseSuggestions, setExerciseSuggestions] = useState([]);
 const [activeExerciseIndex, setActiveExerciseIndex] = useState(null);
 const [workoutExercises, setWorkoutExercises] = useState([
@@ -4433,6 +4435,103 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     );
   }
 
+
+  function getWorkoutFeedbackPartText(trainingType = workoutTrainingType, bodyParts = workoutBodyParts) {
+    if (trainingType === "circuit") return "전신 서킷트레이닝";
+    if (trainingType === "weight") {
+      const parts = Array.isArray(bodyParts) ? bodyParts.filter(Boolean) : [];
+      return parts.length > 0 ? `${parts.join("·")} 위주` : "웨이트";
+    }
+    return "운동";
+  }
+
+  function getPositiveConditionSentence(condition = workoutCondition) {
+    if (condition === "good") return "컨디션이 좋아서 전체적으로 안정감 있게 진행했습니다";
+    if (condition === "bad") return "오늘 컨디션에 맞춰 무리하지 않는 선에서 흐름을 잘 맞춰 진행했습니다";
+    return "컨디션을 잘 유지하면서 진행했습니다";
+  }
+
+  function toPositiveIssueSentence(issue) {
+    const text = String(issue || "").trim();
+    if (!text) return "";
+
+    const softened = text
+      .replace(/부상위험|부상 위험|다칠 수 있음|다쳐요|위험/gi, "조금 더 안정적으로 잡아갈 부분")
+      .replace(/안 좋음|안좋음|나쁨|문제/gi, "체크할 부분")
+      .replace(/통증/gi, "불편감")
+      .replace(/부족/gi, "더 좋아질 부분")
+      .replace(/불안정/gi, "안정성을 더 잡아갈 부분")
+      .trim();
+
+    return `${softened} 부분은 체크하면서 진행했고, 조금 더 안정성을 잡아주면 운동 효과가 더 좋아질 것 같아요.`;
+  }
+
+  function toPositiveNextPlanSentence(nextPlan) {
+    const text = String(nextPlan || "").trim();
+    if (!text) return "다음 수업에서도 오늘 흐름을 이어가면서 더 좋은 움직임을 만들어보겠습니다.";
+    return `다음 수업에서는 ${text} 중심으로 더 좋은 흐름을 만들어보겠습니다.`;
+  }
+
+  function generateWorkoutFeedbackMessage({ member, trainingType, bodyParts, condition, issue, nextPlan, trainerNote }) {
+    const partText = getWorkoutFeedbackPartText(trainingType, bodyParts);
+    const conditionText = getPositiveConditionSentence(condition);
+    const issueText = toPositiveIssueSentence(issue);
+    const nextText = toPositiveNextPlanSentence(nextPlan);
+    const noteText = String(trainerNote || "").trim();
+
+    return [
+      `${member?.name || "회원"}님 오늘 운동 고생 많으셨어요 😊`,
+      `오늘은 ${partText} 운동 진행했고,\n${conditionText}.`,
+      issueText,
+      noteText ? `오늘 ${noteText} 부분도 좋았습니다.` : "",
+      nextText,
+      "편안한 시간 보내시고 다음 수업 때 뵐게요!",
+    ]
+      .filter((line) => String(line || "").trim())
+      .join("\n\n");
+  }
+
+  function openFeedbackModal(member, draft) {
+    if (!member) return;
+    setFeedbackModalMember(member);
+    setFeedbackDraft(draft || generateWorkoutFeedbackMessage({
+      member,
+      trainingType: workoutTrainingType,
+      bodyParts: workoutBodyParts,
+      condition: workoutCondition,
+      issue: workoutIssue,
+      nextPlan: workoutNextPlan,
+      trainerNote: workoutTrainerNote,
+    }));
+  }
+
+  function closeFeedbackModal() {
+    setFeedbackModalMember(null);
+    setFeedbackDraft("");
+  }
+
+  function sendFeedbackSMS() {
+    const phone = normalizePhone(feedbackModalMember?.phone);
+
+    if (!feedbackModalMember) {
+      alert("회원 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    if (!phone) {
+      alert(`${feedbackModalMember.name || "회원"} 회원의 전화번호가 없습니다.`);
+      return;
+    }
+
+    const message = String(feedbackDraft || "").trim();
+    if (!message) {
+      alert("보낼 피드백 문구가 없습니다.");
+      return;
+    }
+
+    window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
+  }
+
   async function saveWorkout() {
     if (!workoutMember) return;
 
@@ -4494,6 +4593,16 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       return;
     }
 
+    const feedbackMessage = generateWorkoutFeedbackMessage({
+      member: workoutMember,
+      trainingType: workoutTrainingType,
+      bodyParts: workoutTrainingType === "weight" ? workoutBodyParts : workoutTrainingType === "circuit" ? ["전신"] : [],
+      condition: workoutCondition,
+      issue: workoutIssue,
+      nextPlan: workoutNextPlan,
+      trainerNote: workoutTrainerNote,
+    });
+
     setWorkoutBodyParts([]);
     setWorkoutMemo("");
     setWorkoutCondition("normal");
@@ -4504,7 +4613,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     setWorkoutMode("list");
 
     await loadWorkoutSessions(workoutMember.id);
-    alert(`${workoutMember.name} 운동기록이 저장되었습니다.`);
+    openFeedbackModal(workoutMember, feedbackMessage);
   }
 
   function getConditionText(condition) {
@@ -7472,7 +7581,14 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 )}
 
                 <div style={styles.editActions}>
-                  <button onClick={saveWorkout} style={styles.primaryButton}>저장</button>
+                  <button onClick={saveWorkout} style={styles.primaryButton}>저장 후 피드백</button>
+                  <button
+                    type="button"
+                    onClick={() => openFeedbackModal(workoutMember)}
+                    style={styles.whiteActionButton}
+                  >
+                    피드백 초안
+                  </button>
                   <button onClick={() => setWorkoutMode("select")} style={styles.cancelButton}>
                     취소
                   </button>
@@ -7637,6 +7753,43 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 );
               })
             )}
+          </section>
+        </div>
+      )}
+
+      {feedbackModalMember && (
+        <div style={styles.workoutHistoryOverlay}>
+          <section style={styles.whiteModalBox}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>{feedbackModalMember.name} 피드백 문자</h2>
+                <p style={styles.whiteMuted}>
+                  부정적인 표현은 피하고, 오늘 기록을 긍정적인 성장 방향으로 정리한 초안입니다. 필요한 부분만 가볍게 수정해서 보내세요.
+                </p>
+              </div>
+
+              <button type="button" onClick={closeFeedbackModal} style={styles.whiteCloseButton}>
+                닫기
+              </button>
+            </div>
+
+            <div style={styles.whiteInfoBox}>
+              <strong style={styles.whiteSectionTitle}>문자 초안</strong>
+              <textarea
+                value={feedbackDraft}
+                onChange={(e) => setFeedbackDraft(e.target.value)}
+                style={{ ...styles.textarea, minHeight: 280, background: "#fff", color: "#111", border: "1px solid #111" }}
+              />
+            </div>
+
+            <div style={styles.whiteActionRowFull}>
+              <button type="button" onClick={sendFeedbackSMS} style={styles.primaryButton}>
+                문자 보내기
+              </button>
+              <button type="button" onClick={closeFeedbackModal} style={styles.cancelButton}>
+                나중에
+              </button>
+            </div>
           </section>
         </div>
       )}
