@@ -194,6 +194,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [showInactiveMembers, setShowInactiveMembers] = useState(false);
   const [scheduleMemberId, setScheduleMemberId] = useState("");
   const [scheduleSecondMemberId, setScheduleSecondMemberId] = useState("");
+  const [scheduleThirdMemberId, setScheduleThirdMemberId] = useState("");
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [scheduleDate, setScheduleDate] = useState(getTodayDateString());
   const [scheduleStartTime, setScheduleStartTime] = useState("");
@@ -335,7 +336,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   async function loadSchedules(date = getTodayDateString()) {
     const { data, error } = await supabase
       .from("schedules")
-      .select("*, members(*)")
+      .select("*, members(*), schedule_members(*, members(*))")
       .eq("schedule_date", date)
       .order("start_time", { ascending: true });
 
@@ -411,7 +412,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     const { data, error } = await supabase
       .from("schedules")
-      .select("*, members(*)")
+      .select("*, members(*), schedule_members(*, members(*))")
       .eq("schedule_date", date)
       .order("start_time", { ascending: true });
 
@@ -431,7 +432,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     const { data, error } = await supabase
       .from("schedules")
-      .select("*, members(*)")
+      .select("*, members(*), schedule_members(*, members(*))")
       .eq("schedule_date", date)
       .order("start_time", { ascending: true });
 
@@ -553,15 +554,22 @@ const [workoutExercises, setWorkoutExercises] = useState([
     if (!q) return list || [];
 
     return (list || []).filter((schedule) => {
-      const member = getScheduleMember(schedule) || schedule.members;
-      const memberName = String(member?.name || "").toLowerCase();
-      const memberPhone = String(member?.phone || "").toLowerCase().replace(/[^0-9]/g, "");
+      const scheduleMembers = getScheduleMembers(schedule);
       const cleanKeyword = q.replace(/[^0-9]/g, "");
+      const memberMatched = scheduleMembers.some((member) => {
+        const memberName = String(member?.name || "").toLowerCase();
+        const memberPhone = String(member?.phone || "").toLowerCase();
+        const cleanPhone = memberPhone.replace(/[^0-9]/g, "");
+
+        return (
+          memberName.includes(q) ||
+          memberPhone.includes(q) ||
+          (cleanKeyword && cleanPhone.includes(cleanKeyword))
+        );
+      });
 
       return (
-        memberName.includes(q) ||
-        String(member?.phone || "").toLowerCase().includes(q) ||
-        (cleanKeyword && memberPhone.includes(cleanKeyword)) ||
+        memberMatched ||
         getScheduleTypeText(schedule.type).toLowerCase().includes(q) ||
         String(schedule.memo || "").toLowerCase().includes(q)
       );
@@ -582,7 +590,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     const { data, error } = await supabase
       .from("schedules")
-      .select("*, members(*)")
+      .select("*, members(*), schedule_members(*, members(*))")
       .order("schedule_date", { ascending: true })
       .order("start_time", { ascending: true });
 
@@ -792,6 +800,8 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
   function renderScheduleCheckItem(schedule, showDate = false) {
     const member = getScheduleMember(schedule) || schedule.members;
+    const memberNames = getScheduleMemberNames(schedule);
+    const memberPtText = getScheduleMemberPtText(schedule);
     const status = getSchedulePreviewStatus(schedule);
     const isDone =
       schedule.status === "cancelled" ||
@@ -813,8 +823,8 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
           <div style={styles.scheduleCheckSubRow}>
             <span style={styles.scheduleCheckMemberCompact}>
-              {getScheduleTypeText(schedule.type)} · {member?.name || "회원 정보 없음"}
-              {member ? ` · PT ${member.pt_remaining || 0}회` : ""}
+              {getScheduleTypeText(schedule.type)} · {memberNames}
+              {memberPtText ? ` · ${memberPtText}` : ""}
             </span>
 
             {showDate && (
@@ -993,6 +1003,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   function resetScheduleForm() {
     setScheduleMemberId("");
     setScheduleSecondMemberId("");
+    setScheduleThirdMemberId("");
     setEditingSchedule(null);
     setScheduleDate(getTodayDateString());
     setScheduleStartTime("");
@@ -1015,9 +1026,12 @@ const [workoutExercises, setWorkoutExercises] = useState([
   }
 
   function startEditSchedule(schedule) {
+    const participantIds = getScheduleMembers(schedule).map((member) => member.id).filter(Boolean);
+
     setEditingSchedule(schedule);
-    setScheduleMemberId(schedule.member_id || "");
-    setScheduleSecondMemberId("");
+    setScheduleMemberId(participantIds[0] || schedule.member_id || "");
+    setScheduleSecondMemberId(participantIds[1] || "");
+    setScheduleThirdMemberId(participantIds[2] || "");
     setScheduleDate(schedule.schedule_date || getTodayDateString());
     setScheduleStartTime(normalizeTimeValue(schedule.start_time || ""));
     setScheduleEndTime(
@@ -1239,18 +1253,64 @@ const [workoutExercises, setWorkoutExercises] = useState([
     }
   }
 
-  async function addSchedule(forceSave = false) {
-    if (!scheduleMemberId) return alert("회원을 선택하세요.");
+  function getScheduleFormMemberIds() {
+    const ids = [scheduleMemberId, scheduleSecondMemberId, scheduleThirdMemberId]
+      .map((id) => String(id || "").trim())
+      .filter(Boolean);
+
+    return Array.from(new Set(ids));
+  }
+
+  async function syncScheduleMembers(scheduleId, memberIds = []) {
+    if (!scheduleId) return false;
+
+    const { error: deleteError } = await supabase
+      .from("schedule_members")
+      .delete()
+      .eq("schedule_id", scheduleId);
+
+    if (deleteError) {
+      alert("그룹PT 참여자 정리 실패: " + deleteError.message + "\nSupabase SQL을 먼저 실행했는지 확인하세요.");
+      return false;
+    }
+
+    const rows = (memberIds || []).slice(0, 3).map((memberId, index) => ({
+      schedule_id: scheduleId,
+      member_id: memberId,
+      position: index + 1,
+    }));
+
+    if (rows.length === 0) return true;
+
+    const { error: insertError } = await supabase.from("schedule_members").insert(rows);
+
+    if (insertError) {
+      alert("그룹PT 참여자 저장 실패: " + insertError.message + "\nSupabase SQL을 먼저 실행했는지 확인하세요.");
+      return false;
+    }
+
+    return true;
+  }
+
+  async function addSchedule() {
+    const memberIds = getScheduleFormMemberIds();
+
+    if (memberIds.length === 0) return alert("회원을 선택하세요.");
     if (!scheduleDate) return alert("날짜를 선택하세요.");
     if (!scheduleStartTime) return alert("시작 시간을 입력하세요.");
 
-    if (scheduleType === "group" && scheduleSecondMemberId && scheduleSecondMemberId === scheduleMemberId) {
-      alert("그룹PT 두 번째 회원은 첫 번째 회원과 달라야 합니다.");
+    if (scheduleType === "group" && memberIds.length < 2) {
+      alert("그룹PT는 최소 2명 이상 선택하세요. 최대 3명까지 등록할 수 있습니다.");
       return;
     }
 
-    if (editingSchedule && scheduleSecondMemberId) {
-      alert("스케줄 수정 시에는 두 번째 회원을 추가할 수 없습니다. 그룹PT 추가는 새 스케줄 등록에서 해주세요.");
+    if (scheduleType !== "group" && memberIds.length > 1) {
+      alert("PT/OT/상담은 회원 1명만 선택하세요. 여러 명 수업은 그룹PT로 등록하세요.");
+      return;
+    }
+
+    if (memberIds.length > 3) {
+      alert("그룹PT는 최대 3명까지만 등록할 수 있습니다.");
       return;
     }
 
@@ -1263,23 +1323,9 @@ const [workoutExercises, setWorkoutExercises] = useState([
       return;
     }
 
-    const memberIds = scheduleType === "group" && scheduleSecondMemberId
-      ? [scheduleMemberId, scheduleSecondMemberId]
-      : [scheduleMemberId];
-
-    const rows = memberIds.map((memberId) => ({
-      member_id: memberId,
-      schedule_date: scheduleDate,
-      start_time: scheduleStartTime,
-      end_time: endTime,
-      type: scheduleType,
-      memo: scheduleMemo.trim(),
-      allow_over_capacity: false,
-    }));
-
     const { data: sameDateSchedules, error: checkError } = await supabase
       .from("schedules")
-      .select("*, members(*)")
+      .select("*, members(*), schedule_members(*, members(*))")
       .eq("schedule_date", scheduleDate)
       .order("start_time", { ascending: true });
 
@@ -1300,40 +1346,39 @@ const [workoutExercises, setWorkoutExercises] = useState([
       return existingStart < endMinutes && existingEnd > startMinutes;
     });
 
-    if (conflicts.length > 0 && !forceSave) {
-      if (editingSchedule) {
-        setPendingSchedule({
-          ...rows[0],
-          id: editingSchedule.id,
-          __mode: "edit",
-        });
-      } else {
-        setPendingSchedule(
-          rows.length === 1
-            ? rows[0]
-            : {
-                __mode: "group",
-                rows,
-              }
-        );
-      }
+    if (conflicts.length > 0) {
+      const conflictText = conflicts
+        .map((schedule) => `${formatScheduleRange(schedule)} · ${getScheduleTypeText(schedule.type)} · ${getScheduleMemberNames(schedule)}`)
+        .join("\n");
 
-      setConflictSchedules(conflicts);
-      setShowScheduleConflictModal(true);
+      alert(`이미 해당 시간대에 수업이 있습니다.\n\n${conflictText}\n\n운영 규칙상 1시간에는 수업 1개만 등록할 수 있습니다.`);
       await loadSelectedDateSchedules(scheduleDate);
       return;
     }
 
+    const row = {
+      member_id: memberIds[0],
+      schedule_date: scheduleDate,
+      start_time: scheduleStartTime,
+      end_time: endTime,
+      type: scheduleType,
+      memo: scheduleMemo.trim(),
+      allow_over_capacity: false,
+    };
+
     if (editingSchedule) {
       const { error } = await supabase
         .from("schedules")
-        .update(rows[0])
+        .update(row)
         .eq("id", editingSchedule.id);
 
       if (error) {
         alert("스케줄 수정 실패: " + error.message);
         return;
       }
+
+      const ok = await syncScheduleMembers(editingSchedule.id, memberIds);
+      if (!ok) return;
 
       closeScheduleModal();
       await loadSchedules(getTodayDateString());
@@ -1348,16 +1393,43 @@ const [workoutExercises, setWorkoutExercises] = useState([
       return;
     }
 
-    for (const row of rows) {
-      const ok = await saveScheduleRow(row, { skipAfterSave: true });
-      if (!ok) return;
+    const { data: inserted, error } = await supabase
+      .from("schedules")
+      .insert(row)
+      .select()
+      .single();
+
+    if (error) {
+      alert("스케줄 저장 실패: " + error.message);
+      return;
     }
 
-    await finishScheduleSave(
-      scheduleDate,
-      rows.length > 1 ? "그룹PT 스케줄이 저장되었습니다." : "스케줄이 저장되었습니다.",
-      rows
-    );
+    const ok = await syncScheduleMembers(inserted.id, memberIds);
+    if (!ok) return;
+
+    const shouldReturnToScheduleCheck = returnToScheduleCheckAfterAdd;
+    closeScheduleModal();
+    await loadSchedules(getTodayDateString());
+    await loadScheduleCheckList(scheduleDate);
+    setScheduleCheckDate(scheduleDate);
+
+    if (shouldReturnToScheduleCheck) {
+      setShowScheduleCheckModal(true);
+    }
+
+    alert(scheduleType === "group" ? "그룹PT 스케줄이 1개 수업으로 저장되었습니다." : "스케줄이 저장되었습니다.");
+
+    if (confirm("이 스케줄을 기본 캘린더에 추가할까요?")) {
+      addToDeviceCalendar({
+        ...inserted,
+        schedule_members: memberIds.map((memberId, index) => ({
+          member_id: memberId,
+          position: index + 1,
+          members: getFreshMember(memberId),
+        })),
+        members: getFreshMember(memberIds[0]),
+      });
+    }
   }
 
   async function forceAddSchedule() {
@@ -1516,15 +1588,17 @@ const [workoutExercises, setWorkoutExercises] = useState([
   function addToGoogleCalendar(schedule) {
     const member = getScheduleMember(schedule) || schedule.members;
     const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 60);
+    const memberNames = getScheduleMemberNames(schedule);
+    const memberPtText = getScheduleMemberPtText(schedule);
 
     const start = formatGoogleCalendarDateTime(schedule.schedule_date, schedule.start_time);
     const end = formatGoogleCalendarDateTime(schedule.schedule_date, endTime);
 
-    const title = `${getScheduleTypeText(schedule.type)} · ${member?.name || "회원"}`;
+    const title = `${getScheduleTypeText(schedule.type)} · ${memberNames || "회원"}`;
     const details = [
       `Spotainer 스케줄`,
-      member ? `회원: ${member.name}` : "",
-      member ? `PT 잔여: ${member.pt_remaining || 0}회` : "",
+      memberNames ? `회원: ${memberNames}` : "",
+      memberPtText ? `PT 잔여: ${memberPtText}` : "",
       schedule.memo ? `메모: ${schedule.memo}` : "",
     ]
       .filter(Boolean)
@@ -1553,16 +1627,18 @@ const [workoutExercises, setWorkoutExercises] = useState([
   function addToDeviceCalendar(schedule) {
     const member = getScheduleMember(schedule) || schedule.members;
     const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 60);
+    const memberNames = getScheduleMemberNames(schedule);
+    const memberPtText = getScheduleMemberPtText(schedule);
 
     const start = formatIcsUtcDateTime(schedule.schedule_date, schedule.start_time);
     const end = formatIcsUtcDateTime(schedule.schedule_date, endTime);
     const nowStamp = new Date().toISOString().replace(/[-:]|\.\d{3}/g, "");
 
-    const title = `${getScheduleTypeText(schedule.type)} · ${member?.name || "회원"}`;
+    const title = `${getScheduleTypeText(schedule.type)} · ${memberNames || "회원"}`;
     const details = [
       "Spotainer 스케줄",
-      member ? `회원: ${member.name}` : "",
-      member ? `PT 잔여: ${member.pt_remaining || 0}회` : "",
+      memberNames ? `회원: ${memberNames}` : "",
+      memberPtText ? `PT 잔여: ${memberPtText}` : "",
       schedule.memo ? `메모: ${schedule.memo}` : "",
     ]
       .filter(Boolean)
@@ -1596,7 +1672,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
     const blob = new Blob([icsContent], { type: "text/calendar" });
     const url = URL.createObjectURL(blob);
 
-    const fileName = `${getScheduleTypeText(schedule.type)}_${member?.name || "회원"}_${schedule.schedule_date}.ics`
+    const fileName = `${getScheduleTypeText(schedule.type)}_${memberNames || "회원"}_${schedule.schedule_date}.ics`
       .replace(/[\\/:*?"<>|]/g, "_");
 
     const link = document.createElement("a");
@@ -1674,7 +1750,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   }
 
   function openScheduleMember(schedule) {
-    const member = getFreshMember(schedule.member_id) || schedule.members;
+    const member = getScheduleMember(schedule);
     if (!member) return alert("연결된 회원 정보를 찾을 수 없습니다.");
     openDetail(member, "menu");
   }
@@ -1683,8 +1759,33 @@ const [workoutExercises, setWorkoutExercises] = useState([
     return members.find((member) => member.id === memberId);
   }
 
+  function getScheduleMembers(schedule) {
+    const linked = (schedule?.schedule_members || [])
+      .slice()
+      .sort((a, b) => (a.position || 0) - (b.position || 0))
+      .map((row) => getFreshMember(row.member_id) || row.members)
+      .filter(Boolean);
+
+    if (linked.length > 0) return linked;
+
+    const fallback = getFreshMember(schedule?.member_id) || schedule?.members;
+    return fallback ? [fallback] : [];
+  }
+
   function getScheduleMember(schedule) {
-    return getFreshMember(schedule.member_id) || schedule.members;
+    return getScheduleMembers(schedule)[0] || null;
+  }
+
+  function getScheduleMemberNames(schedule) {
+    const names = getScheduleMembers(schedule).map((member) => member.name).filter(Boolean);
+    return names.length > 0 ? names.join(", ") : "회원 정보 없음";
+  }
+
+  function getScheduleMemberPtText(schedule) {
+    const scheduleMembers = getScheduleMembers(schedule);
+    if (scheduleMembers.length === 0) return "";
+    if (scheduleMembers.length === 1) return `PT ${scheduleMembers[0].pt_remaining || 0}회`;
+    return scheduleMembers.map((member) => `${member.name} PT ${member.pt_remaining || 0}회`).join(" · ");
   }
 
   async function scheduleCheckAttendance(schedule) {
@@ -1704,10 +1805,13 @@ const [workoutExercises, setWorkoutExercises] = useState([
   }
 
   async function completeScheduleClass(schedule) {
-    const member = getScheduleMember(schedule);
-    if (!member) return alert("연결된 회원 정보를 찾을 수 없습니다.");
+    const scheduleMembers = getScheduleMembers(schedule);
+    const primaryMember = scheduleMembers[0];
+
+    if (!primaryMember) return alert("연결된 회원 정보를 찾을 수 없습니다.");
 
     const shouldUsePt = schedule.type === "pt" || schedule.type === "group";
+    const memberNames = getScheduleMemberNames(schedule);
 
     if (schedule.status === "completed") {
       alert("이미 완료 처리된 스케줄입니다.");
@@ -1737,30 +1841,34 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
       closeActionModal();
       await loadSchedules(getTodayDateString());
-    if (showScheduleCheckModal) {
-      await loadScheduleCheckList(scheduleCheckDate);
-    }
-    if (showScheduleCheckModal) {
-      await loadScheduleCheckList(scheduleCheckDate);
-    }
+      if (showScheduleCheckModal) {
+        await loadScheduleCheckList(scheduleCheckDate);
+      }
       alert("이미 출석과 PT 차감이 완료되어 완료 처리만 했습니다.");
       return;
+    }
+
+    if (shouldUsePt) {
+      const noPtMembers = scheduleMembers.filter((member) => (member.pt_remaining || 0) <= 0);
+      if (noPtMembers.length > 0) {
+        alert(`남은 PT가 없는 회원이 있습니다.\n${noPtMembers.map((member) => member.name).join(", ")}`);
+        return;
+      }
     }
 
     if (
       !confirm(
         shouldUsePt
-          ? `${member.name} 수업을 완료 처리할까요?\n출석 체크와 PT 1회 차감이 함께 진행됩니다.`
-          : `${member.name} ${getScheduleTypeText(schedule.type)} 일정을 완료 처리할까요?\n출석 체크만 진행되고 PT는 차감하지 않습니다.`
+          ? `${memberNames} 수업을 완료 처리할까요?\n참여자 전원 출석 체크와 PT 1회 차감이 함께 진행됩니다.`
+          : `${memberNames} ${getScheduleTypeText(schedule.type)} 일정을 완료 처리할까요?\n참여자 전원 출석 체크만 진행되고 PT는 차감하지 않습니다.`
       )
     ) {
       return;
     }
 
     if (!schedule.attendance_checked) {
-      const { error: attendanceError } = await supabase.from("attendance_logs").insert({
-        member_id: member.id,
-      });
+      const attendanceRows = scheduleMembers.map((member) => ({ member_id: member.id }));
+      const { error: attendanceError } = await supabase.from("attendance_logs").insert(attendanceRows);
 
       if (attendanceError) {
         alert("출석 체크 실패: " + attendanceError.message);
@@ -1769,37 +1877,34 @@ const [workoutExercises, setWorkoutExercises] = useState([
     }
 
     if (shouldUsePt && !schedule.pt_used) {
-      if ((member.pt_remaining || 0) <= 0) {
-        alert("남은 PT가 없습니다.");
-        return;
-      }
+      for (const member of scheduleMembers) {
+        const { error: memberError } = await supabase
+          .from("members")
+          .update({ pt_remaining: (member.pt_remaining || 0) - 1 })
+          .eq("id", member.id);
 
-      const { error: memberError } = await supabase
-        .from("members")
-        .update({ pt_remaining: (member.pt_remaining || 0) - 1 })
-        .eq("id", member.id);
+        if (memberError) {
+          alert(`${member.name} PT 차감 실패: ${memberError.message}`);
+          return;
+        }
 
-      if (memberError) {
-        alert("PT 차감 실패: " + memberError.message);
-        return;
-      }
+        const { error: logError } = await supabase.from("pt_logs").insert({
+          member_id: member.id,
+          type: "use",
+          amount: 1,
+        });
 
-      const { error: logError } = await supabase.from("pt_logs").insert({
-        member_id: member.id,
-        type: "use",
-        amount: 1,
-      });
-
-      if (logError) {
-        alert("PT 사용 기록 저장 실패: " + logError.message);
-        return;
+        if (logError) {
+          alert(`${member.name} PT 사용 기록 저장 실패: ${logError.message}`);
+          return;
+        }
       }
 
       setLastAction({
         type: "pt",
-        memberId: member.id,
-        previousPt: member.pt_remaining || 0,
-        memberName: member.name,
+        memberId: primaryMember.id,
+        previousPt: primaryMember.pt_remaining || 0,
+        memberName: primaryMember.name,
       });
     }
 
@@ -1825,19 +1930,18 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setScheduleCheckDate(returnDate);
     await loadScheduleCheckList(returnDate);
 
-    // 수업 완료 후에는 운동 기록 화면이 바로 보여야 하므로,
-    // 스케줄 확인 팝업이 운동 기록 화면 위에 다시 뜨지 않게 닫아둡니다.
     setShowScheduleCheckModal(false);
 
-    await openWorkout(member, "scheduleCheck");
+    await openWorkout(primaryMember, "scheduleCheck");
     setWorkoutMode("add");
   }
 
   async function markScheduleNoShow(schedule) {
-    const member = getScheduleMember(schedule);
-    if (!member) return alert("연결된 회원 정보를 찾을 수 없습니다.");
-
+    const scheduleMembers = getScheduleMembers(schedule);
     const shouldUsePt = schedule.type === "pt" || schedule.type === "group";
+    const memberNames = getScheduleMemberNames(schedule);
+
+    if (scheduleMembers.length === 0) return alert("연결된 회원 정보를 찾을 수 없습니다.");
 
     if (!shouldUsePt) {
       alert(`${getScheduleTypeText(schedule.type)} 일정은 PT 차감이 없어서 노쇼 처리하지 않습니다. 취소 또는 완료로 처리하세요.`);
@@ -1859,46 +1963,49 @@ const [workoutExercises, setWorkoutExercises] = useState([
       return;
     }
 
+    const noPtMembers = scheduleMembers.filter((member) => (member.pt_remaining || 0) <= 0);
+    if (noPtMembers.length > 0) {
+      alert(`남은 PT가 없는 회원이 있습니다.\n${noPtMembers.map((member) => member.name).join(", ")}`);
+      return;
+    }
+
     if (
       !confirm(
-        `${member.name} 노쇼 처리할까요?\n출석은 기록하지 않고 PT 1회만 차감됩니다.`
+        `${memberNames} 노쇼 처리할까요?\n그룹PT는 참여자 중 한 명이라도 불참하면 수업 자체가 진행되지 않는 기준으로 처리합니다.\n출석은 기록하지 않고 참여자 전원 PT 1회만 차감됩니다.`
       )
     ) {
       return;
     }
 
     if (!schedule.pt_used) {
-      if ((member.pt_remaining || 0) <= 0) {
-        alert("남은 PT가 없습니다.");
-        return;
-      }
+      for (const member of scheduleMembers) {
+        const { error: memberError } = await supabase
+          .from("members")
+          .update({ pt_remaining: (member.pt_remaining || 0) - 1 })
+          .eq("id", member.id);
 
-      const { error: memberError } = await supabase
-        .from("members")
-        .update({ pt_remaining: (member.pt_remaining || 0) - 1 })
-        .eq("id", member.id);
+        if (memberError) {
+          alert(`${member.name} PT 차감 실패: ${memberError.message}`);
+          return;
+        }
 
-      if (memberError) {
-        alert("PT 차감 실패: " + memberError.message);
-        return;
-      }
+        const { error: logError } = await supabase.from("pt_logs").insert({
+          member_id: member.id,
+          type: "use",
+          amount: 1,
+        });
 
-      const { error: logError } = await supabase.from("pt_logs").insert({
-        member_id: member.id,
-        type: "use",
-        amount: 1,
-      });
-
-      if (logError) {
-        alert("PT 사용 기록 저장 실패: " + logError.message);
-        return;
+        if (logError) {
+          alert(`${member.name} PT 사용 기록 저장 실패: ${logError.message}`);
+          return;
+        }
       }
 
       setLastAction({
         type: "pt",
-        memberId: member.id,
-        previousPt: member.pt_remaining || 0,
-        memberName: member.name,
+        memberId: scheduleMembers[0].id,
+        previousPt: scheduleMembers[0].pt_remaining || 0,
+        memberName: scheduleMembers[0].name,
       });
     }
 
@@ -1922,14 +2029,10 @@ const [workoutExercises, setWorkoutExercises] = useState([
     if (showScheduleCheckModal) {
       await loadScheduleCheckList(scheduleCheckDate);
     }
-    if (showScheduleCheckModal) {
-      await loadScheduleCheckList(scheduleCheckDate);
-    }
   }
 
   async function markScheduleCancelled(schedule) {
-    const member = getScheduleMember(schedule);
-    const memberName = member?.name || "해당 회원";
+    const memberName = getScheduleMemberNames(schedule) || "해당 회원";
 
     if (schedule.status === "completed") {
       alert("이미 수업 완료 처리된 스케줄입니다.");
@@ -4518,7 +4621,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 오늘 문자 {smsIndex + 1} / {smsQueue.length}
               </strong>
               <span style={styles.smsQueueTarget}>
-                {getScheduleMember(getCurrentSMSSchedule())?.name || "회원 정보 없음"} · {formatScheduleRange(getCurrentSMSSchedule())}
+                {getScheduleMemberNames(getCurrentSMSSchedule())} · {formatScheduleRange(getCurrentSMSSchedule())}
               </span>
               <span style={styles.smsQueueHint}>
                 문자앱에서 전송 후 돌아와서 ‘보낸 처리’를 누르면 다음 회원으로 넘어갑니다.
@@ -4577,8 +4680,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
                     <div>
                       <strong style={styles.scheduleMemberName}>
-                        {getScheduleTypeText(schedule.type)} · {member?.name || "회원 정보 없음"}
-                        {member ? ` (${member.pt_remaining || 0}회)` : ""}
+                        {getScheduleTypeText(schedule.type)} · {getScheduleMemberNames(schedule)}
+                        {getScheduleMemberPtText(schedule) ? ` (${getScheduleMemberPtText(schedule)})` : ""}
                       </strong>
 
                       {getReRegisterAlert(member) && (
@@ -5228,8 +5331,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   <div key={schedule.id} style={styles.conflictItem}>
                     <strong>{formatScheduleRange(schedule)}</strong>
                     <p>
-                      {getScheduleTypeText(schedule.type)} · {member?.name || "회원 정보 없음"}
-                      {member ? ` · PT ${member.pt_remaining || 0}회` : ""}
+                      {getScheduleTypeText(schedule.type)} · {getScheduleMemberNames(schedule)}
+                      {getScheduleMemberPtText(schedule) ? ` · ${getScheduleMemberPtText(schedule)}` : ""}
                     </p>
                   </div>
                 );
@@ -5273,7 +5376,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
               ))}
             </select>
 
-            {scheduleType === "group" && !editingSchedule && (
+            {scheduleType === "group" && (
               <>
                 <label style={styles.label}>두 번째 회원 선택</label>
                 <select
@@ -5281,9 +5384,25 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   onChange={(e) => setScheduleSecondMemberId(e.target.value)}
                   style={styles.input}
                 >
-                  <option value="">2:1 그룹PT면 두 번째 회원을 선택하세요</option>
+                  <option value="">두 번째 회원을 선택하세요</option>
                   {activeMembers
-                    .filter((member) => member.id !== scheduleMemberId)
+                    .filter((member) => member.id !== scheduleMemberId && member.id !== scheduleThirdMemberId)
+                    .map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name} · {getMemberTypeText(member.member_type)} · PT {member.pt_remaining || 0}회
+                      </option>
+                    ))}
+                </select>
+
+                <label style={styles.label}>세 번째 회원 선택</label>
+                <select
+                  value={scheduleThirdMemberId}
+                  onChange={(e) => setScheduleThirdMemberId(e.target.value)}
+                  style={styles.input}
+                >
+                  <option value="">선택사항 · 최대 3명까지</option>
+                  {activeMembers
+                    .filter((member) => member.id !== scheduleMemberId && member.id !== scheduleSecondMemberId)
                     .map((member) => (
                       <option key={member.id} value={member.id}>
                         {member.name} · {getMemberTypeText(member.member_type)} · PT {member.pt_remaining || 0}회
@@ -5319,7 +5438,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                         <div>
                           <strong style={styles.schedulePreviewTime}>{formatScheduleRange(schedule)}</strong>
                           <p style={styles.schedulePreviewMember}>
-                            {getScheduleTypeText(schedule.type)} · {schedule.members?.name || "회원 정보 없음"}
+                            {getScheduleTypeText(schedule.type)} · {getScheduleMemberNames(schedule)}
                           </p>
                         </div>
 
@@ -5332,7 +5451,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
               {getSelectedDateActiveSchedules().length > 0 && (
                 <p style={styles.schedulePreviewHint}>
-                  겹치는 시간으로 저장하면 자동으로 차단됩니다.
+                  같은 시간대에는 수업 1개만 등록할 수 있습니다.
                 </p>
               )}
             </div>
@@ -5376,7 +5495,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 return oldStart < newEnd && oldEnd > newStart;
               }) && (
                 <div style={styles.scheduleConflictBox}>
-                  선택한 시간이 기존 스케줄과 겹칩니다. 저장 시 기존 예약자를 확인한 뒤 추가 여부를 선택할 수 있습니다.
+                  선택한 시간이 기존 스케줄과 겹칩니다. 1시간에는 수업 1개만 등록할 수 있습니다.
                 </div>
               )}
 
@@ -5384,7 +5503,14 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
             <p style={styles.scheduleFormHint}>OT/상담은 PT가 0회인 일반 회원도 등록할 수 있고, 완료해도 PT가 차감되지 않습니다.</p>
             <select
               value={scheduleType}
-              onChange={(e) => setScheduleType(e.target.value)}
+              onChange={(e) => {
+                const nextType = e.target.value;
+                setScheduleType(nextType);
+                if (nextType !== "group") {
+                  setScheduleSecondMemberId("");
+                  setScheduleThirdMemberId("");
+                }
+              }}
               style={styles.input}
             >
               <option value="pt">PT</option>
@@ -5403,7 +5529,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
             <div style={styles.editActions}>
               <button onClick={addSchedule} style={styles.primaryButton}>
-                {editingSchedule ? "수정 저장" : scheduleType === "group" && scheduleSecondMemberId ? "그룹PT 저장" : "저장"}
+                {editingSchedule ? "수정 저장" : scheduleType === "group" ? "그룹PT 저장" : "저장"}
               </button>
               <button onClick={closeScheduleModal} style={styles.cancelButton}>
                 취소
