@@ -3986,6 +3986,83 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       .join(" / ");
   }
 
+  function getSelectedBodyPartLabel() {
+    if (workoutBodyParts.length === 0) return "선택한 부위";
+    return workoutBodyParts.join(" + ");
+  }
+
+  function getWorkoutSessionBodyParts(session) {
+    return Array.isArray(session?.body_parts)
+      ? session.body_parts.filter(Boolean)
+      : [];
+  }
+
+  function getSessionExerciseNames(session) {
+    return groupWorkoutSets(session?.workout_sets || [])
+      .map((group) => String(group.exerciseName || "").trim())
+      .filter(Boolean);
+  }
+
+  function getRecentBodyPartSessions() {
+    if (workoutTrainingType !== "weight") return [];
+    if (workoutBodyParts.length === 0) return [];
+
+    const selectedParts = new Set(workoutBodyParts);
+
+    return workoutSessions
+      .filter((session) => {
+        const parts = getWorkoutSessionBodyParts(session);
+        if (parts.length === 0) return false;
+        return parts.some((part) => selectedParts.has(part));
+      })
+      .slice(0, 3);
+  }
+
+  function isExerciseAlreadyAdded(name) {
+    const target = String(name || "").trim().toLowerCase();
+    if (!target) return false;
+
+    return workoutExercises.some(
+      (exercise) => String(exercise.name || "").trim().toLowerCase() === target
+    );
+  }
+
+  function addReferenceExercise(name) {
+    const exerciseName = String(name || "").trim();
+    if (!exerciseName) return;
+
+    if (isExerciseAlreadyAdded(exerciseName)) {
+      alert("이미 오늘 운동에 추가된 운동입니다.");
+      return;
+    }
+
+    const newExercise = {
+      ...createEmptyWorkoutExercise("weight"),
+      name: exerciseName,
+    };
+
+    setWorkoutExercises((prev) => {
+      const emptyIndex = prev.findIndex((exercise) => {
+        const hasName = String(exercise.name || "").trim();
+        const hasValue = (exercise.sets || []).some(
+          (set) => String(set.weight || "").trim() || String(set.reps || "").trim()
+        );
+        return !hasName && !hasValue;
+      });
+
+      if (emptyIndex >= 0) {
+        return prev.map((exercise, index) =>
+          index === emptyIndex ? newExercise : exercise
+        );
+      }
+
+      return [...prev, newExercise];
+    });
+
+    setExerciseSuggestions([]);
+    setActiveExerciseIndex(null);
+  }
+
   function applyLastExercise(exerciseIndex, group) {
     if (!group) return;
 
@@ -6725,6 +6802,57 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                         );
                       })}
                     </div>
+                  </div>
+                )}
+
+                {workoutTrainingType === "weight" && workoutBodyParts.length > 0 && (
+                  <div style={styles.recentBodyReferenceBox}>
+                    <div style={styles.recentBodyReferenceHeader}>
+                      <div>
+                        <strong>최근 {getSelectedBodyPartLabel()} 운동 참고</strong>
+                        <p>지난 기록은 참고만 하고, 오늘 할 운동명만 눌러 추가하세요.</p>
+                      </div>
+                      <span>{getRecentBodyPartSessions().length}개 기록</span>
+                    </div>
+
+                    {getRecentBodyPartSessions().length === 0 ? (
+                      <p style={styles.recentBodyReferenceEmpty}>
+                        아직 이 부위로 저장된 운동기록이 없습니다. 오늘 기록부터 쌓이면 다음 수업부터 참고할 수 있습니다.
+                      </p>
+                    ) : (
+                      <div style={styles.recentBodyReferenceList}>
+                        {getRecentBodyPartSessions().map((session) => {
+                          const names = getSessionExerciseNames(session);
+
+                          return (
+                            <div key={session.id} style={styles.recentBodyReferenceCard}>
+                              <div style={styles.recentBodyReferenceDate}>
+                                <strong>{formatDate(session.workout_date || session.created_at)}</strong>
+                                <span>{getWorkoutSessionBodyParts(session).join(", ")}</span>
+                              </div>
+
+                              <div style={styles.recentBodyExerciseWrap}>
+                                {names.map((name) => {
+                                  const added = isExerciseAlreadyAdded(name);
+
+                                  return (
+                                    <button
+                                      key={`${session.id}-${name}`}
+                                      type="button"
+                                      onClick={() => addReferenceExercise(name)}
+                                      disabled={added}
+                                      style={added ? styles.recentBodyExerciseButtonAdded : styles.recentBodyExerciseButton}
+                                    >
+                                      {added ? `✓ ${name}` : `+ ${name}`}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -12535,6 +12663,71 @@ textarea: {
     borderRadius: 12,
     padding: "8px 10px",
     fontWeight: 900,
+  },
+  recentBodyReferenceBox: {
+    background: "#fff",
+    border: "1px solid #111",
+    borderRadius: 18,
+    padding: 14,
+    margin: "12px 0",
+    color: "#111",
+  },
+  recentBodyReferenceHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 10,
+  },
+  recentBodyReferenceEmpty: {
+    margin: 0,
+    padding: 12,
+    border: "1px dashed #bdbdbd",
+    borderRadius: 14,
+    color: "#555",
+    background: "#fafafa",
+    lineHeight: 1.5,
+  },
+  recentBodyReferenceList: {
+    display: "grid",
+    gap: 10,
+  },
+  recentBodyReferenceCard: {
+    border: "1px solid #d8d8d8",
+    borderRadius: 14,
+    padding: 12,
+    background: "#fff",
+  },
+  recentBodyReferenceDate: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    marginBottom: 8,
+    color: "#111",
+  },
+  recentBodyExerciseWrap: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  recentBodyExerciseButton: {
+    border: "1px solid #111",
+    background: "#fff",
+    color: "#111",
+    borderRadius: 999,
+    padding: "8px 11px",
+    fontWeight: 900,
+    fontSize: 13,
+  },
+  recentBodyExerciseButtonAdded: {
+    border: "1px solid #bdbdbd",
+    background: "#efefef",
+    color: "#777",
+    borderRadius: 999,
+    padding: "8px 11px",
+    fontWeight: 900,
+    fontSize: 13,
   },
 
 };
