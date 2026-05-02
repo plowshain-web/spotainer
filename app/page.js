@@ -94,6 +94,7 @@ export default function Page() {
   const [summaryModal, setSummaryModal] = useState(null);
   const [showContactListModal, setShowContactListModal] = useState(false);
   const [showCenterModal, setShowCenterModal] = useState(false);
+  const [showSalesModal, setShowSalesModal] = useState(false);
   const [centerInfoId, setCenterInfoId] = useState(null);
   const [centerName, setCenterName] = useState("");
   const [centerPhone, setCenterPhone] = useState("");
@@ -4819,6 +4820,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     showAllAttendanceModal ||
     showContactListModal ||
     showCenterModal ||
+    showSalesModal ||
     showTrainerLogModal ||
     contactModalMember ||
     summaryModal;
@@ -4918,8 +4920,17 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     <main style={styles.page}>
       <header style={styles.header}>
         <div>
-          <h1 style={styles.title}>Spotainer</h1>
-          <p style={styles.subtitle}>여성전용 PT 회원관리</p>
+          <div style={styles.headerTitleRow}>
+            <h1 style={styles.title}>Spotainer</h1>
+            <button
+              type="button"
+              onClick={() => setShowSalesModal(true)}
+              style={styles.headerSalesButton}
+            >
+              매출 관리
+            </button>
+          </div>
+          <p style={styles.subtitle}>{centerName || "여성전용 PT 회원관리"}</p>
         </div>
         <div style={styles.headerActions}>
           <button onClick={openTrainerLogModal} style={styles.trainerQuickButton}>
@@ -5017,31 +5028,6 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
               ))}
             </div>
           )}
-        </div>
-      </section>
-
-      <section style={styles.salesBox}>
-        <div style={styles.salesCard}>
-          <p style={styles.salesLabel}>이번달 매출</p>
-          <strong style={styles.salesValue}>{salesData.total.toLocaleString("ko-KR")}원</strong>
-        </div>
-
-        <div style={styles.salesCard}>
-          <p style={styles.salesLabel}>결제 회원</p>
-          <strong style={styles.salesValue}>{salesData.count}명</strong>
-        </div>
-
-        <div style={styles.salesCard}>
-          <p style={styles.salesLabel}>객단가</p>
-          <strong style={styles.salesValue}>{salesData.average.toLocaleString("ko-KR")}원</strong>
-        </div>
-
-        <div style={styles.salesCard}>
-          <p style={styles.salesLabel}>재등록 전환율</p>
-          <strong style={styles.salesValue}>{reRegisterStats.rate}%</strong>
-          <p style={styles.salesMiniText}>
-            {reRegisterStats.converted}/{reRegisterStats.success}명
-          </p>
         </div>
       </section>
 
@@ -5278,6 +5264,42 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
             ) : (
               summaryConfig[summaryModal].list.map(renderSummaryMember)
             )}
+          </section>
+        </div>
+      )}
+
+      {showSalesModal && (
+        <div style={styles.whiteModalOverlay}>
+          <section style={styles.whiteModalBox}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>매출 관리</h2>
+                <p style={styles.whiteMuted}>회원 앞에 바로 노출되지 않도록 필요한 때만 확인합니다.</p>
+              </div>
+              <button onClick={() => setShowSalesModal(false)} style={styles.whiteCloseButton}>
+                닫기
+              </button>
+            </div>
+
+            <div style={styles.salesModalGrid}>
+              <div style={styles.whiteSalesCard}>
+                <p style={styles.whiteSalesLabel}>이번달 매출</p>
+                <strong style={styles.whiteSalesValue}>{salesData.total.toLocaleString("ko-KR")}원</strong>
+              </div>
+              <div style={styles.whiteSalesCard}>
+                <p style={styles.whiteSalesLabel}>결제 회원</p>
+                <strong style={styles.whiteSalesValue}>{salesData.count}명</strong>
+              </div>
+              <div style={styles.whiteSalesCard}>
+                <p style={styles.whiteSalesLabel}>객단가</p>
+                <strong style={styles.whiteSalesValue}>{salesData.average.toLocaleString("ko-KR")}원</strong>
+              </div>
+              <div style={styles.whiteSalesCard}>
+                <p style={styles.whiteSalesLabel}>재등록 전환율</p>
+                <strong style={styles.whiteSalesValue}>{reRegisterStats.rate}%</strong>
+                <p style={styles.whiteSalesMiniText}>{reRegisterStats.converted}/{reRegisterStats.success}명</p>
+              </div>
+            </div>
           </section>
         </div>
       )}
@@ -7964,6 +7986,23 @@ const styles = {
     alignItems: "center",
     marginBottom: 28,
   },
+  headerTitleRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+    flexWrap: "wrap",
+  },
+  headerSalesButton: {
+    background: "#ffffff",
+    border: "1px solid rgba(255,255,255,0.85)",
+    color: "#111827",
+    borderRadius: 999,
+    padding: "9px 15px",
+    fontSize: 13,
+    fontWeight: 1000,
+    cursor: "pointer",
+    boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
+  },
   title: {
     fontSize: 44,
     margin: 0,
@@ -8039,6 +8078,40 @@ const styles = {
     fontSize: 12,
     fontWeight: 800,
   },
+  salesModalGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 14,
+    marginTop: 18,
+  },
+  whiteSalesCard: {
+    background: "#ffffff",
+    border: "1px solid #d1d5db",
+    borderRadius: 18,
+    padding: 20,
+    minHeight: 120,
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+  },
+  whiteSalesLabel: {
+    color: "#4b5563",
+    margin: "0 0 10px",
+    fontSize: 14,
+    fontWeight: 900,
+  },
+  whiteSalesValue: {
+    color: "#111827",
+    fontSize: 28,
+    fontWeight: 1000,
+  },
+  whiteSalesMiniText: {
+    color: "#6b7280",
+    margin: "8px 0 0",
+    fontSize: 13,
+    fontWeight: 800,
+  },
+
   autoCareBox: {
     background: "#151515",
     border: "1px solid #272727",
