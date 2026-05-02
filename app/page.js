@@ -6303,83 +6303,76 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                         {groups.length === 0 ? (
                           <p style={styles.whiteMuted}>운동 상세 없음</p>
                         ) : (
-                          groups.map((group, groupIndex) => (
-                            <div key={group.key} style={styles.whiteExerciseGroup}>
-                              <p style={styles.whiteExerciseTitle}>
-                                {groupIndex + 1}번 운동 · {group.exerciseName}
-                              </p>
+                          <div style={styles.whiteWorkoutTable}>
+                            <div style={styles.whiteWorkoutTableHeader}>
+                              <span>운동명</span>
+                              <span>세트 내용</span>
+                              <span>관리</span>
+                            </div>
 
-                              {group.sets.map((set, setIndex) => (
-                                <div
-                                  key={set.id || `${group.key}-${setIndex}`}
-                                  style={styles.whiteSetRow}
-                                >
-                                  {editingWorkoutSetId === set.id ? (
-                                    <>
-                                      <input
-                                        value={editWorkoutName}
-                                        onChange={(e) => setEditWorkoutName(e.target.value)}
-                                        placeholder="운동명"
-                                        style={styles.whiteInput}
-                                      />
-                                      <input
-                                        value={editWorkoutWeight}
-                                        onChange={(e) => setEditWorkoutWeight(e.target.value)}
-                                        placeholder="중량"
-                                        type="number"
-                                        style={styles.whiteInput}
-                                      />
-                                      <input
-                                        value={editWorkoutReps}
-                                        onChange={(e) => setEditWorkoutReps(e.target.value)}
-                                        placeholder="횟수"
-                                        type="number"
-                                        style={styles.whiteInput}
-                                      />
+                            {groups.map((group, groupIndex) => (
+                              <div key={group.key} style={styles.whiteWorkoutTableRow}>
+                                <div style={styles.whiteWorkoutTableName}>
+                                  {groupIndex + 1}. {group.exerciseName}
+                                </div>
 
-                                      <div style={styles.whiteActionRow}>
-                                        <button
-                                          onClick={() => saveWorkoutSetEdit(set)}
-                                          style={styles.whiteSaveButton}
-                                        >
-                                          저장
-                                        </button>
-                                        <button
-                                          onClick={clearWorkoutEdit}
-                                          style={styles.whiteCancelButton}
-                                        >
-                                          취소
-                                        </button>
+                                <div style={styles.whiteWorkoutSetChips}>
+                                  {group.sets.map((set, setIndex) =>
+                                    editingWorkoutSetId === set.id ? (
+                                      <div key={set.id || `${group.key}-${setIndex}`} style={styles.whiteInlineEditBox}>
+                                        <input
+                                          value={editWorkoutName}
+                                          onChange={(e) => setEditWorkoutName(e.target.value)}
+                                          placeholder="운동명"
+                                          style={styles.whiteInlineInput}
+                                        />
+                                        <input
+                                          value={editWorkoutWeight}
+                                          onChange={(e) => setEditWorkoutWeight(e.target.value)}
+                                          placeholder="중량"
+                                          type="number"
+                                          style={styles.whiteInlineInput}
+                                        />
+                                        <input
+                                          value={editWorkoutReps}
+                                          onChange={(e) => setEditWorkoutReps(e.target.value)}
+                                          placeholder="횟수"
+                                          type="number"
+                                          style={styles.whiteInlineInput}
+                                        />
+                                        <button onClick={() => saveWorkoutSetEdit(set)} style={styles.whiteSaveButton}>저장</button>
+                                        <button onClick={clearWorkoutEdit} style={styles.whiteCancelButton}>취소</button>
                                       </div>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <p style={styles.whiteSetText}>
-                                        {set.set_number || setIndex + 1}세트 ·{" "}
-                                        {set.weight ? `${set.weight}kg` : "중량 미입력"} ·{" "}
-                                        {set.reps ? `${set.reps}회` : "횟수 미입력"}
-                                      </p>
-
-                                      <div style={styles.whiteActionRow}>
-                                        <button
-                                          onClick={() => startWorkoutSetEdit(set)}
-                                          style={styles.whiteEditButton}
-                                        >
-                                          수정
-                                        </button>
-                                        <button
-                                          onClick={() => deleteWorkoutSet(set)}
-                                          style={styles.whiteDeleteButton}
-                                        >
-                                          삭제
-                                        </button>
-                                      </div>
-                                    </>
+                                    ) : (
+                                      <button
+                                        key={set.id || `${group.key}-${setIndex}`}
+                                        type="button"
+                                        onClick={() => startWorkoutSetEdit(set)}
+                                        style={styles.whiteSetChipButton}
+                                        title="누르면 수정"
+                                      >
+                                        {set.set_number || setIndex + 1}세트 · {set.weight ? `${set.weight}kg` : "-kg"} · {set.reps ? `${set.reps}회` : "-회"}
+                                      </button>
+                                    )
                                   )}
                                 </div>
-                              ))}
-                            </div>
-                          ))
+
+                                <div style={styles.whiteWorkoutManageCell}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (confirm(`${group.exerciseName} 운동 세트를 모두 삭제할까요?`)) {
+                                        group.sets.forEach((set) => deleteWorkoutSet(set));
+                                      }
+                                    }}
+                                    style={styles.whiteDeleteButtonSmall}
+                                  >
+                                    운동삭제
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         )}
 
                         {renderTrainerJournal(session, true)}
@@ -8275,8 +8268,8 @@ const styles = {
     marginBottom: 14,
   },
   searchBox: {
-    background: "#151515",
-    border: "1px solid #272727",
+    background: "#ffffff",
+    border: "1px solid #d4d4d4",
     borderRadius: 24,
     padding: 20,
     marginBottom: 34,
@@ -8401,12 +8394,13 @@ textarea: {
     boxShadow: "0 10px 28px rgba(0,0,0,.25)",
   },
   cardCompact: {
-    background: "#1c1c1c",
-    border: "1px solid #292929",
+    background: "#ffffff",
+    border: "1px solid #d4d4d4",
     borderRadius: 22,
     padding: 18,
     marginBottom: 12,
-    boxShadow: "0 8px 22px rgba(0,0,0,.2)",
+    boxShadow: "0 8px 22px rgba(0,0,0,.14)",
+    color: "#111",
   },
   compactTop: {
     display: "grid",
@@ -8418,8 +8412,8 @@ textarea: {
     fontSize: 22,
     margin: 0,
     marginBottom: 8,
-    fontWeight: 900,
-    color: "#ffffff",
+    fontWeight: 1000,
+    color: "#111",
     wordBreak: "keep-all",
   },
   ptCountSmall: {
@@ -8440,9 +8434,9 @@ textarea: {
     marginBottom: 8,
   },
   generalMemberBadge: {
-    background: "#262626",
-    color: "#ddd",
-    border: "1px solid #444",
+    background: "#f5f5f5",
+    color: "#111",
+    border: "1px solid #cfcfcf",
     borderRadius: 999,
     padding: "5px 9px",
     fontSize: 12,
@@ -8490,13 +8484,14 @@ textarea: {
     display: "flex",
     gap: 12,
     flexWrap: "wrap",
-    color: "#93c5fd",
+    color: "#111",
     fontSize: 14,
     marginBottom: 8,
+    fontWeight: 800,
   },
   detailActionBox: {
-    background: "#202020",
-    border: "1px solid #333",
+    background: "#ffffff",
+    border: "1px solid #d4d4d4",
     borderRadius: 22,
     padding: 16,
     marginTop: 18,
@@ -8801,8 +8796,8 @@ textarea: {
     fontSize: 14,
   },
   inbodyTrendBox: {
-    background: "#202020",
-    border: "1px solid #333",
+    background: "#ffffff",
+    border: "1px solid #111",
     borderRadius: 18,
     padding: 14,
     margin: "14px 0 18px",
@@ -8832,7 +8827,7 @@ textarea: {
     gap: 8,
     alignItems: "center",
     padding: "10px 0",
-    borderTop: "1px solid #303030",
+    borderTop: "1px solid #d4d4d4",
   },
   inbodyTrendLineArea: {
     position: "relative",
@@ -8896,7 +8891,7 @@ textarea: {
     borderTop: "1px solid #303030",
   },
   inbodyTrendLabel: {
-    color: "#fff",
+    color: "#111",
     fontSize: 14,
     fontWeight: 900,
     paddingBottom: 10,
@@ -8930,7 +8925,7 @@ textarea: {
     position: "absolute",
     top: 0,
     transform: "translateX(-50%)",
-    color: "#fff",
+    color: "#111",
     fontSize: 14,
     fontWeight: 900,
     lineHeight: "20px",
@@ -8955,20 +8950,20 @@ textarea: {
     marginBottom: 18,
   },
   inbodyMetricCard: {
-    background: "#222",
-    border: "1px solid #333",
+    background: "#ffffff",
+    border: "1px solid #111",
     borderRadius: 16,
     padding: 14,
   },
   inbodyMetricLabel: {
-    color: "#aaa",
+    color: "#333",
     fontSize: 13,
     fontWeight: 900,
     margin: "0 0 8px",
   },
   inbodyMetricValue: {
     display: "block",
-    color: "#fff",
+    color: "#111",
     fontSize: 22,
     fontWeight: 900,
     marginBottom: 10,
@@ -8981,7 +8976,7 @@ textarea: {
     marginTop: 6,
   },
   inbodyDeltaCaption: {
-    color: "#888",
+    color: "#444",
     fontSize: 12,
     fontWeight: 800,
   },
@@ -9647,10 +9642,11 @@ textarea: {
     flexWrap: "wrap",
   },
   phoneSmallCompact: {
-    color: "#b3b3b3",
+    color: "#333",
     fontSize: 13,
     margin: 0,
     marginBottom: 7,
+    fontWeight: 800,
   },
   memberCardBottomRow: {
     display: "flex",
@@ -9739,8 +9735,88 @@ textarea: {
     padding: "12px 16px",
     fontWeight: 900,
   },
+
+  whiteWorkoutTable: {
+    display: "grid",
+    gap: 8,
+    marginTop: 10,
+  },
+  whiteWorkoutTableHeader: {
+    display: "grid",
+    gridTemplateColumns: "170px 1fr 90px",
+    gap: 10,
+    background: "#111",
+    color: "#fff",
+    borderRadius: 12,
+    padding: "10px 12px",
+    fontSize: 13,
+    fontWeight: 1000,
+  },
+  whiteWorkoutTableRow: {
+    display: "grid",
+    gridTemplateColumns: "170px 1fr 90px",
+    gap: 10,
+    alignItems: "start",
+    background: "#fff",
+    border: "1px solid #d4d4d4",
+    borderRadius: 12,
+    padding: 10,
+  },
+  whiteWorkoutTableName: {
+    color: "#111",
+    fontSize: 15,
+    fontWeight: 1000,
+    lineHeight: 1.35,
+  },
+  whiteWorkoutSetChips: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 6,
+    alignItems: "center",
+  },
+  whiteSetChipButton: {
+    background: "#f7f7f7",
+    color: "#111",
+    border: "1px solid #d4d4d4",
+    borderRadius: 999,
+    padding: "7px 10px",
+    fontSize: 13,
+    fontWeight: 900,
+  },
+  whiteInlineEditBox: {
+    display: "grid",
+    gridTemplateColumns: "1.3fr 0.7fr 0.7fr auto auto",
+    gap: 6,
+    width: "100%",
+    alignItems: "center",
+  },
+  whiteInlineInput: {
+    width: "100%",
+    background: "#fff",
+    color: "#111",
+    border: "1px solid #cfcfcf",
+    borderRadius: 10,
+    padding: "8px 9px",
+    fontSize: 13,
+    fontWeight: 800,
+    boxSizing: "border-box",
+  },
+  whiteWorkoutManageCell: {
+    display: "flex",
+    justifyContent: "flex-end",
+  },
+  whiteDeleteButtonSmall: {
+    background: "#fff1f2",
+    color: "#991b1b",
+    border: "1px solid #fecaca",
+    borderRadius: 999,
+    padding: "7px 9px",
+    fontSize: 12,
+    fontWeight: 1000,
+  },
   whiteWorkoutCard: {
-    background: "#f3f3f3",
+    background: "#ffffff",
+    border: "1px solid #d4d4d4",
     borderRadius: 18,
     padding: 16,
     marginBottom: 12,
@@ -9759,7 +9835,8 @@ textarea: {
     color: "#111",
   },
   whiteExerciseGroup: {
-    background: "#fff",
+    background: "#ffffff",
+    border: "1px solid #d4d4d4",
     borderRadius: 14,
     padding: 12,
     marginBottom: 10,
