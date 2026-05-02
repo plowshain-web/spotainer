@@ -638,65 +638,71 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
   function renderScheduleMoreMenu(schedule) {
     return (
-      <div style={styles.scheduleMoreMenu}>
-        <button
-          type="button"
-          onClick={() => {
-            closeScheduleActionMenu();
-            addToDeviceCalendar(schedule);
-          }}
-          style={styles.scheduleMoreMenuButton}
-        >
-          캘린더
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            closeScheduleActionMenu();
-            markScheduleNoShow(schedule);
-          }}
-          style={styles.scheduleMoreMenuButtonDanger}
-        >
-          노쇼
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            closeScheduleActionMenu();
-            markScheduleCancelled(schedule);
-          }}
-          style={styles.scheduleMoreMenuButtonWarning}
-        >
-          취소
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            closeScheduleActionMenu();
-            startEditSchedule(schedule);
-          }}
-          style={styles.scheduleMoreMenuButton}
-        >
-          수정
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            closeScheduleActionMenu();
-            deleteSchedule(schedule);
-          }}
-          style={styles.scheduleMoreMenuButtonDanger}
-        >
-          삭제
-        </button>
-        <button
-          type="button"
+      <>
+        <div
+          style={styles.scheduleMoreMenuBackdrop}
           onClick={closeScheduleActionMenu}
-          style={styles.scheduleMoreMenuCloseButton}
-        >
-          닫기
-        </button>
-      </div>
+        />
+        <div style={styles.scheduleMoreMenu}>
+          <button
+            type="button"
+            onClick={() => {
+              closeScheduleActionMenu();
+              addToDeviceCalendar(schedule);
+            }}
+            style={styles.scheduleMoreMenuButton}
+          >
+            캘린더
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              closeScheduleActionMenu();
+              markScheduleNoShow(schedule);
+            }}
+            style={styles.scheduleMoreMenuButtonDanger}
+          >
+            노쇼
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              closeScheduleActionMenu();
+              markScheduleCancelled(schedule);
+            }}
+            style={styles.scheduleMoreMenuButtonWarning}
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              closeScheduleActionMenu();
+              startEditSchedule(schedule);
+            }}
+            style={styles.scheduleMoreMenuButton}
+          >
+            수정
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              closeScheduleActionMenu();
+              deleteSchedule(schedule);
+            }}
+            style={styles.scheduleMoreMenuButtonDanger}
+          >
+            삭제
+          </button>
+          <button
+            type="button"
+            onClick={closeScheduleActionMenu}
+            style={styles.scheduleMoreMenuCloseButton}
+          >
+            닫기
+          </button>
+        </div>
+      </>
     );
   }
 
@@ -7626,19 +7632,27 @@ const styles = {
     lineHeight: 1,
     whiteSpace: "nowrap",
   },
+  scheduleMoreMenuBackdrop: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,.18)",
+    zIndex: 19998,
+  },
   scheduleMoreMenu: {
-    position: "absolute",
-    right: 0,
-    bottom: "calc(100% + 8px)",
-    width: 160,
+    position: "fixed",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+    width: 220,
+    maxWidth: "calc(100vw - 48px)",
     background: "#111",
     border: "1px solid #333",
-    borderRadius: 16,
-    padding: 8,
+    borderRadius: 18,
+    padding: 10,
     display: "grid",
-    gap: 6,
-    zIndex: 12000,
-    boxShadow: "0 18px 44px rgba(0,0,0,.35)",
+    gap: 8,
+    zIndex: 19999,
+    boxShadow: "0 22px 60px rgba(0,0,0,.42)",
   },
   scheduleMoreMenuButton: {
     background: "#1f2937",
