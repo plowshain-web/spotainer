@@ -2085,6 +2085,12 @@ const [workoutExercises, setWorkoutExercises] = useState([
     return null;
   }
 
+  function getDetailPtPillStyle(pt) {
+    if (pt <= 2) return styles.detailPtPillDanger;
+    if (pt <= 5) return styles.detailPtPillWarning;
+    return styles.detailPtPillGood;
+  }
+
   function getPtStatus(member) {
     const pt = member.pt_remaining || 0;
     if (pt <= 2) return { text: "강한 경고", style: styles.dangerBadge };
@@ -4260,16 +4266,6 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
   return (
     <main style={styles.page}>
-      {hasOpenModal && (
-        <button
-          type="button"
-          onClick={goToMain}
-          style={styles.safeExitButton}
-        >
-          메인으로
-        </button>
-      )}
-
       <header style={styles.header}>
         <div>
           <h1 style={styles.title}>Spotainer</h1>
@@ -5450,8 +5446,20 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
         <div style={styles.modalOverlay}>
           <section style={styles.modalBox}>
             <div style={styles.detailTop}>
-              <div>
-                <h2 style={styles.detailName}>{selectedMember.name}</h2>
+              <div style={styles.detailHeaderLeft}>
+                <div style={styles.detailNameLine}>
+                  <h2 style={styles.detailName}>{selectedMember.name}</h2>
+                  <span style={getDetailPtPillStyle(selectedMember.pt_remaining || 0)}>
+                    PT {selectedMember.pt_remaining || 0}회 남음
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => openPtModal(selectedMember)}
+                    style={styles.detailHeaderPassButton}
+                  >
+                    + 이용권
+                  </button>
+                </div>
                 <p style={styles.muted}>
                   {selectedMember.age ? `${selectedMember.age}세 · ` : ""}
                   {selectedMember.height ? `${selectedMember.height}cm · ` : ""}
@@ -5491,19 +5499,6 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                     인바디 기록
                   </button>
                 </div>
-
-                <div style={styles.detailActionBox}>
-                  <p style={styles.detailPtMini}>PT {selectedMember.pt_remaining || 0}회 남음</p>
-
-                  <div style={styles.detailButtonGridCleanSingle}>
-                    <button
-                      onClick={() => openPtModal(selectedMember)}
-                      style={styles.whiteButton}
-                    >
-                      이용권 추가
-                    </button>
-                  </div>
-                </div>
               </>
             )}
 
@@ -5532,10 +5527,6 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 {renderInfoBlock("목표", selectedMember.goal)}
                 {renderInfoBlock("특이사항", selectedMember.note)}
                 {renderInfoBlock("트레이너 메모", selectedMember.memo)}
-
-                <button onClick={() => setDetailMode("menu")} style={styles.cancelButton}>
-                  뒤로
-                </button>
               </>
             )}
 
@@ -5582,10 +5573,6 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                     {renderInbodyTrendChart()}
                   </>
                 )}
-
-                <button onClick={() => setDetailMode("menu")} style={styles.cancelButton}>
-                  뒤로
-                </button>
               </>
             )}
 
@@ -5625,10 +5612,6 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                     </div>
                   ))
                 )}
-
-                <button onClick={() => setDetailMode("menu")} style={styles.cancelButton}>
-                  뒤로
-                </button>
               </>
             )}
 
@@ -5663,13 +5646,19 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                     </div>
                   ))
                 )}
-
-                <button onClick={() => setDetailMode("menu")} style={styles.cancelButton}>
-                  뒤로
-                </button>
               </>
             )}
           </section>
+          <button
+            type="button"
+            onClick={() => {
+              if (detailMode === "menu") closeDetail();
+              else setDetailMode("menu");
+            }}
+            style={styles.detailFloatingBackButton}
+          >
+            뒤로
+          </button>
         </div>
       )}
 
@@ -8726,11 +8715,75 @@ textarea: {
     justifyContent: "space-between",
     gap: 16,
     alignItems: "flex-start",
+    marginBottom: 20,
+  },
+  detailHeaderLeft: {
+    minWidth: 0,
+    flex: 1,
+  },
+  detailNameLine: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    flexWrap: "wrap",
+    marginBottom: 8,
+  },
+  detailPtPillGood: {
+    border: "1px solid #16a34a",
+    background: "#ecfdf3",
+    color: "#166534",
+    borderRadius: 999,
+    padding: "8px 13px",
+    fontSize: 14,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+  },
+  detailPtPillWarning: {
+    border: "1px solid #f59e0b",
+    background: "#fffbeb",
+    color: "#92400e",
+    borderRadius: 999,
+    padding: "8px 13px",
+    fontSize: 14,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+  },
+  detailPtPillDanger: {
+    border: "1px solid #dc2626",
+    background: "#fef2f2",
+    color: "#991b1b",
+    borderRadius: 999,
+    padding: "8px 13px",
+    fontSize: 14,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+  },
+  detailHeaderPassButton: {
+    border: "1px solid #111",
+    background: "#111",
+    color: "#fff",
+    borderRadius: 999,
+    padding: "9px 15px",
+    fontSize: 14,
+    fontWeight: 1000,
+  },
+  detailFloatingBackButton: {
+    position: "fixed",
+    right: 24,
+    bottom: 24,
+    zIndex: 100002,
+    border: "1px solid #111",
+    background: "#111",
+    color: "#fff",
+    borderRadius: 999,
+    padding: "14px 20px",
+    fontSize: 16,
+    fontWeight: 1000,
+    boxShadow: "0 14px 34px rgba(0,0,0,0.26)",
   },
   detailName: {
     fontSize: 34,
     margin: 0,
-    marginBottom: 8,
   },
   muted: {
     color: "#555",
