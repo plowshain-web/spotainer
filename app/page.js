@@ -103,6 +103,7 @@ export default function Page() {
   const [centerMemo, setCenterMemo] = useState("");
 
   const [showTrainerLogModal, setShowTrainerLogModal] = useState(false);
+  const [showTrainerWorkoutHistoryModal, setShowTrainerWorkoutHistoryModal] = useState(false);
   const [trainerLogTab, setTrainerLogTab] = useState("workout");
   const [trainerInbodyList, setTrainerInbodyList] = useState([]);
   const [trainerWorkoutList, setTrainerWorkoutList] = useState([]);
@@ -1016,6 +1017,99 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
   function closeTrainerLogModal() {
     setShowTrainerLogModal(false);
+    setShowTrainerWorkoutHistoryModal(false);
+  }
+
+  function openTrainerWorkoutHistoryModal() {
+    setShowTrainerWorkoutHistoryModal(true);
+    loadTrainerLogs();
+  }
+
+  function closeTrainerWorkoutHistoryModal() {
+    setShowTrainerWorkoutHistoryModal(false);
+  }
+
+  function getTrainerWorkoutTypeText(type) {
+    if (type === "circuit") return "서킷";
+    if (type === "cardio") return "유산소";
+    if (type === "stretch") return "스트레칭";
+    return "웨이트";
+  }
+
+  function getLatestTrainerWorkoutLog() {
+    return (trainerWorkoutList || []).find((log) => log?.workout_date || log?.created_at) || null;
+  }
+
+  function getTrainerSelectedPartReferenceLog() {
+    const selectedParts = trainerWorkoutBodyParts || [];
+    if (selectedParts.length === 0) return null;
+
+    return (trainerWorkoutList || []).find((log) => {
+      const parts = Array.isArray(log.body_parts) ? log.body_parts : [];
+      return parts.some((part) => selectedParts.includes(part));
+    }) || null;
+  }
+
+  function getTrainerWorkoutExerciseNames(log) {
+    const items = Array.isArray(log?.exercise_items) ? log.exercise_items : [];
+    const names = items.map((exercise) => exercise?.name).filter(Boolean);
+    if (names.length > 0) return names;
+
+    return String(log?.exercise_summary || "")
+      .split(/[,·\n]/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 6);
+  }
+
+  function summarizeTrainerWorkoutLogShort(log) {
+    if (!log) return "최근 개인 운동 기록이 없습니다.";
+    const parts = Array.isArray(log.body_parts) && log.body_parts.length > 0 ? log.body_parts.join(", ") : getTrainerWorkoutTypeText(log.workout_type);
+    const names = getTrainerWorkoutExerciseNames(log);
+    const exerciseText = names.length > 0 ? `${names.slice(0, 3).join(", ")}${names.length > 3 ? ` 외 ${names.length - 3}개` : ""}` : (log.exercise_summary || "운동 내용 미입력");
+    return `${formatDate(log.workout_date)} · ${parts} · ${exerciseText}`;
+  }
+
+  function renderTrainerWorkoutHistoryCard(log) {
+    return (
+      <div key={log.id} style={styles.personalLogCard}>
+        <div style={styles.personalLogCardTop}>
+          <div>
+            <strong>{formatDate(log.workout_date)}</strong>
+            <p style={styles.personalLogMain}>
+              {getTrainerWorkoutTypeText(log.workout_type)}
+              {Array.isArray(log.body_parts) && log.body_parts.length > 0 ? ` · ${log.body_parts.join(", ")}` : ""}
+            </p>
+          </div>
+          <button type="button" onClick={() => deleteTrainerWorkoutLog(log.id)} style={styles.whiteSmallDangerButton}>
+            삭제
+          </button>
+        </div>
+
+        {Array.isArray(log.exercise_items) && log.exercise_items.length > 0 ? (
+          <div style={styles.personalWorkoutDetailTable}>
+            {log.exercise_items.map((exercise, exerciseIndex) => (
+              <div key={`${log.id}-exercise-${exerciseIndex}`} style={styles.personalWorkoutDetailRow}>
+                <strong>{exercise.name || "운동명 미입력"}</strong>
+                <span>
+                  {(exercise.sets || []).map((set, setIndex) => (
+                    `${setIndex + 1}세트 ${set.weight || "-"}kg ${set.reps || "-"}회`
+                  )).join(" · ")}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p style={styles.personalLogText}>{log.exercise_summary}</p>
+        )}
+
+        {(log.issue || log.next_plan || log.memo) && (
+          <p style={styles.personalLogSub}>
+            {[log.issue ? `이슈: ${log.issue}` : "", log.next_plan ? `다음: ${log.next_plan}` : "", log.memo ? `메모: ${log.memo}` : ""].filter(Boolean).join(" · ")}
+          </p>
+        )}
+      </div>
+    );
   }
 
   function toggleTrainerWorkoutBodyPart(part) {
@@ -5328,6 +5422,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     showCenterModal ||
     showSalesModal ||
     showTrainerLogModal ||
+    showTrainerWorkoutHistoryModal ||
     freeSmsModalMember ||
     feedbackModalMember ||
     contactModalMember ||
@@ -5359,6 +5454,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     setShowTodayTodoModal(false);
     setShowSalesModal(false);
     setShowTrainerLogModal(false);
+    setShowTrainerWorkoutHistoryModal(false);
     setSummaryModal(null);
     setShowContactListModal(false);
     setShowCenterModal(false);
@@ -5976,7 +6072,36 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
             {trainerLogTab === "workout" ? (
               <div style={styles.personalLogGrid}>
                 <section style={styles.personalFormBox}>
-                  <h3 style={styles.personalSectionTitle}>오늘 운동 기록</h3>
+                  <div style={styles.personalSectionHeader}>
+                    <div>
+                      <h3 style={styles.personalSectionTitle}>오늘 운동 기록</h3>
+                      <p style={styles.personalMiniInfo}>
+                        전시간 부위: {(() => {
+                          const latest = getLatestTrainerWorkoutLog();
+                          return latest && Array.isArray(latest.body_parts) && latest.body_parts.length > 0
+                            ? latest.body_parts.join(", ")
+                            : "최근 기록 없음";
+                        })()}
+                      </p>
+                    </div>
+                    <button type="button" onClick={openTrainerWorkoutHistoryModal} style={styles.whiteSmallButton}>
+                      최근 운동기록 보기
+                    </button>
+                  </div>
+
+                  {getLatestTrainerWorkoutLog() && (
+                    <div style={styles.personalReferenceBox}>
+                      <strong>전시간 기록</strong>
+                      <p>{summarizeTrainerWorkoutLogShort(getLatestTrainerWorkoutLog())}</p>
+                    </div>
+                  )}
+
+                  {getTrainerSelectedPartReferenceLog() && (
+                    <div style={styles.personalReferenceBox}>
+                      <strong>선택한 부위 최근 기록</strong>
+                      <p>{summarizeTrainerWorkoutLogShort(getTrainerSelectedPartReferenceLog())}</p>
+                    </div>
+                  )}
 
                   <label style={styles.whiteLabel}>날짜</label>
                   <input
@@ -6134,48 +6259,6 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   </button>
                 </section>
 
-                <section style={styles.personalListBox}>
-                  <h3 style={styles.personalSectionTitle}>최근 개인 운동</h3>
-                  {trainerWorkoutList.length === 0 ? (
-                    <p style={styles.whiteMuted}>아직 개인 운동 기록이 없습니다.</p>
-                  ) : (
-                    trainerWorkoutList.map((log) => (
-                      <div key={log.id} style={styles.personalLogCard}>
-                        <div style={styles.personalLogCardTop}>
-                          <strong>{formatDate(log.workout_date)}</strong>
-                          <button type="button" onClick={() => deleteTrainerWorkoutLog(log.id)} style={styles.whiteSmallDangerButton}>
-                            삭제
-                          </button>
-                        </div>
-                        <p style={styles.personalLogMain}>
-                          {log.workout_type === "weight" ? "웨이트" : log.workout_type === "circuit" ? "서킷" : log.workout_type === "cardio" ? "유산소" : "스트레칭"}
-                          {Array.isArray(log.body_parts) && log.body_parts.length > 0 ? ` · ${log.body_parts.join(", ")}` : ""}
-                        </p>
-                        {Array.isArray(log.exercise_items) && log.exercise_items.length > 0 ? (
-                          <div style={styles.personalWorkoutDetailTable}>
-                            {log.exercise_items.map((exercise, exerciseIndex) => (
-                              <div key={`${log.id}-exercise-${exerciseIndex}`} style={styles.personalWorkoutDetailRow}>
-                                <strong>{exercise.name || "운동명 미입력"}</strong>
-                                <span>
-                                  {(exercise.sets || []).map((set, setIndex) => (
-                                    `${setIndex + 1}세트 ${set.weight || "-"}kg ${set.reps || "-"}회`
-                                  )).join(" · ")}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p style={styles.personalLogText}>{log.exercise_summary}</p>
-                        )}
-                        {(log.issue || log.next_plan || log.memo) && (
-                          <p style={styles.personalLogSub}>
-                            {[log.issue ? `이슈: ${log.issue}` : "", log.next_plan ? `다음: ${log.next_plan}` : "", log.memo ? `메모: ${log.memo}` : ""].filter(Boolean).join(" · ")}
-                          </p>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </section>
               </div>
             ) : (
               <div style={styles.personalLogGrid}>
@@ -8090,6 +8173,32 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   </div>
                 );
               })
+            )}
+          </section>
+        </div>
+      )}
+
+
+
+      {showTrainerWorkoutHistoryModal && (
+        <div style={styles.whiteModalOverlay}>
+          <section style={styles.whiteModalBox}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>최근 개인 운동기록</h2>
+                <p style={styles.whiteMuted}>최근 운동을 날짜별로 확인하고, 오늘 운동 참고용으로만 사용합니다.</p>
+              </div>
+              <button onClick={closeTrainerWorkoutHistoryModal} style={styles.whiteCloseButton}>
+                닫기
+              </button>
+            </div>
+
+            {trainerWorkoutList.length === 0 ? (
+              <p style={styles.whiteMuted}>아직 개인 운동 기록이 없습니다.</p>
+            ) : (
+              <div style={styles.trainerHistoryList}>
+                {trainerWorkoutList.map(renderTrainerWorkoutHistoryCard)}
+              </div>
             )}
           </section>
         </div>
@@ -13790,6 +13899,37 @@ textarea: {
     fontWeight: 900,
     fontSize: 16,
   },
+
+  personalSectionHeader: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 12,
+  },
+  personalMiniInfo: {
+    margin: "4px 0 0",
+    color: "#4b5563",
+    fontSize: 13,
+    fontWeight: 800,
+  },
+  personalReferenceBox: {
+    border: "1px solid #d8d8d8",
+    borderRadius: 14,
+    padding: "10px 12px",
+    background: "#f8fafc",
+    color: "#111",
+    marginBottom: 10,
+  },
+  trainerHistoryList: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 12,
+    maxHeight: "70vh",
+    overflowY: "auto",
+    paddingRight: 4,
+  },
+
   personalLogGrid: {
     display: "grid",
     gridTemplateColumns: "1fr",
