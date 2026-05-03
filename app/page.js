@@ -257,6 +257,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [smsMode, setSmsMode] = useState(false);
   const [smsSentMap, setSmsSentMap] = useState({});
   const [smsSentLogList, setSmsSentLogList] = useState([]);
+  const [isMobileEmergencyMode, setIsMobileEmergencyMode] = useState(false);
   const scheduleCalendarTouchStartXRef = useRef(null);
   const hasOpenModalRef = useRef(false);
   const modalBackGuardArmedRef = useRef(false);
@@ -270,6 +271,34 @@ const [workoutExercises, setWorkoutExercises] = useState([
     loadSales();
     loadCenterInfo();
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    function checkMobileEmergencyMode() {
+      const width = window.innerWidth || 0;
+      const height = window.innerHeight || 0;
+      const shortSide = Math.min(width, height);
+      const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches;
+      setIsMobileEmergencyMode(Boolean(coarsePointer && shortSide < 700));
+    }
+
+    checkMobileEmergencyMode();
+    window.addEventListener("resize", checkMobileEmergencyMode);
+    window.addEventListener("orientationchange", checkMobileEmergencyMode);
+
+    return () => {
+      window.removeEventListener("resize", checkMobileEmergencyMode);
+      window.removeEventListener("orientationchange", checkMobileEmergencyMode);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileEmergencyMode || !scheduleCheckDate) return;
+
+    loadScheduleCheckList(scheduleCheckDate);
+    loadScheduleSMSLogs(scheduleCheckDate);
+  }, [isMobileEmergencyMode, scheduleCheckDate]);
 
   useEffect(() => {
     if (!exitToast) return;
@@ -3485,6 +3514,31 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
     window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
   }
 
+  async function sendMobileScheduleSMS(schedule, member) {
+    const targetMember = member || getScheduleMember(schedule) || schedule.members;
+    const phone = normalizePhone(targetMember?.phone);
+
+    if (!targetMember) {
+      alert("연결된 회원 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    if (!phone) {
+      alert(`${targetMember.name || "회원"} 회원의 전화번호가 없습니다.`);
+      return;
+    }
+
+    if (isScheduleSMSSent(schedule)) {
+      const resend = confirm(`${targetMember.name || "회원"} 회원에게 오늘 이미 문자를 보낸 기록이 있습니다.\n그래도 다시 문자앱을 열까요?`);
+      if (!resend) return;
+    }
+
+    await saveScheduleSMSLog(schedule, `모바일 긴급모드 문자 - ${targetMember.name || "회원"}`);
+
+    const message = buildScheduleSMSMessage(schedule);
+    window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
+  }
+
   function getTodaySMSTargets() {
     const today = getTodayDateString();
 
@@ -5589,6 +5643,104 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
     return !schedule.attendance_checked || !schedule.pt_used;
   });
+
+  if (isMobileEmergencyMode) {
+    const mobileSchedules = (scheduleCheckList || []).slice().sort((a, b) => {
+      const aTime = normalizeTimeValue(a.start_time || "");
+      const bTime = normalizeTimeValue(b.start_time || "");
+      return aTime.localeCompare(bTime);
+    });
+
+    return (
+      <main style={styles.mobileEmergencyPage}>
+        <section style={styles.mobileEmergencyHeader}>
+          <div>
+            <h1 style={styles.mobileEmergencyTitle}>Spotainer</h1>
+            <p style={styles.mobileEmergencySubtitle}>휴대폰 긴급 확인 모드</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              loadScheduleCheckList(scheduleCheckDate);
+              loadScheduleSMSLogs(scheduleCheckDate);
+            }}
+            style={styles.mobileEmergencyRefreshButton}
+          >
+            새로고침
+          </button>
+        </section>
+
+        <section style={styles.mobileEmergencyDateBox}>
+          <button type="button" onClick={() => moveScheduleCheckDate(-1)} style={styles.mobileEmergencyDateButton}>
+            ◀
+          </button>
+          <button type="button" onClick={() => setScheduleCheckDate(getTodayDateString())} style={styles.mobileEmergencyTodayButton}>
+            {formatDate(scheduleCheckDate)}
+          </button>
+          <button type="button" onClick={() => moveScheduleCheckDate(1)} style={styles.mobileEmergencyDateButton}>
+            ▶
+          </button>
+        </section>
+
+        <section style={styles.mobileEmergencyList}>
+          <h2 style={styles.mobileEmergencySectionTitle}>스케줄 {mobileSchedules.length}건</h2>
+
+          {mobileSchedules.length === 0 ? (
+            <div style={styles.mobileEmergencyEmpty}>해당 날짜에 등록된 스케줄이 없습니다.</div>
+          ) : (
+            mobileSchedules.map((schedule) => {
+              const scheduleMembers = getScheduleMembers(schedule);
+              const status = getSchedulePreviewStatus(schedule);
+              const sent = isScheduleSMSSent(schedule);
+
+              return (
+                <article key={schedule.id} style={styles.mobileEmergencyCard}>
+                  <div style={styles.mobileEmergencyCardTop}>
+                    <strong style={styles.mobileEmergencyTime}>{formatScheduleRange(schedule)}</strong>
+                    <span style={status.style}>{status.text}</span>
+                  </div>
+
+                  <div style={styles.mobileEmergencyMemberLine}>
+                    {getScheduleTypeText(schedule.type)} · {getScheduleMemberNames(schedule)}
+                  </div>
+
+                  <div style={styles.mobileEmergencySubLine}>
+                    {getScheduleMemberPtText(schedule) || "PT 정보 없음"}
+                    {sent ? " · 문자 완료" : ""}
+                  </div>
+
+                  {schedule.memo && <p style={styles.mobileEmergencyMemo}>{schedule.memo}</p>}
+
+                  <div style={styles.mobileEmergencyButtonRow}>
+                    {scheduleMembers.length <= 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => sendMobileScheduleSMS(schedule, scheduleMembers[0])}
+                        style={styles.mobileEmergencySmsButton}
+                      >
+                        문자
+                      </button>
+                    ) : (
+                      scheduleMembers.map((member) => (
+                        <button
+                          key={`${schedule.id}-${member.id}`}
+                          type="button"
+                          onClick={() => sendMobileScheduleSMS(schedule, member)}
+                          style={styles.mobileEmergencySmsButton}
+                        >
+                          {member.name} 문자
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main style={styles.page}>
@@ -14451,6 +14603,147 @@ textarea: {
     padding: "8px 11px",
     fontWeight: 900,
     fontSize: 13,
+  },
+
+  mobileEmergencyPage: {
+    minHeight: "100vh",
+    background: "#f6f7fb",
+    color: "#111",
+    padding: "14px",
+    overflowY: "auto",
+    WebkitOverflowScrolling: "touch",
+  },
+  mobileEmergencyHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  mobileEmergencyTitle: {
+    margin: 0,
+    fontSize: 22,
+    fontWeight: 1000,
+    color: "#111",
+    letterSpacing: "-0.4px",
+  },
+  mobileEmergencySubtitle: {
+    margin: "3px 0 0",
+    fontSize: 12,
+    fontWeight: 800,
+    color: "#555",
+  },
+  mobileEmergencyRefreshButton: {
+    border: "1px solid #111",
+    background: "#fff",
+    color: "#111",
+    borderRadius: 12,
+    padding: "9px 12px",
+    fontWeight: 900,
+    fontSize: 13,
+  },
+  mobileEmergencyDateBox: {
+    display: "grid",
+    gridTemplateColumns: "44px 1fr 44px",
+    gap: 8,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  mobileEmergencyDateButton: {
+    height: 42,
+    border: "1px solid #111",
+    background: "#fff",
+    color: "#111",
+    borderRadius: 12,
+    fontSize: 18,
+    fontWeight: 1000,
+  },
+  mobileEmergencyTodayButton: {
+    height: 42,
+    border: "1px solid #111",
+    background: "#111",
+    color: "#fff",
+    borderRadius: 12,
+    fontSize: 15,
+    fontWeight: 1000,
+  },
+  mobileEmergencyList: {
+    display: "grid",
+    gap: 10,
+    paddingBottom: 28,
+  },
+  mobileEmergencySectionTitle: {
+    margin: "2px 0 0",
+    fontSize: 15,
+    fontWeight: 1000,
+    color: "#111",
+  },
+  mobileEmergencyEmpty: {
+    background: "#fff",
+    border: "1px solid #ddd",
+    borderRadius: 16,
+    padding: 18,
+    color: "#555",
+    fontWeight: 800,
+    textAlign: "center",
+  },
+  mobileEmergencyCard: {
+    background: "#fff",
+    border: "1px solid #dcdcdc",
+    borderRadius: 16,
+    padding: 12,
+    boxShadow: "0 8px 18px rgba(15,23,42,0.06)",
+  },
+  mobileEmergencyCardTop: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 6,
+  },
+  mobileEmergencyTime: {
+    fontSize: 15,
+    fontWeight: 1000,
+    color: "#111",
+  },
+  mobileEmergencyMemberLine: {
+    fontSize: 14,
+    fontWeight: 1000,
+    color: "#111",
+    lineHeight: 1.35,
+    marginBottom: 3,
+  },
+  mobileEmergencySubLine: {
+    fontSize: 12,
+    fontWeight: 800,
+    color: "#666",
+    lineHeight: 1.35,
+  },
+  mobileEmergencyMemo: {
+    margin: "8px 0 0",
+    padding: "8px 10px",
+    borderRadius: 12,
+    background: "#f7f7f7",
+    border: "1px solid #eee",
+    color: "#333",
+    fontSize: 12,
+    fontWeight: 700,
+    lineHeight: 1.45,
+  },
+  mobileEmergencyButtonRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 7,
+    marginTop: 10,
+  },
+  mobileEmergencySmsButton: {
+    border: "1px solid #111",
+    background: "#111",
+    color: "#fff",
+    borderRadius: 999,
+    padding: "8px 12px",
+    fontSize: 12,
+    fontWeight: 1000,
   },
 
 };
