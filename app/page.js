@@ -93,6 +93,7 @@ export default function Page() {
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");
   const [summaryModal, setSummaryModal] = useState(null);
+  const [memberActionMenuMember, setMemberActionMenuMember] = useState(null);
   const [showContactListModal, setShowContactListModal] = useState(false);
   const [showCenterModal, setShowCenterModal] = useState(false);
   const [showSalesModal, setShowSalesModal] = useState(false);
@@ -124,6 +125,7 @@ export default function Page() {
   const [trainerIssue, setTrainerIssue] = useState("");
   const [trainerNextPlan, setTrainerNextPlan] = useState("");
   const [trainerWorkoutMemo, setTrainerWorkoutMemo] = useState("");
+  const [editingTrainerWorkoutLog, setEditingTrainerWorkoutLog] = useState(null);
   const [contactModalMember, setContactModalMember] = useState(null);
   const [contactResult, setContactResult] = useState("pending");
   const [contactNote, setContactNote] = useState("");
@@ -1029,6 +1031,35 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setShowTrainerWorkoutHistoryModal(false);
   }
 
+  function closeMemberActionMenu() {
+    setMemberActionMenuMember(null);
+  }
+
+  async function openMemberScheduleSearch(member) {
+    if (!member) return;
+
+    const { data, error } = await supabase
+      .from("schedules")
+      .select("*, members(*), schedule_members(*, members(*))")
+      .order("schedule_date", { ascending: true })
+      .order("start_time", { ascending: true });
+
+    if (error) {
+      alert("회원 스케줄 불러오기 실패: " + error.message);
+      return;
+    }
+
+    const filtered = (data || []).filter((schedule) =>
+      getScheduleMembers(schedule).some((scheduleMember) => scheduleMember?.id === member.id)
+    );
+
+    setScheduleSearch(member.name || "");
+    setScheduleSearchResultList(filtered);
+    setShowScheduleSearchResultModal(true);
+    setShowMemberListModal(false);
+    closeMemberActionMenu();
+  }
+
   function getTrainerWorkoutTypeText(type) {
     if (type === "circuit") return "서킷";
     if (type === "cardio") return "유산소";
@@ -1081,9 +1112,14 @@ const [workoutExercises, setWorkoutExercises] = useState([
               {Array.isArray(log.body_parts) && log.body_parts.length > 0 ? ` · ${log.body_parts.join(", ")}` : ""}
             </p>
           </div>
-          <button type="button" onClick={() => deleteTrainerWorkoutLog(log.id)} style={styles.whiteSmallDangerButton}>
-            삭제
-          </button>
+          <div style={styles.personalHistoryActionRow}>
+            <button type="button" onClick={() => startEditTrainerWorkoutLog(log)} style={styles.whiteSmallButton}>
+              수정
+            </button>
+            <button type="button" onClick={() => deleteTrainerWorkoutLog(log.id)} style={styles.whiteSmallDangerButton}>
+              삭제
+            </button>
+          </div>
         </div>
 
         {Array.isArray(log.exercise_items) && log.exercise_items.length > 0 ? (
@@ -1125,6 +1161,36 @@ const [workoutExercises, setWorkoutExercises] = useState([
     if (type === "circuit") {
       setTrainerWorkoutBodyParts(["전신"]);
     }
+  }
+
+  function startEditTrainerWorkoutLog(log) {
+    if (!log) return;
+
+    setEditingTrainerWorkoutLog(log);
+    setTrainerLogTab("workout");
+    setTrainerWorkoutDate(log.workout_date || getTodayDateString());
+    setTrainerWorkoutType(log.workout_type || "weight");
+    setTrainerWorkoutBodyParts(Array.isArray(log.body_parts) ? log.body_parts : []);
+    setTrainerExerciseSummary(log.exercise_summary || "");
+    setTrainerWorkoutExercises(
+      Array.isArray(log.exercise_items) && log.exercise_items.length > 0
+        ? log.exercise_items.map((exercise) => ({
+            name: exercise.name || "",
+            sets: Array.isArray(exercise.sets) && exercise.sets.length > 0
+              ? exercise.sets.map((set) => ({
+                  weight: String(set.weight || ""),
+                  reps: String(set.reps || ""),
+                }))
+              : [{ weight: "", reps: "" }],
+          }))
+        : [createEmptyWorkoutExercise(log.workout_type || "weight")]
+    );
+    setTrainerCondition(log.condition || "normal");
+    setTrainerIssue(log.issue || "");
+    setTrainerNextPlan(log.next_plan || "");
+    setTrainerWorkoutMemo(log.memo || "");
+    setShowTrainerWorkoutHistoryModal(false);
+    setShowTrainerLogModal(true);
   }
 
   function getCleanTrainerWorkoutExercises() {
@@ -1223,6 +1289,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setTrainerIssue("");
     setTrainerNextPlan("");
     setTrainerWorkoutMemo("");
+    setEditingTrainerWorkoutLog(null);
   }
 
   async function loadTrainerLogs() {
@@ -1297,16 +1364,21 @@ const [workoutExercises, setWorkoutExercises] = useState([
       memo: trainerWorkoutMemo.trim(),
     };
 
-    const { error } = await supabase.from("trainer_workout_logs").insert(row);
+    const query = editingTrainerWorkoutLog?.id
+      ? supabase.from("trainer_workout_logs").update(row).eq("id", editingTrainerWorkoutLog.id)
+      : supabase.from("trainer_workout_logs").insert(row);
+
+    const { error } = await query;
 
     if (error) {
-      alert("대표 운동 기록 저장 실패: " + error.message);
+      alert(`대표 운동 기록 ${editingTrainerWorkoutLog?.id ? "수정" : "저장"} 실패: ${error.message}`);
       return;
     }
 
+    const wasEditing = Boolean(editingTrainerWorkoutLog?.id);
     resetTrainerWorkoutForm();
     await loadTrainerLogs();
-    alert("대표 운동 기록이 저장되었습니다.");
+    alert(wasEditing ? "대표 운동 기록이 수정되었습니다." : "대표 운동 기록이 저장되었습니다.");
   }
 
   async function deleteTrainerInbodyLog(id) {
@@ -5359,12 +5431,12 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    openMemberCardFeedback(member);
+                    setMemberActionMenuMember(member);
                   }}
-                  style={shouldRecommendFeedback(member) ? styles.feedbackRecommendButtonMini : styles.feedbackButtonMini}
-                  title="수업 후 피드백 문자"
+                  style={styles.memberMoreButtonMini}
+                  title="추가 기능"
                 >
-                  {shouldRecommendFeedback(member) ? "피드백🔥" : "피드백"}
+                  ⋯
                 </button>
 
                 {mainBadges.map((badge, index) => (
@@ -5372,7 +5444,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 ))}
               </div>
 
-              {member.is_active === false ? (
+              {member.is_active === false && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -5381,16 +5453,6 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   style={styles.cardRestoreButtonMini}
                 >
                   복구
-                </button>
-              ) : (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deactivateMember(member);
-                  }}
-                  style={styles.cardDeactivateButtonMini}
-                >
-                  비활성
                 </button>
               )}
             </div>
@@ -5401,6 +5463,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }
 
   const hasOpenModal =
+    memberActionMenuMember ||
     showTodayTodoModal ||
     showInbodyModal ||
     showAllInbodyModal ||
@@ -8200,6 +8263,79 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 {trainerWorkoutList.map(renderTrainerWorkoutHistoryCard)}
               </div>
             )}
+          </section>
+        </div>
+      )}
+
+
+      {memberActionMenuMember && (
+        <div style={styles.messageModalOverlay} onClick={closeMemberActionMenu}>
+          <section style={styles.memberActionMenuBox} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.whiteModalTop}>
+              <div>
+                <h2 style={styles.whiteModalTitle}>{memberActionMenuMember.name} 빠른 기능</h2>
+                <p style={styles.whiteMuted}>카드에는 자주 쓰는 기능만 두고, 나머지는 여기에서 처리합니다.</p>
+              </div>
+              <button type="button" onClick={closeMemberActionMenu} style={styles.whiteCloseButton}>
+                닫기
+              </button>
+            </div>
+
+            <div style={styles.memberActionMenuGrid}>
+              <button
+                type="button"
+                onClick={() => {
+                  openMemberCardFeedback(memberActionMenuMember);
+                  closeMemberActionMenu();
+                }}
+                style={shouldRecommendFeedback(memberActionMenuMember) ? styles.memberActionMenuButtonHot : styles.memberActionMenuButton}
+              >
+                {shouldRecommendFeedback(memberActionMenuMember) ? "피드백 추천" : "피드백"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openMemberScheduleSearch(memberActionMenuMember)}
+                style={styles.memberActionMenuButton}
+              >
+                스케줄 확인
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  openContactModal(memberActionMenuMember, "pending");
+                  closeMemberActionMenu();
+                }}
+                style={styles.memberActionMenuButton}
+              >
+                상담기록
+              </button>
+
+              {memberActionMenuMember.is_active === false ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    reactivateMember(memberActionMenuMember);
+                    closeMemberActionMenu();
+                  }}
+                  style={styles.memberActionMenuButton}
+                >
+                  복구
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    deactivateMember(memberActionMenuMember);
+                    closeMemberActionMenu();
+                  }}
+                  style={styles.memberActionMenuButtonDanger}
+                >
+                  비활성
+                </button>
+              )}
+            </div>
           </section>
         </div>
       )}
@@ -12022,6 +12158,74 @@ textarea: {
     gap: 8,
     marginTop: 8,
   },
+
+  memberMoreButtonMini: {
+    border: "1px solid #111",
+    background: "#fff",
+    color: "#111",
+    borderRadius: 999,
+    padding: "5px 11px",
+    fontSize: 12,
+    fontWeight: 900,
+    minWidth: 42,
+  },
+
+  memberActionMenuBox: {
+    width: "min(760px, 92vw)",
+    background: "#fff",
+    color: "#111",
+    borderRadius: 24,
+    padding: 24,
+    border: "1px solid #ddd",
+    boxShadow: "0 24px 70px rgba(0,0,0,0.35)",
+  },
+
+  memberActionMenuGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 12,
+    marginTop: 18,
+  },
+
+  memberActionMenuButton: {
+    border: "1px solid #111",
+    background: "#fff",
+    color: "#111",
+    borderRadius: 18,
+    padding: "18px 14px",
+    fontSize: 16,
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+
+  memberActionMenuButtonHot: {
+    border: "1px solid #d97706",
+    background: "#fff7ed",
+    color: "#92400e",
+    borderRadius: 18,
+    padding: "18px 14px",
+    fontSize: 16,
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+
+  memberActionMenuButtonDanger: {
+    border: "1px solid #fecaca",
+    background: "#fff1f2",
+    color: "#991b1b",
+    borderRadius: 18,
+    padding: "18px 14px",
+    fontSize: 16,
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+
+  personalHistoryActionRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+
   conditionSmsButton: {
     background: "#172554",
     color: "#bfdbfe",
