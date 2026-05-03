@@ -5307,6 +5307,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }
 
   const hasOpenModal =
+    showTodayTodoModal ||
     showInbodyModal ||
     showAllInbodyModal ||
     showAllWorkoutModal ||
@@ -5355,6 +5356,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
   function goToMain() {
     setShowExitConfirm(false);
+    setShowTodayTodoModal(false);
+    setShowSalesModal(false);
+    setShowTrainerLogModal(false);
     setSummaryModal(null);
     setShowContactListModal(false);
     setShowCenterModal(false);
@@ -5490,7 +5494,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
               <button
                 type="button"
                 onClick={() => setShowTodayTodoModal(false)}
-                style={styles.blackCloseButton}
+                style={styles.whiteCloseButton}
               >
                 닫기
               </button>
