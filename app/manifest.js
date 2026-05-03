@@ -8,7 +8,10 @@ export default function manifest() {
     display: "standalone",
     background_color: "#090909",
     theme_color: "#090909",
+
+    // 🔥 핵심 (휴대폰 세로 허용)
     orientation: "any",
+
     icons: [
       {
         src: "/icons/icon-192.png",
