@@ -276,11 +276,20 @@ const [workoutExercises, setWorkoutExercises] = useState([
     if (typeof window === "undefined") return;
 
     function checkMobileEmergencyMode() {
-      const width = window.innerWidth || 0;
-      const height = window.innerHeight || 0;
-      const shortSide = Math.min(width, height);
-      const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches;
-      setIsMobileEmergencyMode(Boolean(coarsePointer && shortSide < 700));
+      const userAgent = navigator.userAgent || "";
+      const isPhoneUserAgent = /iPhone|iPod|Android.*Mobile/i.test(userAgent);
+      const screenWidth = window.screen?.width || window.innerWidth || 0;
+      const screenHeight = window.screen?.height || window.innerHeight || 0;
+      const shortSide = Math.min(screenWidth, screenHeight);
+      const longSide = Math.max(screenWidth, screenHeight);
+
+      // 핵심 기준:
+      // - 휴대폰: 긴급 확인 모드
+      // - 태블릿: 기존 전체 관리 화면 유지
+      // Android 태블릿은 터치 기기라 pointer 기준만 쓰면 휴대폰으로 오인될 수 있어서
+      // userAgent의 Mobile 여부와 실제 화면 크기를 같이 봅니다.
+      const looksLikePhoneSize = shortSide <= 600 && longSide <= 1000;
+      setIsMobileEmergencyMode(Boolean(isPhoneUserAgent || looksLikePhoneSize));
     }
 
     checkMobileEmergencyMode();
