@@ -276,6 +276,7 @@ export default function Page() {
   const [workoutNextPlan, setWorkoutNextPlan] = useState("");
   const [workoutTrainerNote, setWorkoutTrainerNote] = useState("");
   const [feedbackModalMember, setFeedbackModalMember] = useState(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackDraft, setFeedbackDraft] = useState("");
   const [freeSmsModalMember, setFreeSmsModalMember] = useState(null);
   const [freeSmsDraft, setFreeSmsDraft] = useState("");
@@ -5389,9 +5390,12 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }
 
   function openFeedbackModal(member, draft) {
-    if (!member) return;
-    setFeedbackModalMember(member);
-    setFeedbackDraft(draft || generateWorkoutFeedbackMessage({
+    if (!member) {
+      alert("피드백을 만들 회원 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    const nextDraft = draft || generateWorkoutFeedbackMessage({
       member,
       trainingType: workoutTrainingType,
       bodyParts: workoutBodyParts,
@@ -5399,7 +5403,19 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       issue: workoutIssue,
       nextPlan: workoutNextPlan,
       trainerNote: workoutTrainerNote,
-    }));
+    });
+
+    // 저장 직후 여러 state가 동시에 바뀌어도 피드백 팝업이 확실히 뜨도록
+    // member/draft/show 상태를 분리해서 강제로 열어줍니다.
+    setFeedbackModalMember(member);
+    setFeedbackDraft(nextDraft);
+    setShowFeedbackModal(true);
+
+    window.setTimeout(() => {
+      setFeedbackModalMember(member);
+      setFeedbackDraft(nextDraft);
+      setShowFeedbackModal(true);
+    }, 0);
   }
 
   async function runPendingAfterFeedbackAction() {
@@ -5430,6 +5446,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
   async function closeFeedbackModal(options = {}) {
     const shouldContinue = options?.continueAfterClose !== false;
+    setShowFeedbackModal(false);
     setFeedbackModalMember(null);
     setFeedbackDraft("");
     setActiveTodayTodoKey(null);
@@ -9053,7 +9070,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
         </div>
       )}
 
-      {feedbackModalMember && (
+      {showFeedbackModal && feedbackModalMember && (
         <div style={styles.messageModalOverlay}>
           <section style={styles.messageModalBox}>
             <div style={styles.whiteModalTop}>
