@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { flushSync } from "react-dom";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -277,6 +278,7 @@ export default function Page() {
   const [workoutTrainerNote, setWorkoutTrainerNote] = useState("");
   const [feedbackModalMember, setFeedbackModalMember] = useState(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackModalOpenKey, setFeedbackModalOpenKey] = useState(0);
   const [feedbackDraft, setFeedbackDraft] = useState("");
   const [freeSmsModalMember, setFreeSmsModalMember] = useState(null);
   const [freeSmsDraft, setFreeSmsDraft] = useState("");
@@ -5405,17 +5407,25 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       trainerNote: workoutTrainerNote,
     });
 
-    // 저장 직후 여러 state가 동시에 바뀌어도 피드백 팝업이 확실히 뜨도록
-    // member/draft/show 상태를 분리해서 강제로 열어줍니다.
-    setFeedbackModalMember(member);
-    setFeedbackDraft(nextDraft);
-    setShowFeedbackModal(true);
+    // 저장 직후 workoutMode / workoutMember / 그룹PT 상태가 동시에 바뀌어도
+    // 피드백 팝업이 사라지지 않도록 동기 업데이트 + openKey까지 같이 올립니다.
+    flushSync(() => {
+      setFeedbackModalMember(member);
+      setFeedbackDraft(nextDraft);
+      setShowFeedbackModal(true);
+      setFeedbackModalOpenKey((prev) => prev + 1);
+    });
 
     window.setTimeout(() => {
       setFeedbackModalMember(member);
       setFeedbackDraft(nextDraft);
       setShowFeedbackModal(true);
+      setFeedbackModalOpenKey((prev) => prev + 1);
     }, 0);
+
+    window.requestAnimationFrame?.(() => {
+      setShowFeedbackModal(true);
+    });
   }
 
   async function runPendingAfterFeedbackAction() {
@@ -5447,6 +5457,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   async function closeFeedbackModal(options = {}) {
     const shouldContinue = options?.continueAfterClose !== false;
     setShowFeedbackModal(false);
+    setFeedbackModalOpenKey(0);
     setFeedbackModalMember(null);
     setFeedbackDraft("");
     setActiveTodayTodoKey(null);
@@ -6068,6 +6079,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     showTrainerLogModal ||
     showTrainerWorkoutHistoryModal ||
     freeSmsModalMember ||
+    showFeedbackModal ||
     feedbackModalMember ||
     contactModalMember ||
     summaryModal;
@@ -9070,7 +9082,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
         </div>
       )}
 
-      {showFeedbackModal && feedbackModalMember && (
+      {(showFeedbackModal || feedbackModalOpenKey > 0 || String(feedbackDraft || "").trim()) && feedbackModalMember && (
         <div style={styles.messageModalOverlay}>
           <section style={styles.messageModalBox}>
             <div style={styles.whiteModalTop}>
