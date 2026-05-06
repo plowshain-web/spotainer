@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { flushSync } from "react-dom";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -130,7 +129,7 @@ const circuitPrograms = [
   },
 ];
 
-const SPOTAINER_PATCH_VERSION = "2026-05-06-field-workout-speed-refactor";
+const SPOTAINER_PATCH_VERSION = "2026-05-07-stable-feedback-modal-restored";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const commonExercises = [
@@ -277,8 +276,6 @@ export default function Page() {
   const [workoutNextPlan, setWorkoutNextPlan] = useState("");
   const [workoutTrainerNote, setWorkoutTrainerNote] = useState("");
   const [feedbackModalMember, setFeedbackModalMember] = useState(null);
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [feedbackModalOpenKey, setFeedbackModalOpenKey] = useState(0);
   const [feedbackDraft, setFeedbackDraft] = useState("");
   const [freeSmsModalMember, setFreeSmsModalMember] = useState(null);
   const [freeSmsDraft, setFreeSmsDraft] = useState("");
@@ -5198,23 +5195,46 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }
 
 
-  function getPrimaryWorkoutPart(trainingType = workoutTrainingType, bodyParts = workoutBodyParts) {
-    if (trainingType === "circuit") return "서킷";
-
-    const parts = Array.isArray(bodyParts)
-      ? bodyParts.map((part) => String(part || "").trim()).filter(Boolean)
-      : [];
-
-    return parts[0] || "운동";
-  }
-
   function getWorkoutFeedbackPartText(trainingType = workoutTrainingType, bodyParts = workoutBodyParts) {
     if (trainingType === "circuit") return "서킷";
 
-    const primaryPart = getPrimaryWorkoutPart(trainingType, bodyParts);
-    if (!primaryPart || primaryPart === "운동") return "운동";
+    const parts = Array.isArray(bodyParts) ? bodyParts.filter(Boolean) : [];
+    if (parts.length === 0) return "운동";
+    return parts.join("·");
+  }
 
-    return `${primaryPart} 운동`;
+  function getMainWorkoutPart(trainingType = workoutTrainingType, bodyParts = workoutBodyParts) {
+    if (trainingType === "circuit") return "서킷";
+    const parts = Array.isArray(bodyParts) ? bodyParts.filter(Boolean) : [];
+    return parts[0] || "운동";
+  }
+
+  function getBodyPartParticle(part) {
+    const text = String(part || "");
+    if (!text) return "은";
+    const lastChar = text.charCodeAt(text.length - 1);
+    if (lastChar < 0xac00 || lastChar > 0xd7a3) return "은";
+    return (lastChar - 0xac00) % 28 === 0 ? "는" : "은";
+  }
+
+  function getNaturalTodayWorkoutSentence(trainingType = workoutTrainingType, bodyParts = workoutBodyParts, condition = workoutCondition) {
+    const partText = getWorkoutFeedbackPartText(trainingType, bodyParts);
+
+    if (trainingType === "circuit") {
+      if (condition === "good") return "오늘은 서킷 진행했고 움직임도 전체적으로 괜찮았어요.";
+      if (condition === "bad") return "오늘은 서킷 진행했고 중간중간 조절하면서 잘 따라와주셨어요.";
+      return "오늘은 서킷 진행했고 끝까지 잘 따라와주셨어요.";
+    }
+
+    if (condition === "good") {
+      return `오늘은 ${partText} 운동 진행했고 자세도 전체적으로 괜찮았어요.`;
+    }
+
+    if (condition === "bad") {
+      return `오늘은 ${partText} 운동 진행했고 컨디션에 맞춰 잘 조절해주셨어요.`;
+    }
+
+    return `오늘은 ${partText} 운동 진행했고 자세도 전체적으로 괜찮았어요.`;
   }
 
   function cleanFeedbackText(value) {
@@ -5224,166 +5244,105 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       .trim();
   }
 
-  function includesAnyKeyword(text, keywords = []) {
-    const value = String(text || "").toLowerCase();
-    return keywords.some((keyword) => value.includes(String(keyword).toLowerCase()));
-  }
-
-  function normalizeNextPlanText(nextPlan) {
-    const text = cleanFeedbackText(nextPlan)
-      .replace(/진행 예정/g, "진행")
-      .replace(/예정/g, "")
-      .replace(/방향으로/g, "")
-      .replace(/이어가볼게요/g, "")
-      .replace(/진행해볼게요/g, "")
-      .replace(/진행할게요/g, "")
-      .replace(/할게요/g, "")
-      .replace(/먼저\s*,/g, "먼저")
-      .replace(/\s+/g, " ")
+  function softenFeedbackExpression(value) {
+    return cleanFeedbackText(value)
+      .replace(/급격한\s*지구력\s*감소/gi, "중간에 체력이 조금 떨어지는 느낌")
+      .replace(/지구력\s*감소/gi, "체력이 조금 떨어지는 느낌")
+      .replace(/체력\s*저하/gi, "체력이 조금 떨어지는 느낌")
+      .replace(/부상위험|부상 위험|다칠 수 있음|다쳐요|위험/gi, "조심해야 할 부분")
+      .replace(/안 좋음|안좋음|나쁨|문제/gi, "체크할 부분")
+      .replace(/통증/gi, "불편한 느낌")
+      .replace(/아픔|아파함/gi, "불편한 느낌")
+      .replace(/불안해 함|불안해함|불안함|불안/gi, "긴장감")
+      .replace(/무서워함|겁냄/gi, "조심스러운 느낌")
+      .replace(/힘들어함/gi, "조금 힘든 구간")
+      .replace(/부족/gi, "더 잡아가면 좋을 부분")
+      .replace(/불안정/gi, "조금 흔들리는 부분")
+      .replace(/운동\s*진행함/g, "")
       .trim();
+  }
 
+  function toNaturalIssueSentence(issue) {
+    const text = softenFeedbackExpression(issue);
     if (!text) return "";
-    return text;
-  }
 
-  function buildTodayWorkoutSentence(trainingType, bodyParts, condition, trainerNote = "") {
-    const partText = getWorkoutFeedbackPartText(trainingType, bodyParts);
-    const noteText = cleanFeedbackText(trainerNote);
-
-    if (trainingType === "circuit") {
-      if (condition === "good") return "오늘은 서킷 진행했고 끝까지 집중 잘 해주셨어요.";
-      if (condition === "bad") return "오늘은 서킷 진행했고 중간에 힘든 구간은 있었지만 끝까지 잘 따라와주셨어요.";
-      return "오늘은 서킷 진행했고 끝까지 잘 따라와주셨어요.";
-    }
-
-    if (includesAnyKeyword(noteText, ["자세", "자세 좋", "자세 괜찮", "안정"])) {
-      return `오늘은 ${partText} 진행했고 자세도 전체적으로 괜찮았어요.`;
-    }
-
-    if (condition === "good") {
-      return `오늘은 ${partText} 진행했고 자세도 전체적으로 괜찮았어요.`;
-    }
-
-    if (condition === "bad") {
-      return `오늘은 ${partText} 진행했고 컨디션에 맞춰 잘 진행했어요.`;
-    }
-
-    return `오늘은 ${partText} 진행했고 자세도 전체적으로 괜찮았어요.`;
-  }
-
-  function buildConditionSentence(condition, issue = "", trainerNote = "") {
-    const source = `${cleanFeedbackText(issue)} ${cleanFeedbackText(trainerNote)}`.trim();
-
-    if (includesAnyKeyword(source, ["체력", "지구력", "힘들", "후반", "숨참", "숨 차", "버거움"])) {
+    if (/체력이 조금 떨어지는 느낌|조금 힘든 구간|후반|중간/.test(text)) {
       return "중간에 체력이 조금 떨어지는 느낌은 있었는데 끝까지 잘 따라와주셨어요.";
     }
 
-    if (includesAnyKeyword(source, ["자세 좋아", "자세좋", "자세 안정", "안정적", "좋아짐", "괜찮"])) {
-      return "처음보다 자세가 훨씬 안정적인 느낌이에요.";
+    if (/어깨/.test(text)) {
+      return "어깨는 약간 뻐근한 느낌 있었는데 끝까지 잘 따라와주셨어요.";
     }
 
-    if (includesAnyKeyword(source, ["집중", "흐름", "리듬"])) {
-      return "오늘은 집중력도 괜찮은 편이었어요.";
+    if (/허리/.test(text)) {
+      return "허리는 불편한 느낌 없는지 보면서 진행했고 전체적으로 잘 따라와주셨어요.";
     }
 
-    if (condition === "bad") {
-      return "중간에 힘든 구간은 있었는데 끝까지 잘 따라와주셨어요.";
+    if (/무릎/.test(text)) {
+      return "무릎은 상태 보면서 진행했는데 전체적으로 잘 따라와주셨어요.";
     }
 
-    if (condition === "good") {
-      return "오늘은 컨디션도 괜찮아서 전체적으로 잘 진행됐어요.";
+    if (/손목/.test(text)) {
+      return "손목은 불편한 느낌 없는지 보면서 진행했고 끝까지 잘 따라와주셨어요.";
     }
 
-    return "";
+    return `${text} 있었는데 끝까지 잘 따라와주셨어요.`;
   }
 
-  function buildIssueSentence(issue) {
-    const text = cleanFeedbackText(issue);
+  function toNaturalTrainerNoteSentence(trainerNote) {
+    const text = softenFeedbackExpression(trainerNote);
     if (!text) return "";
 
-    const side = includesAnyKeyword(text, ["오른", "우측"]) ? "오른쪽 " : includesAnyKeyword(text, ["왼", "좌측"]) ? "왼쪽 " : "";
-
-    if (includesAnyKeyword(text, ["어깨"])) {
-      return `${side}어깨는 약간 뻐근한 느낌 있었는데 끝까지 잘 따라와주셨어요.`;
+    if (/자세/.test(text) && /좋|괜찮|안정/.test(text)) {
+      return "자세도 전체적으로 괜찮았어요.";
     }
 
-    if (includesAnyKeyword(text, ["허리"])) {
-      return `${side}허리는 상태 보면서 진행했는데 움직임은 괜찮았어요.`;
+    if (/집중/.test(text)) {
+      return "오늘은 집중도도 괜찮은 편이었어요.";
     }
 
-    if (includesAnyKeyword(text, ["무릎"])) {
-      return `${side}무릎은 상태 보면서 진행했는데 전체적으로 잘 따라와주셨어요.`;
+    if (/움직임/.test(text)) {
+      return "움직임도 전체적으로 괜찮았어요.";
     }
 
-    if (includesAnyKeyword(text, ["손목"])) {
-      return `${side}손목은 불편하지 않게 조절하면서 진행했어요.`;
-    }
-
-    if (includesAnyKeyword(text, ["목", "승모"])) {
-      return `${side}목 쪽은 긴장감 있는 부분 체크하면서 진행했어요.`;
-    }
-
-    if (includesAnyKeyword(text, ["체력", "지구력", "힘들", "후반"])) {
-      return "중간에 체력이 조금 떨어지는 느낌은 있었는데 끝까지 잘 따라와주셨어요.";
-    }
-
-    const safeText = text
-      .replace(/급격한/g, "")
-      .replace(/감소/g, "떨어지는 느낌")
-      .replace(/통증/g, "불편한 느낌")
-      .replace(/아픔|아파함/g, "불편한 느낌")
-      .replace(/문제/g, "체크할 부분")
-      .replace(/진행함/g, "")
-      .replace(/확인하며/g, "보면서")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    if (!safeText) return "";
-    return `${safeText}은 있었는데 전체적으로 잘 따라와주셨어요.`;
+    return "전체적으로 잘 진행됐어요.";
   }
 
-  function buildNextWorkoutSentence(nextPlan) {
-    const text = normalizeNextPlanText(nextPlan);
+  function toNaturalNextPlanSentence(nextPlan) {
+    const text = cleanFeedbackText(nextPlan);
+    if (!text) return "다음 시간에도 오늘 흐름 이어서 진행해볼게요.";
 
-    if (!text) return "다음 시간에도 몸 상태 보면서 이어가볼게요.";
+    const hasStretch = /스트레칭|상체 스트레칭|하체 스트레칭/.test(text);
+    const parts = weightBodyPartOptions.filter((part) => text.includes(part));
+    const mainPart = parts[0];
+    const subPart = parts[1];
 
-    const hasStretch = includesAnyKeyword(text, ["스트레칭"]);
-    const hasChest = includesAnyKeyword(text, ["가슴"]);
-    const hasBack = includesAnyKeyword(text, ["등", "랫풀", "로우", "롱풀"]);
-    const hasShoulder = includesAnyKeyword(text, ["어깨"]);
-    const hasLower = includesAnyKeyword(text, ["하체", "스쿼트", "런지"]);
-    const hasArm = includesAnyKeyword(text, ["팔", "이두", "삼두"]);
-    const hasAbs = includesAnyKeyword(text, ["복부", "코어"]);
+    if (hasStretch && mainPart) {
+      return `다음 시간에는 상체 스트레칭 먼저 하고 ${mainPart} 운동 진행해볼게요.`;
+    }
 
-    if (hasStretch && hasShoulder) return "다음 시간에는 상체 스트레칭 먼저 하고 어깨 운동 진행해볼게요.";
-    if (hasStretch && hasBack) return "다음 시간에는 상체 스트레칭 먼저 하고 등 운동 진행해볼게요.";
-    if (hasStretch) return `다음 시간에는 ${text} 먼저 하고 운동 진행해볼게요.`;
+    if (mainPart && subPart) {
+      return `다음 시간에는 ${mainPart} 운동 진행하고 ${subPart} 운동도 같이 해볼게요.`;
+    }
 
-    if (hasBack && hasArm) return "다음 시간에는 등 운동 진행하고 팔 운동도 같이 해볼게요.";
-    if (hasChest && hasArm) return "다음 시간에는 가슴 운동 진행하고 팔 운동도 같이 해볼게요.";
-    if (hasShoulder && hasArm) return "다음 시간에는 어깨 운동 진행하고 팔 운동도 같이 해볼게요.";
-
-    if (hasBack) return "다음 시간에는 등 운동 진행해볼게요.";
-    if (hasChest) return "다음 시간에는 가슴 운동 진행해볼게요.";
-    if (hasShoulder) return "다음 시간에는 어깨 운동 진행해볼게요.";
-    if (hasLower) return "다음 시간에는 하체 운동 진행해볼게요.";
-    if (hasArm) return "다음 시간에는 팔 운동 진행해볼게요.";
-    if (hasAbs) return "다음 시간에는 복부 운동도 같이 진행해볼게요.";
+    if (mainPart) {
+      return `다음 시간에는 ${mainPart} 운동 진행해볼게요.`;
+    }
 
     return `다음 시간에는 ${text} 진행해볼게요.`;
   }
 
   function generateWorkoutFeedbackMessage({ member, trainingType, bodyParts, condition, issue, nextPlan, trainerNote }) {
     const memberName = member?.name || "회원";
-    const todayText = buildTodayWorkoutSentence(trainingType, bodyParts, condition, trainerNote);
-    const issueText = buildIssueSentence(issue);
-    const conditionText = !issueText ? buildConditionSentence(condition, issue, trainerNote) : "";
-    const nextText = buildNextWorkoutSentence(nextPlan);
+    const todayText = getNaturalTodayWorkoutSentence(trainingType, bodyParts, condition);
+    const issueText = toNaturalIssueSentence(issue);
+    const trainerNoteText = !issueText ? toNaturalTrainerNoteSentence(trainerNote) : "";
+    const nextText = toNaturalNextPlanSentence(nextPlan);
 
     return [
       `${memberName}님 오늘도 운동하시느라 수고 많으셨어요 :)`,
       todayText,
-      issueText || conditionText,
+      issueText || trainerNoteText,
       nextText,
       "편하게 쉬시고 다음 수업 때 뵐게요 :)",
     ]
@@ -5392,12 +5351,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }
 
   function openFeedbackModal(member, draft) {
-    if (!member) {
-      alert("피드백을 만들 회원 정보를 찾을 수 없습니다.");
-      return;
-    }
-
-    const nextDraft = draft || generateWorkoutFeedbackMessage({
+    if (!member) return;
+    setFeedbackModalMember(member);
+    setFeedbackDraft(draft || generateWorkoutFeedbackMessage({
       member,
       trainingType: workoutTrainingType,
       bodyParts: workoutBodyParts,
@@ -5405,27 +5361,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       issue: workoutIssue,
       nextPlan: workoutNextPlan,
       trainerNote: workoutTrainerNote,
-    });
-
-    // 저장 직후 workoutMode / workoutMember / 그룹PT 상태가 동시에 바뀌어도
-    // 피드백 팝업이 사라지지 않도록 동기 업데이트 + openKey까지 같이 올립니다.
-    flushSync(() => {
-      setFeedbackModalMember(member);
-      setFeedbackDraft(nextDraft);
-      setShowFeedbackModal(true);
-      setFeedbackModalOpenKey((prev) => prev + 1);
-    });
-
-    window.setTimeout(() => {
-      setFeedbackModalMember(member);
-      setFeedbackDraft(nextDraft);
-      setShowFeedbackModal(true);
-      setFeedbackModalOpenKey((prev) => prev + 1);
-    }, 0);
-
-    window.requestAnimationFrame?.(() => {
-      setShowFeedbackModal(true);
-    });
+    }));
   }
 
   async function runPendingAfterFeedbackAction() {
@@ -5456,8 +5392,6 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
   async function closeFeedbackModal(options = {}) {
     const shouldContinue = options?.continueAfterClose !== false;
-    setShowFeedbackModal(false);
-    setFeedbackModalOpenKey(0);
     setFeedbackModalMember(null);
     setFeedbackDraft("");
     setActiveTodayTodoKey(null);
@@ -6079,7 +6013,6 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     showTrainerLogModal ||
     showTrainerWorkoutHistoryModal ||
     freeSmsModalMember ||
-    showFeedbackModal ||
     feedbackModalMember ||
     contactModalMember ||
     summaryModal;
@@ -9082,7 +9015,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
         </div>
       )}
 
-      {(showFeedbackModal || feedbackModalOpenKey > 0 || String(feedbackDraft || "").trim()) && feedbackModalMember && (
+      {feedbackModalMember && (
         <div style={styles.messageModalOverlay}>
           <section style={styles.messageModalBox}>
             <div style={styles.whiteModalTop}>
