@@ -263,6 +263,7 @@ export default function Page() {
   const groupWorkoutQueueRef = useRef([]);
   const groupWorkoutIndexRef = useRef(0);
   const workoutReturnSourceRef = useRef(null);
+  const pendingAfterFeedbackRef = useRef(null);
   const [workoutSessions, setWorkoutSessions] = useState([]);
   const [detailWorkoutSessions, setDetailWorkoutSessions] = useState([]);
   const [lastWorkoutMap, setLastWorkoutMap] = useState({});
@@ -5401,10 +5402,41 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     }));
   }
 
-  function closeFeedbackModal() {
+  async function runPendingAfterFeedbackAction() {
+    const pending = pendingAfterFeedbackRef.current;
+    pendingAfterFeedbackRef.current = null;
+
+    if (!pending) return;
+
+    if (pending.type === "groupNext" && pending.member?.id) {
+      await moveToGroupWorkoutMember(pending.member, pending.index || 0);
+      return;
+    }
+
+    if (pending.type === "groupComplete") {
+      clearGroupWorkoutFlow();
+      setWorkoutMember(null);
+      setWorkoutReturnSource(null);
+      workoutReturnSourceRef.current = null;
+      setWorkoutSessions([]);
+      setWorkoutMode("list");
+      resetWorkoutInputForm("weight");
+      setShowAllWorkoutModal(false);
+      setShowScheduleCheckModal(true);
+      await loadScheduleCheckList(pending.scheduleDate || scheduleCheckDate || getTodayDateString());
+      alert("그룹PT 참여자 전원의 운동 기록이 저장되었습니다.");
+    }
+  }
+
+  async function closeFeedbackModal(options = {}) {
+    const shouldContinue = options?.continueAfterClose !== false;
     setFeedbackModalMember(null);
     setFeedbackDraft("");
     setActiveTodayTodoKey(null);
+
+    if (shouldContinue) {
+      await runPendingAfterFeedbackAction();
+    }
   }
 
   async function sendFeedbackSMS() {
@@ -5428,7 +5460,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
     const targetPhone = phone;
     await markMemberContacted(feedbackModalMember, "피드백 문자");
-    closeFeedbackModal();
+    await closeFeedbackModal();
     window.location.href = `sms:${targetPhone}?body=${encodeURIComponent(message)}`;
   }
 
@@ -5526,7 +5558,26 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       const nextMember = activeGroupQueue[nextIndex];
 
       if (nextMember?.id) {
+        if (shouldOpenFeedback) {
+          pendingAfterFeedbackRef.current = {
+            type: "groupNext",
+            member: nextMember,
+            index: nextIndex,
+          };
+          openFeedbackModal(savedWorkoutMember, feedbackMessage);
+          return;
+        }
+
         await moveToGroupWorkoutMember(nextMember, nextIndex);
+        return;
+      }
+
+      if (shouldOpenFeedback) {
+        pendingAfterFeedbackRef.current = {
+          type: "groupComplete",
+          scheduleDate: scheduleCheckDate || getTodayDateString(),
+        };
+        openFeedbackModal(savedWorkoutMember, feedbackMessage);
         return;
       }
 
