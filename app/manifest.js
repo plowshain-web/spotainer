@@ -3566,20 +3566,35 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
   function startScheduleSMSQueue(schedule) {
     const membersForSMS = getScheduleSMSMembers(schedule).filter((member) => normalizePhone(member?.phone));
 
-    if (membersForSMS.length === 0) {
+    if (!schedule?.id || membersForSMS.length === 0) {
       alert("문자 보낼 회원 정보나 전화번호를 찾을 수 없습니다.");
       return;
     }
 
-    setSmsQueue([schedule]);
+    const unsentMembers = membersForSMS.filter((member) => !isScheduleMemberSMSSent(schedule, member));
+    const targets = unsentMembers.length > 0 ? unsentMembers : membersForSMS;
+
+    if (unsentMembers.length === 0) {
+      const resend = confirm(`이 스케줄 참여자 ${membersForSMS.length}명에게 오늘 문자를 모두 보낸 기록이 있습니다.
+다시 문자 보내기 큐를 열까요?`);
+      if (!resend) return;
+    }
+
+    setSmsQueue(
+      targets.map((member) => ({
+        schedule,
+        member,
+        key: `${schedule.id}:${member.id}`,
+      }))
+    );
     setSmsIndex(0);
     setSmsMode(true);
 
     if (membersForSMS.length > 1) {
-      alert(`그룹PT 문자는 자동 연속 발송하지 않습니다.
+      alert(`그룹PT 문자는 안드로이드 문자앱 정책 때문에 자동 연속 발송하지 않습니다.
 
-문자 보내기 → 문자앱에서 전송 → 앱으로 돌아오기 → 보낸 처리
-이 순서로 ${membersForSMS.length}명에게 한 명씩 보내세요.`);
+문자 보내기 → 문자앱에서 직접 전송 → 앱으로 돌아오기 → 보낸 처리
+이 순서로 ${targets.length}명에게 한 명씩 보내세요.`);
     }
   }
 
@@ -3640,12 +3655,23 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
       return aTime.localeCompare(bTime);
     });
 
-    if (targets.length === 0) {
-      alert("문자 보낼 오늘 스케줄이 없습니다.\n이미 보낸 대상, 취소/완료/노쇼, 전화번호 없는 회원은 제외됩니다.");
+    const queueItems = targets.flatMap((schedule) =>
+      getUnsentScheduleSMSMembers(schedule)
+        .filter((member) => normalizePhone(member?.phone))
+        .map((member) => ({
+          schedule,
+          member,
+          key: `${schedule.id}:${member.id}`,
+        }))
+    );
+
+    if (queueItems.length === 0) {
+      alert("문자 보낼 오늘 스케줄이 없습니다.
+이미 보낸 대상, 취소/완료/노쇼, 전화번호 없는 회원은 제외됩니다.");
       return;
     }
 
-    setSmsQueue(targets);
+    setSmsQueue(queueItems);
     setSmsIndex(0);
     setSmsMode(true);
   }
@@ -3656,11 +3682,19 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
     setSmsIndex(0);
   }
 
-  function getCurrentSMSSchedule() {
+  function getCurrentSMSItem() {
     return smsQueue[smsIndex] || null;
   }
 
+  function getCurrentSMSSchedule() {
+    const item = getCurrentSMSItem();
+    return item?.schedule || item || null;
+  }
+
   function getCurrentSMSTargetMember(schedule) {
+    const item = getCurrentSMSItem();
+    if (item?.member) return item.member;
+
     if (!schedule) return null;
     const unsentMembers = getUnsentScheduleSMSMembers(schedule).filter((member) => normalizePhone(member?.phone));
     if (unsentMembers.length > 0) return unsentMembers[0];
@@ -3696,18 +3730,8 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
       if (!ok) return;
     }
 
-    const remainingAfterThis = getUnsentScheduleSMSMembers(schedule).filter(
-      (target) => target?.id !== member?.id && normalizePhone(target?.phone)
-    );
-
-    if (remainingAfterThis.length > 0) {
-      alert(`그룹PT 남은 문자 대상이 ${remainingAfterThis.length}명 있습니다.
-다음 문자 보내기를 눌러 계속 진행하세요.`);
-      return;
-    }
-
     if (smsIndex + 1 >= smsQueue.length) {
-      alert("오늘 문자 큐가 끝났습니다.");
+      alert("문자 큐가 끝났습니다.");
       stopTodaySMSQueue();
       return;
     }
@@ -4132,6 +4156,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     setInbodyVisceralFatLevel(log.visceral_fat_level ?? "");
     setInbodyMemo(log.memo || "");
     setShowInbodyModal(true);
+    window.setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    }, 0);
   }
 
   function closeInbodyModal() {
@@ -4666,9 +4693,22 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }
 
   function getWorkoutSessionBodyParts(session) {
-    return Array.isArray(session?.body_parts)
-      ? session.body_parts.filter(Boolean)
+    const savedParts = Array.isArray(session?.body_parts)
+      ? session.body_parts.filter((part) => workoutPatternOptions.includes(part))
       : [];
+
+    const inferredParts = inferBodyPartsFromExerciseNames(getSessionExerciseNames(session));
+
+    // 예전에 잘못 저장된 기록이 있으면 운동명 기준으로 화면 표시를 보정합니다.
+    // 예: 랫풀다운/로우만 있는데 body_parts가 가슴으로 저장된 경우 → 등으로 표시
+    if (inferredParts.length > 0 && savedParts.length > 0) {
+      const overlap = savedParts.filter((part) => inferredParts.includes(part));
+      return overlap.length > 0 ? overlap : inferredParts;
+    }
+
+    if (savedParts.length > 0) return savedParts;
+    if (isCircuitWorkoutSession(session)) return ["전신"];
+    return inferredParts;
   }
 
   function getSessionExerciseNames(session) {
@@ -4694,8 +4734,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }
 
   const exerciseBodyPartKeywordMap = {
-    가슴: ["체스트", "벤치", "인클라인", "디클라인", "펙덱", "플라이", "푸쉬업", "케이블플라이", "케이블 플라이"],
-    어깨: ["숄더", "레터럴", "프론트", "리어", "델트", "업라이트", "오버헤드", "밀리터리"],
+    가슴: ["체스트", "벤치", "인클라인", "디클라인", "펙덱", "플라이", "푸쉬업", "케이블플라이", "케이블 플라이", "가슴"],
+    어깨: ["숄더", "레터럴", "프론트", "리어", "델트", "업라이트", "오버헤드", "밀리터리", "어깨"],
     등: ["랫풀", "랫 풀", "풀다운", "로우", "풀업", "페이스풀", "리버스", "데드리프트", "등"],
     하체: ["스쿼트", "런지", "레그", "힙", "글루트", "스텝업", "어브덕션", "어덕션", "카프"],
     팔: ["컬", "바이셉스", "트라이셉스", "푸쉬다운", "암", "킥백", "익스텐션"],
@@ -4723,9 +4763,11 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     if (inferred.length === 0) return selected;
     if (selected.length === 0) return inferred;
 
-    const matchedSelected = selected.filter((part) => inferred.includes(part));
-    if (matchedSelected.length > 0) return matchedSelected;
+    const overlap = selected.filter((part) => inferred.includes(part));
+    if (overlap.length > 0) return overlap;
 
+    // 운동명과 선택 부위가 충돌하면 운동명 기준으로 보정합니다.
+    // 등 운동을 했는데 이전 선택값/오터치 때문에 가슴으로 저장되는 문제를 막기 위한 안전장치입니다.
     return inferred;
   }
 
@@ -6056,7 +6098,7 @@ ${conditionText}.`,
                 오늘 문자 {smsIndex + 1} / {smsQueue.length}
               </strong>
               <span style={styles.smsQueueTarget}>
-                {getCurrentSMSTargetMember(getCurrentSMSSchedule())?.name || getScheduleMemberNames(getCurrentSMSSchedule())} · {formatScheduleRange(getCurrentSMSSchedule())}
+                {getScheduleMemberNames(getCurrentSMSSchedule())} · {formatScheduleRange(getCurrentSMSSchedule())}
               </span>
               <span style={styles.smsQueueHint}>
                 문자앱에서 전송 후 돌아와서 ‘보낸 처리’를 누르면 다음 회원으로 넘어갑니다.
