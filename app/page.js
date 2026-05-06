@@ -10,33 +10,98 @@ const supabase = createClient(
 
 
 
-const exerciseList = [
-  "스미스 스쿼트","바벨 스쿼트","덤벨 스쿼트","불가리안 스플릿 스쿼트","런지","워킹 런지",
-  "레그 프레스","레그 익스텐션","레그 컬","힙 어브덕션","힙 어덕션","힙 쓰러스트",
-  "글루트 브리지","케이블 킥백","스텝업",
-  "랫풀다운","시티드 로우","바벨 로우","덤벨 로우","케이블 로우","풀업","페이스풀","리버스 플라이(등)","리버스 플라이(어깨)",
-  "체스트 프레스","인클라인 프레스","딥클라인 프레스","덤벨 벤치프레스","푸쉬업","펙덱 플라이","케이블 플라이","롱 풀",
-  "어시스트 풀업","딥스","백익스텐션",
-  "덤벨 숄더프레스","머신 숄더프레스","사이드 레터럴 레이즈","프론트 레이즈","리어 델트 레이즈","업라이트 로우",
-  "플랭크","사이드 플랭크","크런치","레그레이즈","데드버그","버드독","러시안 트위스트","케이블 크런치","V스쿼트","핵스쿼트",
-  "케틀벨 스윙", "덤벨 런지 프레스", "점핑잭", "스쿼트", "하이 니 크런치", "스탠딩 사이드 크런치", "스탠딩 트위스트 크런치", "스텝업 니업", "스텝업 니 드라이브 킥", "스텝업 니킥", "스텝업 덤벨 터치", "점핑 런지"
+const exerciseCatalog = [
+  { name: "스미스 스쿼트", bodyPart: "하체", type: "weight" },
+  { name: "바벨 스쿼트", bodyPart: "하체", type: "weight" },
+  { name: "덤벨 스쿼트", bodyPart: "하체", type: "weight" },
+  { name: "불가리안 스플릿 스쿼트", bodyPart: "하체", type: "weight" },
+  { name: "런지", bodyPart: "하체", type: "weight" },
+  { name: "워킹 런지", bodyPart: "하체", type: "weight" },
+  { name: "레그 프레스", bodyPart: "하체", type: "weight" },
+  { name: "레그 익스텐션", bodyPart: "하체", type: "weight" },
+  { name: "레그 컬", bodyPart: "하체", type: "weight" },
+  { name: "힙 어브덕션", bodyPart: "하체", type: "weight" },
+  { name: "힙 어덕션", bodyPart: "하체", type: "weight" },
+  { name: "힙 쓰러스트", bodyPart: "하체", type: "weight" },
+  { name: "글루트 브리지", bodyPart: "하체", type: "weight" },
+  { name: "케이블 킥백", bodyPart: "하체", type: "weight" },
+  { name: "스텝업", bodyPart: "하체", type: "weight" },
+  { name: "V스쿼트", bodyPart: "하체", type: "weight" },
+  { name: "핵스쿼트", bodyPart: "하체", type: "weight" },
+
+  { name: "랫풀다운", bodyPart: "등", type: "weight" },
+  { name: "시티드 로우", bodyPart: "등", type: "weight" },
+  { name: "바벨 로우", bodyPart: "등", type: "weight" },
+  { name: "덤벨 로우", bodyPart: "등", type: "weight" },
+  { name: "케이블 로우", bodyPart: "등", type: "weight" },
+  { name: "풀업", bodyPart: "등", type: "weight" },
+  { name: "페이스풀", bodyPart: "등", type: "weight" },
+  { name: "리버스 플라이(등)", bodyPart: "등", type: "weight" },
+  { name: "롱 풀", bodyPart: "등", type: "weight" },
+  { name: "어시스트 풀업", bodyPart: "등", type: "weight" },
+  { name: "백익스텐션", bodyPart: "등", type: "weight" },
+
+  { name: "체스트 프레스", bodyPart: "가슴", type: "weight" },
+  { name: "인클라인 프레스", bodyPart: "가슴", type: "weight" },
+  { name: "딥클라인 프레스", bodyPart: "가슴", type: "weight" },
+  { name: "덤벨 벤치프레스", bodyPart: "가슴", type: "weight" },
+  { name: "푸쉬업", bodyPart: "가슴", type: "weight" },
+  { name: "펙덱 플라이", bodyPart: "가슴", type: "weight" },
+  { name: "케이블 플라이", bodyPart: "가슴", type: "weight" },
+  { name: "딥스", bodyPart: "가슴", type: "weight" },
+
+  { name: "덤벨 숄더프레스", bodyPart: "어깨", type: "weight" },
+  { name: "머신 숄더프레스", bodyPart: "어깨", type: "weight" },
+  { name: "사이드 레터럴 레이즈", bodyPart: "어깨", type: "weight" },
+  { name: "프론트 레이즈", bodyPart: "어깨", type: "weight" },
+  { name: "리어 델트 레이즈", bodyPart: "어깨", type: "weight" },
+  { name: "업라이트 로우", bodyPart: "어깨", type: "weight" },
+  { name: "리버스 플라이(어깨)", bodyPart: "어깨", type: "weight" },
+
+  { name: "플랭크", bodyPart: "복부", type: "weight" },
+  { name: "사이드 플랭크", bodyPart: "복부", type: "weight" },
+  { name: "크런치", bodyPart: "복부", type: "weight" },
+  { name: "레그레이즈", bodyPart: "복부", type: "weight" },
+  { name: "데드버그", bodyPart: "복부", type: "weight" },
+  { name: "버드독", bodyPart: "복부", type: "weight" },
+  { name: "러시안 트위스트", bodyPart: "복부", type: "weight" },
+  { name: "케이블 크런치", bodyPart: "복부", type: "weight" },
+
+  { name: "점핑잭", bodyPart: "전신", type: "circuit" },
+  { name: "케틀벨 스윙", bodyPart: "전신", type: "circuit" },
+  { name: "덤벨 런지 프레스", bodyPart: "전신", type: "circuit" },
+  { name: "스쿼트", bodyPart: "전신", type: "circuit" },
+  { name: "하이 니 크런치", bodyPart: "전신", type: "circuit" },
+  { name: "스탠딩 사이드 크런치", bodyPart: "전신", type: "circuit" },
+  { name: "스탠딩 트위스트 크런치", bodyPart: "전신", type: "circuit" },
+  { name: "스텝업 니업", bodyPart: "전신", type: "circuit" },
+  { name: "스텝업 니 드라이브 킥", bodyPart: "전신", type: "circuit" },
+  { name: "스텝업 니킥", bodyPart: "전신", type: "circuit" },
+  { name: "스텝업 덤벨 터치", bodyPart: "전신", type: "circuit" },
+  { name: "점핑 런지", bodyPart: "전신", type: "circuit" },
+  { name: "업다운", bodyPart: "전신", type: "circuit" },
+  { name: "크로스 업다운", bodyPart: "전신", type: "circuit" },
 ];
 
+const exerciseList = exerciseCatalog.map((exercise) => exercise.name);
+
+const CIRCUIT_FIXED_SET_COUNT = 3;
+const WEIGHT_DEFAULT_SET_COUNT = 4;
 
 const circuitPrograms = [
   {
     name: "서킷 1단계",
-    memo: "전신 서킷 1단계",
+    memo: "전신 서킷 1단계 · 3세트 고정 · 케틀벨/덤벨 중량은 현장에서 입력",
     exercises: [
       { name: "점핑잭", weight: "", reps: "20" },
-      { name: "케틀벨 스윙", weight: "8", reps: "20" },
-      { name: "덤벨 런지 프레스", weight: "2", reps: "20" },
+      { name: "케틀벨 스윙", weight: "", reps: "20" },
+      { name: "덤벨 런지 프레스", weight: "", reps: "20" },
       { name: "스쿼트", weight: "", reps: "20" },
     ],
   },
   {
     name: "서킷 2단계",
-    memo: "전신 서킷 2단계",
+    memo: "전신 서킷 2단계 · 3세트 고정",
     exercises: [
       { name: "하이 니 크런치", weight: "", reps: "20" },
       { name: "스탠딩 사이드 크런치", weight: "", reps: "20" },
@@ -45,15 +110,26 @@ const circuitPrograms = [
   },
   {
     name: "서킷 3단계",
-    memo: "전신 서킷 3단계",
+    memo: "전신 서킷 3단계 · 3세트 고정 · 스텝업 니업/니킥은 좌우 각각 15회",
     exercises: [
-      { name: "스텝업 니업", weight: "", reps: "20" },
-      { name: "스텝업 니킥", weight: "", reps: "20" },
+      { name: "스텝업 니업", weight: "", reps: "15" },
+      { name: "스텝업 니킥", weight: "", reps: "15" },
       { name: "스텝업 덤벨 터치", weight: "", reps: "20" },
-      { name: "점핑 런지", weight: "", reps: "20" },
+      { name: "점핑 런지", weight: "", reps: "15" },
     ],
   },
-];const SPOTAINER_PATCH_VERSION = "2026-05-06-group-workout-next-member-fix";
+  {
+    name: "서킷 4단계",
+    memo: "전신 서킷 4단계 · 3세트 고정",
+    exercises: [
+      { name: "스텝업", weight: "", reps: "20" },
+      { name: "업다운", weight: "", reps: "20" },
+      { name: "크로스 업다운", weight: "", reps: "20" },
+    ],
+  },
+];
+
+const SPOTAINER_PATCH_VERSION = "2026-05-06-field-workout-speed-refactor";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const commonExercises = [
@@ -82,12 +158,16 @@ const commonExercises = [
 const weightBodyPartOptions = ["가슴", "어깨", "등", "하체", "팔", "복부"];
 const workoutPatternOptions = [...weightBodyPartOptions, "전신"];
 
+function createExerciseSets(count, weight = "", reps = "") {
+  return Array.from({ length: count }, () => ({ weight, reps }));
+}
+
 function createEmptyWorkoutExercise(trainingType = "weight") {
-  const defaultSetCount = trainingType === "weight" ? 4 : 1;
+  const defaultSetCount = trainingType === "circuit" ? CIRCUIT_FIXED_SET_COUNT : WEIGHT_DEFAULT_SET_COUNT;
 
   return {
     name: "",
-    sets: Array.from({ length: defaultSetCount }, () => ({ weight: "", reps: "" })),
+    sets: createExerciseSets(defaultSetCount),
   };
 }
 
@@ -2090,7 +2170,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
     const options = [];
 
     for (let hour = 11; hour <= 22; hour += 1) {
-      [0, 10, 20, 30, 40, 50].forEach((minute) => {
+      [0, 30].forEach((minute) => {
         if (hour === 22 && minute > 0) return;
 
         const value = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
@@ -4797,6 +4877,15 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   };
 
   function inferBodyPartsFromExerciseNames(names = []) {
+    const exactParts = (names || [])
+      .map((name) => String(name || "").trim())
+      .map((name) => exerciseCatalog.find((exercise) => exercise.name === name)?.bodyPart)
+      .filter((part) => weightBodyPartOptions.includes(part));
+
+    if (exactParts.length > 0) {
+      return Array.from(new Set(exactParts));
+    }
+
     const combined = names.join(" ").toLowerCase();
 
     return weightBodyPartOptions.filter((part) =>
@@ -5037,7 +5126,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   function applyCircuitProgram(program) {
     const newExercises = program.exercises.map((exercise) => ({
       name: exercise.name,
-      sets: [{ weight: exercise.weight || "", reps: exercise.reps || "" }],
+      sets: createExerciseSets(CIRCUIT_FIXED_SET_COUNT, exercise.weight || "", exercise.reps || ""),
     }));
 
     setWorkoutExercises((prev) => {
@@ -8142,8 +8231,8 @@ ${conditionText}.`,
                     </h3>
                     <p style={styles.workoutTypeLabel}>
                       {workoutTrainingType === "circuit"
-                        ? "서킷 모드 · 단계 버튼으로 불러온 뒤 필요한 운동만 수정하세요."
-                        : "웨이트 모드 · 세트마다 중량을 다르게 입력하세요."}
+                        ? "서킷 모드 · 단계 선택 시 3세트가 한 번에 자동 생성됩니다."
+                        : "웨이트 모드 · 운동 추가 시 기본 4세트가 자동 생성되고, 필요 없는 세트는 삭제하세요."}
                     </p>
                   </div>
 
@@ -8236,7 +8325,7 @@ ${conditionText}.`,
                 {workoutTrainingType === "circuit" && (
                 <div style={styles.circuitProgramBox}>
                   <strong>전신 서킷 자동 입력</strong>
-                  <p>다이어트/체력증가 회원은 단계 버튼을 눌러 운동 목록을 한 번에 불러오세요.</p>
+                  <p>단계 버튼을 누르면 해당 서킷 운동이 3세트 고정으로 한 번에 생성됩니다.</p>
 
                   <div style={styles.circuitProgramGrid}>
                     {circuitPrograms.map((program) => (
@@ -8255,7 +8344,7 @@ ${conditionText}.`,
 
                 <div style={styles.workoutAddTopRow}>
                   <p style={styles.workoutAddGuide}>
-                    운동 카드를 작게 나눠 한 화면에 여러 개가 보이게 했습니다. 웨이트는 세트마다 중량을 다르게 입력하세요.
+                    웨이트는 기본 4세트, 서킷은 기본 3세트로 자동 생성됩니다. 필요 없는 세트만 삭제하세요.
                   </p>
 
                   <button onClick={addExercise} style={styles.compactAddExerciseButton}>
