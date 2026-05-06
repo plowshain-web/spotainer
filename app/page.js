@@ -5134,7 +5134,7 @@ ${conditionText}.`,
       "편하게 쉬시고 다음 수업 때 뵐게요.",
     ]
       .filter((line) => String(line || "").trim())
-      .join("
+      .join("n");
 
 ");
   }
