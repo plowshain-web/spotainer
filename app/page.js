@@ -52,7 +52,7 @@ const circuitPrograms = [
       { name: "점핑 런지", weight: "", reps: "20" },
     ],
   },
-];const SPOTAINER_PATCH_VERSION = "2026-05-06-bugfix-real-3";
+];const SPOTAINER_PATCH_VERSION = "2026-05-06-group-workout-next-member-fix";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const commonExercises = [
@@ -179,6 +179,9 @@ export default function Page() {
   const [workoutReturnSource, setWorkoutReturnSource] = useState(null);
   const [groupWorkoutQueue, setGroupWorkoutQueue] = useState([]);
   const [groupWorkoutIndex, setGroupWorkoutIndex] = useState(0);
+  const groupWorkoutQueueRef = useRef([]);
+  const groupWorkoutIndexRef = useRef(0);
+  const workoutReturnSourceRef = useRef(null);
   const [workoutSessions, setWorkoutSessions] = useState([]);
   const [detailWorkoutSessions, setDetailWorkoutSessions] = useState([]);
   const [lastWorkoutMap, setLastWorkoutMap] = useState({});
@@ -2484,15 +2487,12 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setShowScheduleCheckModal(false);
 
     if (schedule.type === "group" && scheduleMembers.length > 1) {
-      setGroupWorkoutQueue(scheduleMembers);
-      setGroupWorkoutIndex(0);
-      await openWorkout(primaryMember, "scheduleCheckGroup");
-      setWorkoutMode("add");
+      setGroupWorkoutFlow(scheduleMembers, 0);
+      await moveToGroupWorkoutMember(primaryMember, 0);
       return;
     }
 
-    setGroupWorkoutQueue([]);
-    setGroupWorkoutIndex(0);
+    clearGroupWorkoutFlow();
     await openWorkout(primaryMember, "scheduleCheck");
     setWorkoutMode("add");
   }
@@ -4555,20 +4555,58 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }
 
 
-  async function openWorkout(member, source = null) {
-    setWorkoutMember(member);
-    setWorkoutReturnSource(source);
-    setWorkoutMode("list");
-    setWorkoutTrainingType("weight");
+  function setGroupWorkoutFlow(queue = [], index = 0) {
+    const safeQueue = Array.isArray(queue) ? queue.filter(Boolean) : [];
+    const safeIndex = Math.max(0, Number(index) || 0);
+    groupWorkoutQueueRef.current = safeQueue;
+    groupWorkoutIndexRef.current = safeIndex;
+    setGroupWorkoutQueue(safeQueue);
+    setGroupWorkoutIndex(safeIndex);
+  }
+
+  function clearGroupWorkoutFlow() {
+    groupWorkoutQueueRef.current = [];
+    groupWorkoutIndexRef.current = 0;
+    setGroupWorkoutQueue([]);
+    setGroupWorkoutIndex(0);
+  }
+
+  function resetWorkoutInputForm(trainingType = "weight") {
+    setWorkoutTrainingType(trainingType);
     setWorkoutBodyParts([]);
     setWorkoutMemo("");
     setWorkoutCondition("normal");
     setWorkoutIssue("");
     setWorkoutNextPlan("");
     setWorkoutTrainerNote("");
-    setWorkoutExercises([createEmptyWorkoutExercise("weight")]);
-    setShowAllWorkoutModal(false);
+    setWorkoutExercises([createEmptyWorkoutExercise(trainingType)]);
+    setExerciseSuggestions([]);
+    setActiveExerciseIndex(null);
     clearWorkoutEdit();
+  }
+
+  async function moveToGroupWorkoutMember(member, index) {
+    if (!member?.id) return false;
+    setGroupWorkoutFlow(groupWorkoutQueueRef.current, index);
+    setWorkoutMember(member);
+    setWorkoutReturnSource("scheduleCheckGroup");
+    workoutReturnSourceRef.current = "scheduleCheckGroup";
+    setWorkoutMode("add");
+    resetWorkoutInputForm("weight");
+    setShowAllWorkoutModal(false);
+    await loadWorkoutSessions(member.id);
+    return true;
+  }
+
+
+  async function openWorkout(member, source = null) {
+    if (!member?.id) return;
+    setWorkoutMember(member);
+    setWorkoutReturnSource(source);
+    workoutReturnSourceRef.current = source;
+    setWorkoutMode("list");
+    resetWorkoutInputForm("weight");
+    setShowAllWorkoutModal(false);
 
     await loadWorkoutSessions(member.id);
   }
@@ -4576,20 +4614,12 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   function closeWorkout() {
     setWorkoutMember(null);
     setWorkoutReturnSource(null);
-    setGroupWorkoutQueue([]);
-    setGroupWorkoutIndex(0);
+    workoutReturnSourceRef.current = null;
+    clearGroupWorkoutFlow();
     setWorkoutSessions([]);
     setWorkoutMode("list");
-    setWorkoutTrainingType("weight");
-    setWorkoutBodyParts([]);
-    setWorkoutMemo("");
-    setWorkoutCondition("normal");
-    setWorkoutIssue("");
-    setWorkoutNextPlan("");
-    setWorkoutTrainerNote("");
-    setWorkoutExercises([createEmptyWorkoutExercise("weight")]);
+    resetWorkoutInputForm("weight");
     setShowAllWorkoutModal(false);
-    clearWorkoutEdit();
   }
 
 
@@ -5281,24 +5311,27 @@ ${conditionText}.`,
 
     await loadWorkoutSessions(savedWorkoutMember.id);
 
-    if (workoutReturnSource === "scheduleCheckGroup" && groupWorkoutQueue.length > 1) {
-      const nextIndex = groupWorkoutIndex + 1;
-      const nextMember = groupWorkoutQueue[nextIndex];
+    const activeReturnSource = workoutReturnSourceRef.current || workoutReturnSource;
+    const activeGroupQueue = groupWorkoutQueueRef.current.length > 0 ? groupWorkoutQueueRef.current : groupWorkoutQueue;
+    const activeGroupIndex = groupWorkoutIndexRef.current ?? groupWorkoutIndex;
 
-      if (shouldOpenFeedback) {
-        openFeedbackModal(savedWorkoutMember, feedbackMessage);
-      }
+    if (activeReturnSource === "scheduleCheckGroup" && activeGroupQueue.length > 1) {
+      const nextIndex = activeGroupIndex + 1;
+      const nextMember = activeGroupQueue[nextIndex];
 
-      if (nextMember) {
-        setGroupWorkoutIndex(nextIndex);
-        await openWorkout(nextMember, "scheduleCheckGroup");
-        setWorkoutMode("add");
+      if (nextMember?.id) {
+        await moveToGroupWorkoutMember(nextMember, nextIndex);
         return;
       }
 
-      setGroupWorkoutQueue([]);
-      setGroupWorkoutIndex(0);
-      closeWorkout();
+      clearGroupWorkoutFlow();
+      setWorkoutMember(null);
+      setWorkoutReturnSource(null);
+      workoutReturnSourceRef.current = null;
+      setWorkoutSessions([]);
+      setWorkoutMode("list");
+      resetWorkoutInputForm("weight");
+      setShowAllWorkoutModal(false);
       setShowScheduleCheckModal(true);
       await loadScheduleCheckList(scheduleCheckDate || getTodayDateString());
       alert("그룹PT 참여자 전원의 운동 기록이 저장되었습니다.");
