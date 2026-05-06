@@ -630,7 +630,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     const { error } = await supabase
       .from("schedule_sms_logs")
-      .upsert(row, { onConflict: "schedule_id,member_id,sent_date,message_type" });
+      .upsert(row, { onConflict: "schedule_id,member_id" });
 
     if (error) {
       alert("문자 발송 기록 저장 실패: " + error.message);
@@ -645,7 +645,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     setSmsSentLogList((prev) => {
       const filtered = (prev || []).filter(
-        (log) => !(log.schedule_id === schedule.id && log.member_id === member.id && log.sent_date === sentDate && log.message_type === "schedule_condition")
+        (log) => !(log.schedule_id === schedule.id && log.member_id === member.id)
       );
       return [...filtered, row];
     });
