@@ -52,7 +52,8 @@ const circuitPrograms = [
       { name: "점핑 런지", weight: "", reps: "20" },
     ],
   },
-];const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
+];const SPOTAINER_PATCH_VERSION = "2026-05-06-bugfix-real-3";
+const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const commonExercises = [
   "스쿼트",
@@ -265,6 +266,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const isSearching = search.trim().length > 0;
 
   useEffect(() => {
+    console.log("Spotainer patch version:", SPOTAINER_PATCH_VERSION);
     loadMembers();
     loadSchedules(getTodayDateString());
     loadScheduleSMSLogs(getTodayDateString());
@@ -582,45 +584,110 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     const nextMap = {};
     (data || []).forEach((log) => {
-      if (log.schedule_id) nextMap[log.schedule_id] = true;
+      if (!log.schedule_id) return;
+      nextMap[getScheduleSMSLogKey(log.schedule_id, log.member_id)] = true;
     });
 
     setSmsSentLogList(data || []);
     setSmsSentMap(nextMap);
   }
 
-  async function saveScheduleSMSLog(schedule, memoText = "") {
+  function getScheduleSMSLogKey(scheduleId, memberId) {
+    return `${scheduleId}:${memberId || "unknown"}`;
+  }
+
+  function isScheduleMemberSMSSent(schedule, member) {
+    if (!schedule?.id || !member?.id) return false;
+    return Boolean(smsSentMap[getScheduleSMSLogKey(schedule.id, member.id)]);
+  }
+
+  function getScheduleSMSMembers(schedule) {
+    const list = getScheduleMembers(schedule);
+    return list.length > 0 ? list : [];
+  }
+
+  function getUnsentScheduleSMSMembers(schedule) {
+    return getScheduleSMSMembers(schedule).filter((member) => !isScheduleMemberSMSSent(schedule, member));
+  }
+
+  async function saveScheduleSMSLog(schedule, memoText = "", targetMember = null) {
     if (!schedule?.id) return false;
 
-    const member = getScheduleMember(schedule) || schedule.members;
+    const member = targetMember || getScheduleMember(schedule) || schedule.members;
     const sentDate = schedule.schedule_date || getTodayDateString();
+
+    if (!member?.id) {
+      alert("문자 발송 기록을 저장할 회원 정보를 찾을 수 없습니다.");
+      return false;
+    }
 
     const row = {
       schedule_id: schedule.id,
-      member_id: member?.id || schedule.member_id || null,
+      member_id: member.id,
       sent_date: sentDate,
       sent_at: new Date().toISOString(),
       message_type: "schedule_condition",
       memo: memoText || null,
     };
 
-    const { error } = await supabase
+    const { data: existingLog, error: lookupError } = await supabase
       .from("schedule_sms_logs")
-      .upsert(row, { onConflict: "schedule_id,sent_date,message_type" });
+      .select("id")
+      .eq("schedule_id", schedule.id)
+      .eq("member_id", member.id)
+      .eq("sent_date", sentDate)
+      .eq("message_type", "schedule_condition")
+      .maybeSingle();
 
-    if (error) {
-      alert("문자 발송 기록 저장 실패: " + error.message);
+    if (lookupError) {
+      alert("문자 발송 기록 확인 실패: " + lookupError.message);
       return false;
     }
 
+    let saveError = null;
+
+    if (existingLog?.id) {
+      const result = await supabase
+        .from("schedule_sms_logs")
+        .update({
+          sent_at: row.sent_at,
+          memo: row.memo,
+          sent_date: row.sent_date,
+          message_type: row.message_type,
+        })
+        .eq("id", existingLog.id);
+      saveError = result.error;
+    } else {
+      const result = await supabase
+        .from("schedule_sms_logs")
+        .insert(row);
+      saveError = result.error;
+    }
+
+    if (saveError) {
+      const retry = await supabase
+        .from("schedule_sms_logs")
+        .update({ sent_at: row.sent_at, memo: row.memo })
+        .eq("schedule_id", schedule.id)
+        .eq("member_id", member.id)
+        .eq("sent_date", sentDate)
+        .eq("message_type", "schedule_condition");
+
+      if (retry.error) {
+        alert("문자 발송 기록 저장 실패: " + retry.error.message);
+        return false;
+      }
+    }
+
+    const key = getScheduleSMSLogKey(schedule.id, member.id);
     setSmsSentMap((prev) => ({
       ...prev,
-      [schedule.id]: true,
+      [key]: true,
     }));
 
     setSmsSentLogList((prev) => {
       const filtered = (prev || []).filter(
-        (log) => !(log.schedule_id === schedule.id && log.sent_date === sentDate && log.message_type === "schedule_condition")
+        (log) => !(log.schedule_id === schedule.id && log.member_id === member.id)
       );
       return [...filtered, row];
     });
@@ -629,7 +696,9 @@ const [workoutExercises, setWorkoutExercises] = useState([
   }
 
   function isScheduleSMSSent(schedule) {
-    return Boolean(schedule?.id && smsSentMap[schedule.id]);
+    const membersForSMS = getScheduleSMSMembers(schedule);
+    if (membersForSMS.length === 0) return false;
+    return membersForSMS.every((member) => isScheduleMemberSMSSent(schedule, member));
   }
 
   
@@ -3496,35 +3565,64 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
 늦지 않게 방문해주세요 😊`;
   }
 
-  async function sendScheduleSMS(schedule) {
-    const member = getScheduleMember(schedule) || schedule.members;
-    const phone = normalizePhone(member?.phone);
+  function makeSMSQueueItemsFromSchedule(schedule, onlyUnsent = true) {
+    const membersForSMS = getScheduleSMSMembers(schedule).filter((member) => normalizePhone(member?.phone));
+    const targets = onlyUnsent
+      ? membersForSMS.filter((member) => !isScheduleMemberSMSSent(schedule, member))
+      : membersForSMS;
 
-    if (!member) {
-      alert("연결된 회원 정보를 찾을 수 없습니다.");
+    return targets.map((member) => ({
+      schedule,
+      member,
+      key: `${schedule?.id || "schedule"}:${member?.id || member?.phone || "member"}`,
+    }));
+  }
+
+  function startScheduleSMSQueue(schedule) {
+    if (!schedule?.id) {
+      alert("스케줄 정보를 찾을 수 없습니다.");
       return;
     }
 
-    if (!phone) {
-      alert(`${member.name || "회원"} 회원의 전화번호가 없습니다.`);
-      return;
-    }
+    let queueItems = makeSMSQueueItemsFromSchedule(schedule, true);
 
-    if (isScheduleSMSSent(schedule)) {
-      const resend = confirm(`${member.name || "회원"} 회원에게 오늘 이미 문자를 보낸 기록이 있습니다.\n그래도 다시 문자앱을 열까요?`);
+    if (queueItems.length === 0) {
+      const allItems = makeSMSQueueItemsFromSchedule(schedule, false);
+
+      if (allItems.length === 0) {
+        alert("문자 보낼 회원 정보나 전화번호를 찾을 수 없습니다.");
+        return;
+      }
+
+      const resend = confirm(`이 스케줄 참여자 ${allItems.length}명은 오늘 문자 완료 기록이 있습니다.
+그래도 다시 문자 큐를 열까요?`);
       if (!resend) return;
-    } else if (!confirm(`${member.name || "회원"} 회원에게 수업 안내 + 컨디션 확인 문자를 보낼까요?\n\n확인을 누르면 문자앱이 열리고, 직접 전송 버튼을 눌러야 발송됩니다.`)) {
-      return;
+      queueItems = allItems;
     }
 
-    await saveScheduleSMSLog(schedule, "개별 문자 버튼");
+    setSmsQueue(queueItems);
+    setSmsIndex(0);
+    setSmsMode(true);
 
-    const message = buildScheduleSMSMessage(schedule);
-    window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
+    if (queueItems.length > 1) {
+      alert(`그룹PT 문자는 자동 연속 발송하지 않습니다.
+
+1) 문자 보내기
+2) 문자앱에서 직접 전송
+3) Spotainer로 돌아오기
+4) 보낸 처리
+
+이 순서로 ${queueItems.length}명에게 한 명씩 진행하세요.`);
+    }
+  }
+
+  async function sendScheduleSMS(schedule) {
+    startScheduleSMSQueue(schedule);
   }
 
   async function sendMobileScheduleSMS(schedule, member) {
-    const targetMember = member || getScheduleMember(schedule) || schedule.members;
+    const membersForSMS = getScheduleSMSMembers(schedule);
+    const targetMember = member || membersForSMS[0] || getScheduleMember(schedule) || schedule.members;
     const phone = normalizePhone(targetMember?.phone);
 
     if (!targetMember) {
@@ -3537,12 +3635,13 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
       return;
     }
 
-    if (isScheduleSMSSent(schedule)) {
-      const resend = confirm(`${targetMember.name || "회원"} 회원에게 오늘 이미 문자를 보낸 기록이 있습니다.\n그래도 다시 문자앱을 열까요?`);
+    if (isScheduleMemberSMSSent(schedule, targetMember)) {
+      const resend = confirm(`${targetMember.name || "회원"} 회원에게 오늘 이미 문자를 보낸 기록이 있습니다.
+그래도 다시 문자앱을 열까요?`);
       if (!resend) return;
     }
 
-    await saveScheduleSMSLog(schedule, `모바일 긴급모드 문자 - ${targetMember.name || "회원"}`);
+    await saveScheduleSMSLog(schedule, `모바일 긴급모드 문자 - ${targetMember.name || "회원"}`, targetMember);
 
     const message = buildScheduleSMSMessage(schedule);
     window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
@@ -3556,13 +3655,14 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
       if (schedule.status === "cancelled") return false;
       if (schedule.status === "completed") return false;
       if (schedule.status === "noshow") return false;
-      if (smsSentMap[schedule.id]) return false;
 
-      const member = getScheduleMember(schedule) || schedule.members;
-      const phone = normalizePhone(member?.phone);
-      if (!member || !phone) return false;
+      const membersForSMS = getScheduleSMSMembers(schedule);
+      const hasUnsentMemberWithPhone = membersForSMS.some((member) => {
+        const phone = normalizePhone(member?.phone);
+        return member && phone && !isScheduleMemberSMSSent(schedule, member);
+      });
 
-      return true;
+      return hasUnsentMemberWithPhone;
     });
   }
 
@@ -3573,12 +3673,14 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
       return aTime.localeCompare(bTime);
     });
 
-    if (targets.length === 0) {
+    const queueItems = targets.flatMap((schedule) => makeSMSQueueItemsFromSchedule(schedule, true));
+
+    if (queueItems.length === 0) {
       alert("문자 보낼 오늘 스케줄이 없습니다.\n이미 보낸 대상, 취소/완료/노쇼, 전화번호 없는 회원은 제외됩니다.");
       return;
     }
 
-    setSmsQueue(targets);
+    setSmsQueue(queueItems);
     setSmsIndex(0);
     setSmsMode(true);
   }
@@ -3589,18 +3691,39 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
     setSmsIndex(0);
   }
 
-  function getCurrentSMSSchedule() {
+  function getCurrentSMSItem() {
     return smsQueue[smsIndex] || null;
+  }
+
+  function getCurrentSMSSchedule() {
+    const item = getCurrentSMSItem();
+    return item?.schedule || item || null;
+  }
+
+  function getCurrentSMSTargetMember(schedule) {
+    const item = getCurrentSMSItem();
+    if (item?.member) return item.member;
+
+    if (!schedule) return null;
+    const unsentMembers = getUnsentScheduleSMSMembers(schedule).filter((member) => normalizePhone(member?.phone));
+    if (unsentMembers.length > 0) return unsentMembers[0];
+    return getScheduleSMSMembers(schedule).find((member) => normalizePhone(member?.phone)) || null;
   }
 
   function sendCurrentScheduleSMS() {
     const schedule = getCurrentSMSSchedule();
-    const member = schedule ? getScheduleMember(schedule) || schedule.members : null;
+    const member = getCurrentSMSTargetMember(schedule);
     const phone = normalizePhone(member?.phone);
 
     if (!schedule || !member || !phone) {
       alert("현재 문자 보낼 대상을 찾을 수 없습니다.");
       return;
+    }
+
+    if (isScheduleMemberSMSSent(schedule, member)) {
+      const resend = confirm(`${member.name || "회원"} 회원에게 오늘 이미 문자를 보낸 기록이 있습니다.
+그래도 다시 문자앱을 열까요?`);
+      if (!resend) return;
     }
 
     const message = buildScheduleSMSMessage(schedule);
@@ -3609,14 +3732,15 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
 
   async function markCurrentSMSSentAndNext() {
     const schedule = getCurrentSMSSchedule();
+    const member = getCurrentSMSTargetMember(schedule);
 
-    if (schedule?.id) {
-      const ok = await saveScheduleSMSLog(schedule, "문자 큐 보낸 처리");
+    if (schedule?.id && member?.id) {
+      const ok = await saveScheduleSMSLog(schedule, `문자 큐 보낸 처리 - ${member.name || "회원"}`, member);
       if (!ok) return;
     }
 
     if (smsIndex + 1 >= smsQueue.length) {
-      alert("오늘 문자 큐가 끝났습니다.");
+      alert("문자 큐가 끝났습니다.");
       stopTodaySMSQueue();
       return;
     }
@@ -3722,6 +3846,7 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
   function generateMemberCardFeedbackMessage(member, session) {
     if (!session) return "";
 
+    const memberName = member?.name || "회원";
     const bodyParts = Array.isArray(session.body_parts)
       ? session.body_parts.filter(Boolean)
       : [];
@@ -3730,31 +3855,31 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
       : getExerciseSummaryFromSession(session);
 
     const conditionLine = (() => {
-      if (session.condition === "good") return "컨디션도 좋아서 운동 흐름이 잘 들어갔어요 👍";
-      if (session.condition === "bad") return "오늘 컨디션에 맞춰 무리하지 않고 잘 조절하면서 진행했어요 👍";
-      return "컨디션 잘 유지하면서 안정적으로 진행했어요 👍";
+      if (session.condition === "good") return "오늘은 전체적으로 컨디션이 괜찮아서 흐름이 좋았어요.";
+      if (session.condition === "bad") return "오늘은 컨디션에 맞춰서 무리 없이 조절해서 진행했어요.";
+      return "오늘은 컨디션 보면서 무리 없이 진행했어요.";
     })();
 
-    const issue = cleanFeedbackText(session.issue);
+    const issue = softenFeedbackExpression(session.issue);
     const issueLine = issue
-      ? `${softenFeedbackExpression(issue)} 있어서 무리하지 않고 체크하면서 진행했어요\n조금만 더 안정 잡히면 훨씬 좋아질 것 같아요`
-      : "오늘 전체적으로 흐름 좋게 잘 진행됐어요";
+      ? `${issue}은 체크하면서 진행했고, 다음 시간에도 편하게 움직일 수 있게 먼저 확인하고 진행해볼게요.`
+      : "전체적으로 무리 없이 잘 진행됐어요.";
 
     const next = cleanFeedbackText(session.next_plan);
     const nextLine = next
-      ? `다음 수업은 ${next} 방향으로 이어가볼게요!`
-      : "다음 수업도 오늘 흐름 이어서 더 좋게 만들어볼게요!";
+      ? `다음 시간에는 ${next} 방향으로 이어가볼게요.`
+      : "다음 시간에도 몸 상태 체크하면서 편하게 이어가볼게요.";
 
-    return `${member?.name || "회원"}님 오늘 운동 고생 많으셨어요 😊
+    return `${memberName}님 오늘 수업 받으시느라 수고 많으셨어요.
 
-오늘은 ${partText} 위주로 진행했고
-${conditionLine}
+${partText ? `오늘은 ${partText} 위주로 진행했고
+` : ""}${conditionLine}
 
 ${issueLine}
 
 ${nextLine}
 
-편하게 쉬시고 다음에 뵐게요 🙂`;
+편하게 쉬시고 다음 수업 때 뵐게요.`;
   }
 
   async function openMemberCardFeedback(member) {
@@ -4040,6 +4165,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     setInbodyVisceralFatLevel(log.visceral_fat_level ?? "");
     setInbodyMemo(log.memo || "");
     setShowInbodyModal(true);
+    window.setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    }, 0);
   }
 
   function closeInbodyModal() {
@@ -4125,7 +4253,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       memo: inbodyMemo.trim(),
     };
 
-    const request = editingInbodyLog
+    const wasEditing = Boolean(editingInbodyLog?.id);
+    const request = wasEditing
       ? supabase.from("inbody_logs").update(row).eq("id", editingInbodyLog.id)
       : supabase.from("inbody_logs").insert(row);
 
@@ -4138,7 +4267,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
     closeInbodyModal();
     await loadInbodyLogs(selectedMember.id);
-    alert(`${selectedMember.name} 인바디 기록이 ${editingInbodyLog ? "수정" : "저장"}되었습니다.`);
+    alert(`${selectedMember.name} 인바디 기록이 ${wasEditing ? "수정" : "저장"}되었습니다.`);
   }
 
   async function deleteInbodyLog(log) {
@@ -4573,9 +4702,22 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }
 
   function getWorkoutSessionBodyParts(session) {
-    return Array.isArray(session?.body_parts)
-      ? session.body_parts.filter(Boolean)
+    const savedParts = Array.isArray(session?.body_parts)
+      ? session.body_parts.filter((part) => workoutPatternOptions.includes(part))
       : [];
+
+    const inferredParts = inferBodyPartsFromExerciseNames(getSessionExerciseNames(session));
+
+    // 예전 기록이나 오터치로 저장 부위와 운동명이 충돌하면 운동명 기준으로 화면 표시를 보정합니다.
+    // 예: 랫풀다운/로우만 있는데 body_parts가 가슴으로 저장된 경우 → 등으로 표시
+    if (inferredParts.length > 0 && savedParts.length > 0) {
+      const overlap = savedParts.filter((part) => inferredParts.includes(part));
+      return overlap.length > 0 ? overlap : inferredParts;
+    }
+
+    if (savedParts.length > 0) return savedParts;
+    if (isCircuitWorkoutSession(session)) return ["전신"];
+    return inferredParts;
   }
 
   function getSessionExerciseNames(session) {
@@ -4601,9 +4743,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }
 
   const exerciseBodyPartKeywordMap = {
-    가슴: ["체스트", "벤치", "인클라인", "디클라인", "펙덱", "플라이", "푸쉬업", "덤벨프레스", "케이블플라이", "케이블 플라이"],
-    어깨: ["숄더", "레터럴", "프론트", "리어", "델트", "업라이트", "오버헤드"],
-    등: ["랫풀", "랫 풀", "풀다운", "로우", "풀업", "페이스풀", "리버스", "데드리프트"],
+    가슴: ["체스트", "벤치", "인클라인", "디클라인", "펙덱", "플라이", "푸쉬업", "덤벨프레스", "케이블플라이", "케이블 플라이", "가슴"],
+    어깨: ["숄더", "레터럴", "프론트", "리어", "델트", "업라이트", "오버헤드", "어깨"],
+    등: ["랫풀", "랫 풀", "풀다운", "로우", "풀업", "페이스풀", "리버스", "데드리프트", "등"],
     하체: ["스쿼트", "런지", "레그", "힙", "글루트", "스텝업", "어브덕션", "어덕션", "카프"],
     팔: ["컬", "바이셉스", "트라이셉스", "푸쉬다운", "암", "킥백", "익스텐션"],
     복부: ["플랭크", "크런치", "레그레이즈", "데드버그", "버드독", "트위스트", "싯업", "복부"],
@@ -4617,6 +4759,25 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
         combined.includes(String(keyword).toLowerCase())
       )
     );
+  }
+
+  function getSafeWorkoutBodyParts(trainingType, selectedParts = [], exercises = []) {
+    if (trainingType === "circuit") return ["전신"];
+    if (trainingType !== "weight") return [];
+
+    const selected = Array.from(new Set((selectedParts || []).filter((part) => weightBodyPartOptions.includes(part))));
+    const exerciseNames = (exercises || []).map((exercise) => String(exercise?.name || "").trim()).filter(Boolean);
+    const inferred = inferBodyPartsFromExerciseNames(exerciseNames);
+
+    if (inferred.length === 0) return selected;
+    if (selected.length === 0) return inferred;
+
+    const overlap = selected.filter((part) => inferred.includes(part));
+    if (overlap.length > 0) return overlap;
+
+    // 선택 부위와 운동명이 충돌하면 운동명 기준으로 저장합니다.
+    // 등 운동을 했는데 가슴으로 올라가는 문제를 막기 위한 안전장치입니다.
+    return inferred;
   }
 
   function getWorkoutPatternSummary(sessions = detailWorkoutSessions) {
@@ -4909,9 +5070,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }
 
   function getPositiveConditionSentence(condition = workoutCondition) {
-    if (condition === "good") return "컨디션이 좋아서 전체적으로 안정감 있게 진행했습니다";
-    if (condition === "bad") return "오늘 컨디션에 맞춰 무리하지 않는 선에서 흐름을 잘 맞춰 진행했습니다";
-    return "컨디션을 잘 유지하면서 진행했습니다";
+    if (condition === "good") return "오늘은 전체적으로 컨디션이 괜찮아서 흐름이 좋았어요";
+    if (condition === "bad") return "오늘은 컨디션에 맞춰서 무리 없이 조절해서 진행했어요";
+    return "오늘은 컨디션 보면서 무리 없이 진행했어요";
   }
 
   function cleanFeedbackText(value) {
@@ -4939,23 +5100,24 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     const text = softenFeedbackExpression(issue);
     if (!text) return "";
 
-    return `${text}은 체크하면서 진행했고, 조금 더 안정성을 잡아주면 운동 효과가 더 좋아질 것 같아요.`;
+    return `${text}은 체크하면서 진행했고, 다음 시간에도 편하게 움직일 수 있게 먼저 확인하고 진행해볼게요.`;
   }
 
   function toPositiveTrainerNoteSentence(trainerNote) {
     const text = softenFeedbackExpression(trainerNote);
     if (!text) return "";
 
-    return `${text}도 확인했습니다. 다음 수업에서도 편안하게 움직일 수 있도록 흐름을 잘 맞춰가겠습니다.`;
+    return `${text}도 참고해서 다음 수업 흐름을 맞춰볼게요.`;
   }
 
   function toPositiveNextPlanSentence(nextPlan) {
     const text = cleanFeedbackText(nextPlan);
-    if (!text) return "다음 수업에서도 오늘 흐름을 이어가면서 더 좋은 움직임을 만들어보겠습니다.";
-    return `다음 수업에서는 ${text} 방향으로 더 좋은 흐름을 만들어보겠습니다.`;
+    if (!text) return "다음 시간에도 몸 상태 체크하면서 편하게 이어가볼게요.";
+    return `다음 시간에는 ${text} 방향으로 이어가볼게요.`;
   }
 
   function generateWorkoutFeedbackMessage({ member, trainingType, bodyParts, condition, issue, nextPlan, trainerNote }) {
+    const memberName = member?.name || "회원";
     const partText = getWorkoutFeedbackPartText(trainingType, bodyParts);
     const conditionText = getPositiveConditionSentence(condition);
     const issueText = toPositiveIssueSentence(issue);
@@ -4963,15 +5125,18 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     const nextText = toPositiveNextPlanSentence(nextPlan);
 
     return [
-      `${member?.name || "회원"}님 오늘 운동 고생 많으셨어요 😊`,
-      `오늘은 ${partText} 운동 진행했고,\n${conditionText}.`,
+      `${memberName}님 오늘 수업 받으시느라 수고 많으셨어요.`,
+      `오늘은 ${partText} 위주로 진행했고
+${conditionText}.`,
       issueText,
       trainerNoteText,
       nextText,
-      "편안한 시간 보내시고 다음 수업 때 뵐게요!",
+      "편하게 쉬시고 다음 수업 때 뵐게요.",
     ]
       .filter((line) => String(line || "").trim())
-      .join("\n\n");
+      .join("
+
+");
   }
 
   function openFeedbackModal(member, draft) {
@@ -5013,8 +5178,10 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       return;
     }
 
+    const targetPhone = phone;
     await markMemberContacted(feedbackModalMember, "피드백 문자");
-    window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
+    closeFeedbackModal();
+    window.location.href = `sms:${targetPhone}?body=${encodeURIComponent(message)}`;
   }
 
   async function saveWorkout(options = {}) {
@@ -5042,7 +5209,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
         member_id: workoutMember.id,
         workout_date: getTodayDateString(),
         memo: workoutMemo.trim(),
-        body_parts: workoutTrainingType === "weight" ? workoutBodyParts : workoutTrainingType === "circuit" ? ["전신"] : [],
+        body_parts: getSafeWorkoutBodyParts(workoutTrainingType, workoutBodyParts, validExercises),
         condition: workoutCondition,
         issue: workoutIssue.trim(),
         next_plan: workoutNextPlan.trim(),
@@ -5082,7 +5249,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     const feedbackMessage = generateWorkoutFeedbackMessage({
       member: workoutMember,
       trainingType: workoutTrainingType,
-      bodyParts: workoutTrainingType === "weight" ? workoutBodyParts : workoutTrainingType === "circuit" ? ["전신"] : [],
+      bodyParts: getSafeWorkoutBodyParts(workoutTrainingType, workoutBodyParts, validExercises),
       condition: workoutCondition,
       issue: workoutIssue,
       nextPlan: workoutNextPlan,
@@ -5940,7 +6107,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 오늘 문자 {smsIndex + 1} / {smsQueue.length}
               </strong>
               <span style={styles.smsQueueTarget}>
-                {getScheduleMemberNames(getCurrentSMSSchedule())} · {formatScheduleRange(getCurrentSMSSchedule())}
+                현재 대상: {getCurrentSMSTargetMember(getCurrentSMSSchedule())?.name || "회원"} · {formatScheduleRange(getCurrentSMSSchedule())}
               </span>
               <span style={styles.smsQueueHint}>
                 문자앱에서 전송 후 돌아와서 ‘보낸 처리’를 누르면 다음 회원으로 넘어갑니다.
