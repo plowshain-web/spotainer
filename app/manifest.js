@@ -52,7 +52,8 @@ const circuitPrograms = [
       { name: "점핑 런지", weight: "", reps: "20" },
     ],
   },
-];const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
+];const SPOTAINER_PATCH_VERSION = "2026-05-06-bugfix-real-3";
+const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const commonExercises = [
   "스쿼트",
@@ -265,6 +266,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const isSearching = search.trim().length > 0;
 
   useEffect(() => {
+    console.log("Spotainer patch version:", SPOTAINER_PATCH_VERSION);
     loadMembers();
     loadSchedules(getTodayDateString());
     loadScheduleSMSLogs(getTodayDateString());
@@ -3563,38 +3565,54 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
 늦지 않게 방문해주세요 😊`;
   }
 
-  function startScheduleSMSQueue(schedule) {
+  function makeSMSQueueItemsFromSchedule(schedule, onlyUnsent = true) {
     const membersForSMS = getScheduleSMSMembers(schedule).filter((member) => normalizePhone(member?.phone));
+    const targets = onlyUnsent
+      ? membersForSMS.filter((member) => !isScheduleMemberSMSSent(schedule, member))
+      : membersForSMS;
 
-    if (!schedule?.id || membersForSMS.length === 0) {
-      alert("문자 보낼 회원 정보나 전화번호를 찾을 수 없습니다.");
+    return targets.map((member) => ({
+      schedule,
+      member,
+      key: `${schedule?.id || "schedule"}:${member?.id || member?.phone || "member"}`,
+    }));
+  }
+
+  function startScheduleSMSQueue(schedule) {
+    if (!schedule?.id) {
+      alert("스케줄 정보를 찾을 수 없습니다.");
       return;
     }
 
-    const unsentMembers = membersForSMS.filter((member) => !isScheduleMemberSMSSent(schedule, member));
-    const targets = unsentMembers.length > 0 ? unsentMembers : membersForSMS;
+    let queueItems = makeSMSQueueItemsFromSchedule(schedule, true);
 
-    if (unsentMembers.length === 0) {
-      const resend = confirm(`이 스케줄 참여자 ${membersForSMS.length}명에게 오늘 문자를 모두 보낸 기록이 있습니다.
-다시 문자 보내기 큐를 열까요?`);
+    if (queueItems.length === 0) {
+      const allItems = makeSMSQueueItemsFromSchedule(schedule, false);
+
+      if (allItems.length === 0) {
+        alert("문자 보낼 회원 정보나 전화번호를 찾을 수 없습니다.");
+        return;
+      }
+
+      const resend = confirm(`이 스케줄 참여자 ${allItems.length}명은 오늘 문자 완료 기록이 있습니다.
+그래도 다시 문자 큐를 열까요?`);
       if (!resend) return;
+      queueItems = allItems;
     }
 
-    setSmsQueue(
-      targets.map((member) => ({
-        schedule,
-        member,
-        key: `${schedule.id}:${member.id}`,
-      }))
-    );
+    setSmsQueue(queueItems);
     setSmsIndex(0);
     setSmsMode(true);
 
-    if (membersForSMS.length > 1) {
-      alert(`그룹PT 문자는 안드로이드 문자앱 정책 때문에 자동 연속 발송하지 않습니다.
+    if (queueItems.length > 1) {
+      alert(`그룹PT 문자는 자동 연속 발송하지 않습니다.
 
-문자 보내기 → 문자앱에서 직접 전송 → 앱으로 돌아오기 → 보낸 처리
-이 순서로 ${targets.length}명에게 한 명씩 보내세요.`);
+1) 문자 보내기
+2) 문자앱에서 직접 전송
+3) Spotainer로 돌아오기
+4) 보낸 처리
+
+이 순서로 ${queueItems.length}명에게 한 명씩 진행하세요.`);
     }
   }
 
@@ -3655,19 +3673,10 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
       return aTime.localeCompare(bTime);
     });
 
-    const queueItems = targets.flatMap((schedule) =>
-      getUnsentScheduleSMSMembers(schedule)
-        .filter((member) => normalizePhone(member?.phone))
-        .map((member) => ({
-          schedule,
-          member,
-          key: `${schedule.id}:${member.id}`,
-        }))
-    );
+    const queueItems = targets.flatMap((schedule) => makeSMSQueueItemsFromSchedule(schedule, true));
 
     if (queueItems.length === 0) {
-      alert("문자 보낼 오늘 스케줄이 없습니다.
-이미 보낸 대상, 취소/완료/노쇼, 전화번호 없는 회원은 제외됩니다.");
+      alert("문자 보낼 오늘 스케줄이 없습니다.\n이미 보낸 대상, 취소/완료/노쇼, 전화번호 없는 회원은 제외됩니다.");
       return;
     }
 
@@ -4699,7 +4708,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
     const inferredParts = inferBodyPartsFromExerciseNames(getSessionExerciseNames(session));
 
-    // 예전에 잘못 저장된 기록이 있으면 운동명 기준으로 화면 표시를 보정합니다.
+    // 예전 기록이나 오터치로 저장 부위와 운동명이 충돌하면 운동명 기준으로 화면 표시를 보정합니다.
     // 예: 랫풀다운/로우만 있는데 body_parts가 가슴으로 저장된 경우 → 등으로 표시
     if (inferredParts.length > 0 && savedParts.length > 0) {
       const overlap = savedParts.filter((part) => inferredParts.includes(part));
@@ -4734,8 +4743,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }
 
   const exerciseBodyPartKeywordMap = {
-    가슴: ["체스트", "벤치", "인클라인", "디클라인", "펙덱", "플라이", "푸쉬업", "케이블플라이", "케이블 플라이", "가슴"],
-    어깨: ["숄더", "레터럴", "프론트", "리어", "델트", "업라이트", "오버헤드", "밀리터리", "어깨"],
+    가슴: ["체스트", "벤치", "인클라인", "디클라인", "펙덱", "플라이", "푸쉬업", "덤벨프레스", "케이블플라이", "케이블 플라이", "가슴"],
+    어깨: ["숄더", "레터럴", "프론트", "리어", "델트", "업라이트", "오버헤드", "어깨"],
     등: ["랫풀", "랫 풀", "풀다운", "로우", "풀업", "페이스풀", "리버스", "데드리프트", "등"],
     하체: ["스쿼트", "런지", "레그", "힙", "글루트", "스텝업", "어브덕션", "어덕션", "카프"],
     팔: ["컬", "바이셉스", "트라이셉스", "푸쉬다운", "암", "킥백", "익스텐션"],
@@ -4766,8 +4775,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     const overlap = selected.filter((part) => inferred.includes(part));
     if (overlap.length > 0) return overlap;
 
-    // 운동명과 선택 부위가 충돌하면 운동명 기준으로 보정합니다.
-    // 등 운동을 했는데 이전 선택값/오터치 때문에 가슴으로 저장되는 문제를 막기 위한 안전장치입니다.
+    // 선택 부위와 운동명이 충돌하면 운동명 기준으로 저장합니다.
+    // 등 운동을 했는데 가슴으로 올라가는 문제를 막기 위한 안전장치입니다.
     return inferred;
   }
 
@@ -6098,7 +6107,7 @@ ${conditionText}.`,
                 오늘 문자 {smsIndex + 1} / {smsQueue.length}
               </strong>
               <span style={styles.smsQueueTarget}>
-                {getScheduleMemberNames(getCurrentSMSSchedule())} · {formatScheduleRange(getCurrentSMSSchedule())}
+                현재 대상: {getCurrentSMSTargetMember(getCurrentSMSSchedule())?.name || "회원"} · {formatScheduleRange(getCurrentSMSSchedule())}
               </span>
               <span style={styles.smsQueueHint}>
                 문자앱에서 전송 후 돌아와서 ‘보낸 처리’를 누르면 다음 회원으로 넘어갑니다.
@@ -12172,9 +12181,8 @@ textarea: {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 40000,
+    zIndex: 15000,
     padding: 12,
-    overflow: "hidden",
   },
   ptModalOverlay: {
     position: "fixed",
