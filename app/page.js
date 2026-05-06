@@ -5135,7 +5135,6 @@ ${conditionText}.`,
     ]
       .filter((line) => String(line || "").trim())
       .join("\n");
-");
   }
 
   function openFeedbackModal(member, draft) {
