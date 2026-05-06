@@ -177,6 +177,8 @@ export default function Page() {
 
   const [workoutMember, setWorkoutMember] = useState(null);
   const [workoutReturnSource, setWorkoutReturnSource] = useState(null);
+  const [groupWorkoutQueue, setGroupWorkoutQueue] = useState([]);
+  const [groupWorkoutIndex, setGroupWorkoutIndex] = useState(0);
   const [workoutSessions, setWorkoutSessions] = useState([]);
   const [detailWorkoutSessions, setDetailWorkoutSessions] = useState([]);
   const [lastWorkoutMap, setLastWorkoutMap] = useState({});
@@ -2481,6 +2483,16 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     setShowScheduleCheckModal(false);
 
+    if (schedule.type === "group" && scheduleMembers.length > 1) {
+      setGroupWorkoutQueue(scheduleMembers);
+      setGroupWorkoutIndex(0);
+      await openWorkout(primaryMember, "scheduleCheckGroup");
+      setWorkoutMode("add");
+      return;
+    }
+
+    setGroupWorkoutQueue([]);
+    setGroupWorkoutIndex(0);
     await openWorkout(primaryMember, "scheduleCheck");
     setWorkoutMode("add");
   }
@@ -4407,7 +4419,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       })
       .filter(Boolean);
 
-    const linePoints = validPoints.map((point) => `${point.x},${point.y}`).join(" ");
+    const linePoints = validPoints.map((point) => `${point.x},${point.y}`).join("\n");
 
     return (
       <div style={styles.inbodyTrendLineRow}>
@@ -4564,6 +4576,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   function closeWorkout() {
     setWorkoutMember(null);
     setWorkoutReturnSource(null);
+    setGroupWorkoutQueue([]);
+    setGroupWorkoutIndex(0);
     setWorkoutSessions([]);
     setWorkoutMode("list");
     setWorkoutTrainingType("weight");
@@ -5186,6 +5200,8 @@ ${conditionText}.`,
     const shouldOpenFeedback = options?.openFeedback === true;
     if (!workoutMember) return;
 
+    const savedWorkoutMember = workoutMember;
+
     const validExercises = workoutExercises
       .map((exercise) => ({
         ...exercise,
@@ -5263,9 +5279,34 @@ ${conditionText}.`,
     setWorkoutExercises([createEmptyWorkoutExercise("weight")]);
     setWorkoutMode("list");
 
-    await loadWorkoutSessions(workoutMember.id);
+    await loadWorkoutSessions(savedWorkoutMember.id);
+
+    if (workoutReturnSource === "scheduleCheckGroup" && groupWorkoutQueue.length > 1) {
+      const nextIndex = groupWorkoutIndex + 1;
+      const nextMember = groupWorkoutQueue[nextIndex];
+
+      if (shouldOpenFeedback) {
+        openFeedbackModal(savedWorkoutMember, feedbackMessage);
+      }
+
+      if (nextMember) {
+        setGroupWorkoutIndex(nextIndex);
+        await openWorkout(nextMember, "scheduleCheckGroup");
+        setWorkoutMode("add");
+        return;
+      }
+
+      setGroupWorkoutQueue([]);
+      setGroupWorkoutIndex(0);
+      closeWorkout();
+      setShowScheduleCheckModal(true);
+      await loadScheduleCheckList(scheduleCheckDate || getTodayDateString());
+      alert("그룹PT 참여자 전원의 운동 기록이 저장되었습니다.");
+      return;
+    }
+
     if (shouldOpenFeedback) {
-      openFeedbackModal(workoutMember, feedbackMessage);
+      openFeedbackModal(savedWorkoutMember, feedbackMessage);
     }
   }
 
@@ -7981,6 +8022,9 @@ ${conditionText}.`,
               <div>
                 <h2 style={styles.detailName}>{workoutMember.name} 운동 기록</h2>
                 <p style={styles.muted}>운동별로 세트를 나눠 기록하세요.</p>
+                {workoutReturnSource === "scheduleCheckGroup" && groupWorkoutQueue.length > 1 && (
+                  <p style={styles.muted}>그룹PT 운동기록 {groupWorkoutIndex + 1}/{groupWorkoutQueue.length}</p>
+                )}
               </div>
               <button onClick={closeWorkout} style={styles.closeButton}>닫기</button>
             </div>
@@ -12179,8 +12223,9 @@ textarea: {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 15000,
+    zIndex: 50000,
     padding: 12,
+    overflowY: "auto",
   },
   ptModalOverlay: {
     position: "fixed",
