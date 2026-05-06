@@ -5676,25 +5676,30 @@ ${conditionText}.`,
 
     return (
       <div key={session.id} style={styles.logItem}>
-        <div>
+        <div style={styles.todayWorkoutContent}>
           <div style={styles.logDate}>{formatDate(session.workout_date)}</div>
 
           {groups.length === 0 ? (
-            <p style={styles.summaryMemberInfo}>운동 상세 없음</p>
+            <p style={styles.todayWorkoutEmptyText}>운동 상세 없음</p>
           ) : (
-            groups.map((group, groupIndex) => (
-              <p
-                key={group.key}
-                style={{
-                  ...styles.summaryMemberInfo,
-                  color: "#fff",
-                  fontWeight: 900,
-                  fontSize: 16,
-                }}
-              >
-                {groupIndex + 1}번 운동 · {group.exerciseName}
-              </p>
-            ))
+            <div style={styles.todayWorkoutExerciseList}>
+              {groups.map((group, groupIndex) => (
+                <div key={group.key} style={styles.todayWorkoutExerciseCard}>
+                  <div style={styles.todayWorkoutExerciseTitle}>
+                    {groupIndex + 1}번 운동 · {group.exerciseName}
+                  </div>
+                  <div style={styles.todayWorkoutSetLine}>
+                    {group.sets
+                      .map((set) => {
+                        const weightText = set.weight || set.weight === 0 ? `${set.weight}kg` : "무게 -";
+                        const repsText = set.reps || set.reps === 0 ? `${set.reps}회` : "횟수 -";
+                        return `${set.set_number || ""}세트 ${weightText} ${repsText}`;
+                      })
+                      .join(" · ")}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
 
           {renderTrainerJournal(session, false)}
@@ -8557,16 +8562,26 @@ ${conditionText}.`,
                   </div>
                 )}
 
-                <div style={styles.editActions}>
-                  <button onClick={() => saveWorkout({ openFeedback: false })} style={styles.primaryButton}>저장</button>
+                <div style={styles.workoutSaveActions}>
+                  <button
+                    type="button"
+                    onClick={() => saveWorkout({ openFeedback: false })}
+                    style={styles.workoutSaveButton}
+                  >
+                    저장
+                  </button>
                   <button
                     type="button"
                     onClick={() => saveWorkout({ openFeedback: true })}
-                    style={styles.whiteActionButton}
+                    style={styles.workoutFeedbackButton}
                   >
                     저장 후 피드백
                   </button>
-                  <button onClick={() => setWorkoutMode("select")} style={styles.cancelButton}>
+                  <button
+                    type="button"
+                    onClick={() => setWorkoutMode("select")}
+                    style={styles.workoutCancelButton}
+                  >
                     취소
                   </button>
                 </div>
@@ -14169,6 +14184,86 @@ textarea: {
     fontSize: 16,
     color: "#111",
     fontWeight: 900,
+  },
+  todayWorkoutContent: {
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  },
+  todayWorkoutExerciseList: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: 10,
+    width: "100%",
+  },
+  todayWorkoutExerciseCard: {
+    background: "#ffffff",
+    border: "1px solid #d4d4d4",
+    borderRadius: 14,
+    padding: 12,
+    color: "#111",
+  },
+  todayWorkoutExerciseTitle: {
+    color: "#111",
+    fontSize: 16,
+    fontWeight: 1000,
+    marginBottom: 6,
+  },
+  todayWorkoutSetLine: {
+    color: "#444",
+    fontSize: 14,
+    fontWeight: 800,
+    lineHeight: 1.5,
+    wordBreak: "keep-all",
+  },
+  todayWorkoutEmptyText: {
+    color: "#111",
+    fontSize: 15,
+    fontWeight: 900,
+  },
+  workoutSaveActions: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 12,
+    alignItems: "stretch",
+    marginTop: 16,
+  },
+  workoutSaveButton: {
+    width: "100%",
+    minHeight: 58,
+    padding: "14px 12px",
+    borderRadius: 18,
+    border: "1px solid #111",
+    background: "#111",
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: 1000,
+    boxShadow: "0 4px 12px rgba(0,0,0,.12)",
+  },
+  workoutFeedbackButton: {
+    width: "100%",
+    minHeight: 58,
+    padding: "14px 12px",
+    borderRadius: 18,
+    border: "1px solid #111",
+    background: "#fff",
+    color: "#111",
+    fontSize: 18,
+    fontWeight: 1000,
+    boxShadow: "0 4px 12px rgba(0,0,0,.08)",
+  },
+  workoutCancelButton: {
+    width: "100%",
+    minHeight: 58,
+    padding: "14px 12px",
+    borderRadius: 18,
+    border: "1px solid #111",
+    background: "#111",
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: 1000,
+    boxShadow: "0 4px 12px rgba(0,0,0,.12)",
   },
   inbodyMetricCard: {
     background: "#ffffff",
