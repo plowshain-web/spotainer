@@ -10,6 +10,82 @@ const supabase = createClient(
 
 
 
+
+/*
+====================================================
+[ Spotainer 회원 피드백 문자 톤 가이드 ]
+====================================================
+
+핵심 방향:
+- 실제 PT 현장 말투
+- 과한 AI/감성 톤 금지
+- 기록체/분석체 금지
+- 짧지만 관리받는 느낌 유지
+- 회원 상태 기억하는 느낌 유지
+
+좋은 표현 예시:
+- 자세도 전체적으로 좋았어요.
+- 어깨 움직임도 자연스러웠어요.
+- 집중력이 좋아서 운동이 잘 된 것 같아요.
+- 상태 체크 하면서 진행할게요.
+- 스트레칭 먼저 하고 진행할게요.
+
+피해야 하는 표현:
+- 운동 흐름이 좋았어요
+- 방향으로 이어가볼게요
+- 체크하면서 진행했고
+- 무리 없이 잘 진행됐어요
+- 움직임이 안정적으로 잘 나왔어요
+- 근력 더 잡아가면서
+
+추천 피드백 구조:
+1. 오늘 수업 인사
+2. 오늘 운동 + 실제 관찰 1~2개
+3. 다음 수업 연결
+4. 마무리
+
+====================================================
+*/
+
+function generateTrainerFeedback({
+  memberName = "",
+  todayWorkout = "",
+  feedbackPoint1 = "",
+  feedbackPoint2 = "",
+  nextWorkout = "",
+}) {
+  const lines = [];
+
+  lines.push(`${memberName}님 오늘 수업도 고생 많으셨어요.`);
+  lines.push("");
+
+  let workoutLine = `오늘은 ${todayWorkout} 진행했는데`;
+
+  if (feedbackPoint1) {
+    workoutLine += ` ${feedbackPoint1}`;
+  }
+
+  if (feedbackPoint2) {
+    workoutLine += ` ${feedbackPoint2}`;
+  }
+
+  lines.push(workoutLine.trim() + ".");
+  lines.push("");
+
+  lines.push("다음에도 상태 체크 하면서 진행할게요.");
+  lines.push("");
+
+  if (nextWorkout) {
+    lines.push(`다음 수업은 ${nextWorkout}입니다. 스트레칭 먼저 하고 진행할게요.`);
+    lines.push("");
+  }
+
+  lines.push("편하게 쉬시고 다음 수업 때 뵐게요~");
+
+  return lines.join("\n");
+}
+
+
 function FullScreenModal({ children, onClose }) {
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
