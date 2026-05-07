@@ -6022,6 +6022,33 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }, [hasOpenModal]);
 
   useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    if (hasOpenModal) {
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.width = "100%";
+      document.body.style.touchAction = "none";
+      document.documentElement.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
+      document.body.style.touchAction = "";
+      document.documentElement.style.overflow = "";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
+      document.body.style.touchAction = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, [hasOpenModal]);
+
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
 
     if (hasOpenModal && !modalBackGuardArmedRef.current) {
