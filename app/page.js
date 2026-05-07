@@ -13,113 +13,21 @@ const supabase = createClient(
 
 /*
 ====================================================
-[ Spotainer 피드백 자동화 최종 구조 ]
+[ 트레이너 일지 입력 구조 변경 ]
 ====================================================
 
-트레이너 일지 입력 구조:
+최종 입력 구조:
+- 오늘운동: 운동 기록에서 선택한 부위/운동 종류 사용
+- 컨디션: 좋음 / 보통 / 나쁨
+- 체크사항: 집중력 좋음, 밸런스 좋음, 밸런스 무너짐 등
+- 총평: 폼 좋음, 폼 무너짐, 컨디션 좋음 등
+- 다음운동: 어깨, 하체, 스트레칭 먼저 어깨 등
 
-- 오늘운동
-- 컨디션
-- 체크사항
-- 총평
-- 다음운동
-
-예시:
-
-오늘운동 : 가슴
-컨디션 : 좋음
-체크사항 : 집중력 좋음
-총평 : 폼 좋음
-다음운동 : 어깨
-
-====================================================
-
-[ 핵심 방향 ]
-
-- 실제 PT 현장 말투
-- AI 느낌 제거
-- 기록체/분석체 제거
-- 회원이 거부감 느끼지 않는 자연스러운 톤
-- 너무 과한 칭찬 금지
-- 회원 상태를 기억하고 있다는 느낌 유지
-
-====================================================
-
-[ 좋은 표현 예시 ]
-
-- 자세도 전체적으로 좋았어요.
-- 집중력이 좋아서 운동이 잘 된 것 같아요.
-- 어깨 움직임도 자연스러웠어요.
-- 상태 체크 하면서 진행할게요.
-- 스트레칭 먼저 하고 진행할게요.
-
-====================================================
-
-[ 피해야 하는 표현 ]
-
-- 운동 흐름이 좋았어요
-- 방향으로 이어가볼게요
-- 체크하면서 진행했고
-- 무리 없이 잘 진행됐어요
-- 움직임이 안정적으로 잘 나왔어요
-- 근력 더 잡아가면서
-
-====================================================
-
-[ 추천 피드백 예시 ]
-
-정소민님 오늘 수업도 고생 많으셨어요 :)
-
-오늘은 가슴운동 진행했는데 자세도 전체적으로 좋았고
-집중력이 좋아서 운동이 잘 된 것 같아요.
-
-오늘 운동 흐름 기억하면서 다음 어깨 수업도 진행할게요 :)
-
-편하게 쉬시고 다음 수업 때 뵐게요~
-
+목표:
+트레이너는 짧게 기록하고,
+앱은 회원이 거부감 느끼지 않는 자연스러운 현장 톤 피드백으로 변환합니다.
 ====================================================
 */
-
-function generateNaturalFeedback({
-  memberName = "",
-  todayWorkout = "",
-  condition = "",
-  checkPoint = "",
-  summary = "",
-  nextWorkout = "",
-}) {
-  const lines = [];
-
-  lines.push(`${memberName}님 오늘 수업도 고생 많으셨어요 :)`);
-  lines.push("");
-
-  let bodyLine = `오늘은 ${todayWorkout}운동 진행했는데`;
-
-  if (summary.includes("폼 좋음")) {
-    bodyLine += " 자세도 전체적으로 좋았고";
-  }
-
-  if (checkPoint.includes("집중력 좋음")) {
-    bodyLine += " 집중력이 좋아서 운동이 잘 된 것 같아요.";
-  } else if (condition === "좋음") {
-    bodyLine += " 전체적으로 컨디션도 괜찮았어요.";
-  } else {
-    bodyLine += " 전체적으로 잘 진행됐어요.";
-  }
-
-  lines.push(bodyLine.trim());
-  lines.push("");
-
-  if (nextWorkout) {
-    lines.push(`오늘 운동 흐름 기억하면서 다음 ${nextWorkout} 수업도 진행할게요 :)`);
-    lines.push("");
-  }
-
-  lines.push("편하게 쉬시고 다음 수업 때 뵐게요~");
-
-  return lines.join("\n");
-}
-
 
 function FullScreenModal({ children, onClose }) {
   useEffect(() => {
@@ -5397,24 +5305,10 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     return (lastChar - 0xac00) % 28 === 0 ? "는" : "은";
   }
 
-  function getNaturalTodayWorkoutSentence(trainingType = workoutTrainingType, bodyParts = workoutBodyParts, condition = workoutCondition) {
+  function getFeedbackWorkoutPartText(trainingType = workoutTrainingType, bodyParts = workoutBodyParts) {
     const partText = getWorkoutFeedbackPartText(trainingType, bodyParts);
-
-    if (trainingType === "circuit") {
-      if (condition === "good") return "오늘은 서킷 진행했고 움직임도 전체적으로 괜찮았어요.";
-      if (condition === "bad") return "오늘은 서킷 진행했고 중간중간 조절하면서 잘 따라와주셨어요.";
-      return "오늘은 서킷 진행했고 끝까지 잘 따라와주셨어요.";
-    }
-
-    if (condition === "good") {
-      return `오늘은 ${partText} 운동 진행했고 자세도 전체적으로 괜찮았어요.`;
-    }
-
-    if (condition === "bad") {
-      return `오늘은 ${partText} 운동 진행했고 컨디션에 맞춰 잘 조절해주셨어요.`;
-    }
-
-    return `오늘은 ${partText} 운동 진행했고 자세도 전체적으로 괜찮았어요.`;
+    if (trainingType === "circuit") return "서킷트레이닝";
+    return partText || "운동";
   }
 
   function cleanFeedbackText(value) {
@@ -5424,107 +5318,111 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       .trim();
   }
 
-  function softenFeedbackExpression(value) {
+  function normalizeJournalText(value) {
     return cleanFeedbackText(value)
-      .replace(/급격한\s*지구력\s*감소/gi, "중간에 체력이 조금 떨어지는 느낌")
-      .replace(/지구력\s*감소/gi, "체력이 조금 떨어지는 느낌")
-      .replace(/체력\s*저하/gi, "체력이 조금 떨어지는 느낌")
-      .replace(/부상위험|부상 위험|다칠 수 있음|다쳐요|위험/gi, "조심해야 할 부분")
-      .replace(/안 좋음|안좋음|나쁨|문제/gi, "체크할 부분")
-      .replace(/통증/gi, "불편한 느낌")
-      .replace(/아픔|아파함/gi, "불편한 느낌")
-      .replace(/불안해 함|불안해함|불안함|불안/gi, "긴장감")
-      .replace(/무서워함|겁냄/gi, "조심스러운 느낌")
-      .replace(/힘들어함/gi, "조금 힘든 구간")
-      .replace(/부족/gi, "더 잡아가면 좋을 부분")
-      .replace(/불안정/gi, "조금 흔들리는 부분")
-      .replace(/운동\s*진행함/g, "")
+      .replace(/컨디션\s*좋음/g, "컨디션 좋음")
+      .replace(/폼\s*좋음/g, "폼 좋음")
+      .replace(/폼\s*무너짐/g, "폼 무너짐")
+      .replace(/집중력\s*좋음/g, "집중력 좋음")
+      .replace(/밸런스\s*좋음/g, "밸런스 좋음")
+      .replace(/밸런스\s*무너짐/g, "밸런스 무너짐")
       .trim();
   }
 
-  function toNaturalIssueSentence(issue) {
-    const text = softenFeedbackExpression(issue);
+  function getNextWorkoutPartText(nextPlan = "") {
+    const text = cleanFeedbackText(nextPlan);
     if (!text) return "";
 
-    if (/체력이 조금 떨어지는 느낌|조금 힘든 구간|후반|중간/.test(text)) {
-      return "중간에 체력이 조금 떨어지는 느낌은 있었는데 끝까지 잘 따라와주셨어요.";
-    }
+    const matchedPart = weightBodyPartOptions.find((part) => text.includes(part));
+    if (matchedPart) return matchedPart;
 
-    if (/어깨/.test(text)) {
-      return "어깨는 약간 뻐근한 느낌 있었는데 끝까지 잘 따라와주셨어요.";
-    }
-
-    if (/허리/.test(text)) {
-      return "허리는 불편한 느낌 없는지 보면서 진행했고 전체적으로 잘 따라와주셨어요.";
-    }
-
-    if (/무릎/.test(text)) {
-      return "무릎은 상태 보면서 진행했는데 전체적으로 잘 따라와주셨어요.";
-    }
-
-    if (/손목/.test(text)) {
-      return "손목은 불편한 느낌 없는지 보면서 진행했고 끝까지 잘 따라와주셨어요.";
-    }
-
-    return `${text} 있었는데 끝까지 잘 따라와주셨어요.`;
+    if (/서킷|서킷트레이닝/.test(text)) return "서킷트레이닝";
+    if (/전신/.test(text)) return "전신";
+    return text;
   }
 
-  function toNaturalTrainerNoteSentence(trainerNote) {
-    const text = softenFeedbackExpression(trainerNote);
-    if (!text) return "";
+  function makeTodayFeedbackSentence({ trainingType, bodyParts, condition, checkPoint, trainerNote }) {
+    const workoutText = getFeedbackWorkoutPartText(trainingType, bodyParts);
+    const checkText = normalizeJournalText(checkPoint);
+    const noteText = normalizeJournalText(trainerNote);
 
-    if (/자세/.test(text) && /좋|괜찮|안정/.test(text)) {
-      return "자세도 전체적으로 괜찮았어요.";
+    const positiveParts = [];
+    const followUpParts = [];
+
+    if (/폼 좋음|자세 좋음|자세 괜찮|자세 안정/.test(noteText)) {
+      positiveParts.push("자세도 전체적으로 좋았고");
     }
 
-    if (/집중/.test(text)) {
-      return "오늘은 집중도도 괜찮은 편이었어요.";
+    if (/밸런스 좋음/.test(checkText)) {
+      positiveParts.push("움직임도 자연스러웠고");
     }
 
-    if (/움직임/.test(text)) {
-      return "움직임도 전체적으로 괜찮았어요.";
+    if (/집중력 좋음|집중 좋음|집중도 좋음/.test(checkText)) {
+      positiveParts.push("집중력이 좋아서 운동이 잘 된 것 같아요.");
     }
 
-    return "전체적으로 잘 진행됐어요.";
+    if (/폼 무너짐|자세 무너짐|자세 흔들림/.test(noteText) || /밸런스 무너짐|밸런스 흔들림/.test(checkText)) {
+      followUpParts.push("자세는 다음에도 계속 체크하면서 진행할게요.");
+    }
+
+    if (/통증|불편|어깨 긴장|허리|무릎|손목/.test(checkText)) {
+      followUpParts.push("불편한 부분은 다음에도 먼저 확인하고 진행할게요.");
+    }
+
+    let todayLine = `오늘은 ${workoutText}운동 진행했는데`;
+
+    if (trainingType === "circuit") {
+      todayLine = "오늘은 서킷트레이닝 진행했는데";
+    }
+
+    if (positiveParts.length > 0) {
+      todayLine += ` ${positiveParts.join(" ")}`;
+    } else if (condition === "good") {
+      todayLine += " 컨디션도 괜찮은 편이었어요.";
+    } else if (condition === "bad") {
+      todayLine += " 몸 상태 보면서 강도 조절해서 진행했어요.";
+    } else {
+      todayLine += " 몸 상태 보면서 진행했어요.";
+    }
+
+    return {
+      todayLine: todayLine.trim(),
+      followUpLine: followUpParts[0] || "",
+    };
   }
 
   function toNaturalNextPlanSentence(nextPlan) {
+    const nextPart = getNextWorkoutPartText(nextPlan);
     const text = cleanFeedbackText(nextPlan);
-    if (!text) return "다음 시간에도 오늘 흐름 이어서 진행해볼게요.";
 
-    const hasStretch = /스트레칭|상체 스트레칭|하체 스트레칭/.test(text);
-    const parts = weightBodyPartOptions.filter((part) => text.includes(part));
-    const mainPart = parts[0];
-    const subPart = parts[1];
-
-    if (hasStretch && mainPart) {
-      return `다음 시간에는 상체 스트레칭 먼저 하고 ${mainPart} 운동 진행해볼게요.`;
+    if (!nextPart) {
+      return "다음에도 상태 체크 하면서 진행할게요.";
     }
 
-    if (mainPart && subPart) {
-      return `다음 시간에는 ${mainPart} 운동 진행하고 ${subPart} 운동도 같이 해볼게요.`;
+    if (/스트레칭/.test(text)) {
+      return `다음 수업은 ${nextPart}운동입니다. 스트레칭 먼저 하고 진행할게요.`;
     }
 
-    if (mainPart) {
-      return `다음 시간에는 ${mainPart} 운동 진행해볼게요.`;
-    }
-
-    return `다음 시간에는 ${text} 진행해볼게요.`;
+    return `오늘 운동 흐름 기억하면서 다음 ${nextPart} 수업도 진행할게요 :)`;
   }
 
   function generateWorkoutFeedbackMessage({ member, trainingType, bodyParts, condition, issue, nextPlan, trainerNote }) {
     const memberName = member?.name || "회원";
-    const todayText = getNaturalTodayWorkoutSentence(trainingType, bodyParts, condition);
-    const issueText = toNaturalIssueSentence(issue);
-    const trainerNoteText = !issueText ? toNaturalTrainerNoteSentence(trainerNote) : "";
+    const { todayLine, followUpLine } = makeTodayFeedbackSentence({
+      trainingType,
+      bodyParts,
+      condition,
+      checkPoint: issue,
+      trainerNote,
+    });
     const nextText = toNaturalNextPlanSentence(nextPlan);
 
     return [
-      `${memberName}님 오늘도 운동하시느라 수고 많으셨어요 :)`,
-      todayText,
-      issueText || trainerNoteText,
+      `${memberName}님 오늘 수업도 고생 많으셨어요 :)`,
+      todayLine,
+      followUpLine,
       nextText,
-      "편하게 쉬시고 다음 수업 때 뵐게요 :)",
+      "편하게 쉬시고 다음 수업 때 뵐게요~",
     ]
       .filter((line) => String(line || "").trim())
       .join("\n\n");
@@ -5762,8 +5660,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
         </strong>
 
         <p style={textStyle}>컨디션: {getConditionText(session.condition)}</p>
-        {session.issue && <p style={textStyle}>이슈: {session.issue}</p>}
-        {session.next_plan && <p style={textStyle}>다음 수업: {session.next_plan}</p>}
+        {session.issue && <p style={textStyle}>체크사항: {session.issue}</p>}
+        {session.next_plan && <p style={textStyle}>다음운동: {session.next_plan}</p>}
         {session.trainer_note && <p style={textStyle}>총평: {session.trainer_note}</p>}
         {session.memo && <p style={textStyle}>메모: {session.memo}</p>}
       </div>
@@ -8871,27 +8769,27 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                     </button>
                   </div>
 
-                  <label style={styles.label}>오늘 핵심 이슈</label>
+                  <label style={styles.label}>체크사항</label>
                   <textarea
                     value={workoutIssue}
                     onChange={(e) => setWorkoutIssue(e.target.value)}
-                    placeholder="예: 허리 통증, 어깨 가동성 부족, 집중력 낮음"
+                    placeholder="예: 집중력 좋음, 밸런스 좋음, 밸런스 무너짐"
                     style={styles.textarea}
                   />
 
-                  <label style={styles.label}>다음 수업 포인트</label>
+                  <label style={styles.label}>다음운동</label>
                   <textarea
                     value={workoutNextPlan}
                     onChange={(e) => setWorkoutNextPlan(e.target.value)}
-                    placeholder="예: 하체 위주, 스트레칭 먼저, 중량 줄이고 자세 교정"
+                    placeholder="예: 어깨 / 스트레칭 먼저, 어깨 / 하체"
                     style={styles.textarea}
                   />
 
-                  <label style={styles.label}>한줄 총평</label>
+                  <label style={styles.label}>총평</label>
                   <input
                     value={workoutTrainerNote}
                     onChange={(e) => setWorkoutTrainerNote(e.target.value)}
-                    placeholder="예: 폼 무너짐 심함 / 컨디션 안 좋음"
+                    placeholder="예: 폼 좋음 / 폼 무너짐 / 컨디션 좋음"
                     style={styles.input}
                   />
 
