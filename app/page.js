@@ -417,6 +417,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const scheduleCalendarTouchStartXRef = useRef(null);
   const hasOpenModalRef = useRef(false);
   const modalBackGuardArmedRef = useRef(false);
+  const modalScrollYRef = useRef(0);
 
   const isSearching = search.trim().length > 0;
 
@@ -6090,28 +6091,60 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }, [hasOpenModal]);
 
   useEffect(() => {
-    if (typeof document === "undefined") return;
+    if (typeof document === "undefined" || typeof window === "undefined") return;
 
     if (hasOpenModal) {
+      modalScrollYRef.current = window.scrollY || document.documentElement.scrollTop || 0;
+
+      document.documentElement.style.overflow = "hidden";
+      document.documentElement.style.height = "100%";
+
       document.body.style.overflow = "hidden";
       document.body.style.position = "fixed";
+      document.body.style.top = `-${modalScrollYRef.current}px`;
+      document.body.style.left = "0";
+      document.body.style.right = "0";
       document.body.style.width = "100%";
+      document.body.style.height = "100dvh";
       document.body.style.touchAction = "none";
-      document.documentElement.style.overflow = "hidden";
     } else {
+      const restoreY = modalScrollYRef.current || 0;
+
+      document.documentElement.style.overflow = "";
+      document.documentElement.style.height = "";
+
       document.body.style.overflow = "";
       document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
       document.body.style.width = "";
+      document.body.style.height = "";
       document.body.style.touchAction = "";
-      document.documentElement.style.overflow = "";
+
+      if (restoreY > 0) {
+        window.scrollTo(0, restoreY);
+      }
     }
 
     return () => {
+      const restoreY = modalScrollYRef.current || 0;
+
+      document.documentElement.style.overflow = "";
+      document.documentElement.style.height = "";
+
       document.body.style.overflow = "";
       document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
       document.body.style.width = "";
+      document.body.style.height = "";
       document.body.style.touchAction = "";
-      document.documentElement.style.overflow = "";
+
+      if (restoreY > 0) {
+        window.scrollTo(0, restoreY);
+      }
     };
   }, [hasOpenModal]);
 
@@ -7211,8 +7244,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       )}
 
       {contactModalMember && (
-        <div style={styles.whiteModalOverlay}>
-          <section style={styles.whiteModalBox}>
+        <div style={styles.contactRecordOverlay}>
+          <section style={styles.contactRecordBox}>
             <div style={styles.whiteModalTop}>
               <div>
                 <h2 style={styles.whiteModalTitle}>연락 결과 기록</h2>
@@ -12524,15 +12557,56 @@ textarea: {
   scheduleCheckButtonGroup: {
     width: "100%",
   },
+  contactRecordOverlay: {
+    position: "fixed",
+    inset: 0,
+    width: "100vw",
+    height: "100dvh",
+    maxHeight: "100dvh",
+    background: "rgba(0,0,0,.72)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "flex-start",
+    zIndex: 65000,
+    padding: "12px 12px 12px",
+    boxSizing: "border-box",
+    overflow: "hidden",
+    overscrollBehavior: "none",
+    touchAction: "none",
+  },
+  contactRecordBox: {
+    width: "calc(100vw - 24px)",
+    maxWidth: "none",
+    height: "calc(100dvh - 24px)",
+    maxHeight: "calc(100dvh - 24px)",
+    overflowY: "auto",
+    background: "#ffffff",
+    color: "#111",
+    borderRadius: 24,
+    padding: 22,
+    boxShadow: "0 20px 60px rgba(0,0,0,.45)",
+    boxSizing: "border-box",
+    position: "relative",
+    margin: 0,
+    WebkitOverflowScrolling: "touch",
+    overscrollBehavior: "contain",
+    touchAction: "pan-y",
+  },
   whiteModalOverlay: {
     position: "fixed",
     inset: 0,
+    width: "100vw",
+    height: "100dvh",
+    maxHeight: "100dvh",
     background: "rgba(0,0,0,.72)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 16000,
     padding: 12,
+    boxSizing: "border-box",
+    overflow: "hidden",
+    overscrollBehavior: "none",
   },
   messageModalOverlay: {
     position: "fixed",
