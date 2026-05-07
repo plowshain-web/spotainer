@@ -10,6 +10,74 @@ const supabase = createClient(
 
 
 
+function FullScreenModal({ children, onClose }) {
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    const originalHeight = document.body.style.height;
+
+    document.body.style.overflow = "hidden";
+    document.body.style.height = "100vh";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.height = originalHeight;
+    };
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] bg-white overflow-hidden"
+      style={{
+        touchAction: "none",
+      }}
+    >
+      <div
+        className="h-full overflow-y-auto overscroll-contain"
+        style={{
+          WebkitOverflowScrolling: "touch",
+          touchAction: "pan-y",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/*
+====================================================
+[ Spotainer 공통 FullScreenModal 적용 기준 ]
+====================================================
+
+적용 대상:
+- 상담기록
+- 운동기록
+- 회원상세
+- 스케줄확인
+- 오늘할일
+- 매출관리
+- 개인기록
+
+사용 예시:
+
+{showModal && (
+  <FullScreenModal onClose={() => setShowModal(false)}>
+    내용
+  </FullScreenModal>
+)}
+
+핵심 목적:
+- Android 태블릿 / PWA 환경 안정화
+- 입력창 클릭 시 화면 밀림 방지
+- 배경 스크롤 완전 잠금
+- 팝업 내부만 스크롤 허용
+- 기존 UI 디자인 최대 유지
+
+====================================================
+*/
+
+
+
 const exerciseCatalog = [
   { name: "스미스 스쿼트", bodyPart: "하체", type: "weight" },
   { name: "바벨 스쿼트", bodyPart: "하체", type: "weight" },
