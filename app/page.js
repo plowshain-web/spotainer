@@ -13,24 +13,50 @@ const supabase = createClient(
 
 /*
 ====================================================
-[ Spotainer 회원 피드백 문자 톤 가이드 ]
+[ Spotainer 피드백 자동화 최종 구조 ]
 ====================================================
 
-핵심 방향:
-- 실제 PT 현장 말투
-- 과한 AI/감성 톤 금지
-- 기록체/분석체 금지
-- 짧지만 관리받는 느낌 유지
-- 회원 상태 기억하는 느낌 유지
+트레이너 일지 입력 구조:
 
-좋은 표현 예시:
+- 오늘운동
+- 컨디션
+- 체크사항
+- 총평
+- 다음운동
+
+예시:
+
+오늘운동 : 가슴
+컨디션 : 좋음
+체크사항 : 집중력 좋음
+총평 : 폼 좋음
+다음운동 : 어깨
+
+====================================================
+
+[ 핵심 방향 ]
+
+- 실제 PT 현장 말투
+- AI 느낌 제거
+- 기록체/분석체 제거
+- 회원이 거부감 느끼지 않는 자연스러운 톤
+- 너무 과한 칭찬 금지
+- 회원 상태를 기억하고 있다는 느낌 유지
+
+====================================================
+
+[ 좋은 표현 예시 ]
+
 - 자세도 전체적으로 좋았어요.
-- 어깨 움직임도 자연스러웠어요.
 - 집중력이 좋아서 운동이 잘 된 것 같아요.
+- 어깨 움직임도 자연스러웠어요.
 - 상태 체크 하면서 진행할게요.
 - 스트레칭 먼저 하고 진행할게요.
 
-피해야 하는 표현:
+====================================================
+
+[ 피해야 하는 표현 ]
+
 - 운동 흐름이 좋았어요
 - 방향으로 이어가볼게요
 - 체크하면서 진행했고
@@ -38,45 +64,54 @@ const supabase = createClient(
 - 움직임이 안정적으로 잘 나왔어요
 - 근력 더 잡아가면서
 
-추천 피드백 구조:
-1. 오늘 수업 인사
-2. 오늘 운동 + 실제 관찰 1~2개
-3. 다음 수업 연결
-4. 마무리
+====================================================
+
+[ 추천 피드백 예시 ]
+
+정소민님 오늘 수업도 고생 많으셨어요 :)
+
+오늘은 가슴운동 진행했는데 자세도 전체적으로 좋았고
+집중력이 좋아서 운동이 잘 된 것 같아요.
+
+오늘 운동 흐름 기억하면서 다음 어깨 수업도 진행할게요 :)
+
+편하게 쉬시고 다음 수업 때 뵐게요~
 
 ====================================================
 */
 
-function generateTrainerFeedback({
+function generateNaturalFeedback({
   memberName = "",
   todayWorkout = "",
-  feedbackPoint1 = "",
-  feedbackPoint2 = "",
+  condition = "",
+  checkPoint = "",
+  summary = "",
   nextWorkout = "",
 }) {
   const lines = [];
 
-  lines.push(`${memberName}님 오늘 수업도 고생 많으셨어요.`);
+  lines.push(`${memberName}님 오늘 수업도 고생 많으셨어요 :)`);
   lines.push("");
 
-  let workoutLine = `오늘은 ${todayWorkout} 진행했는데`;
+  let bodyLine = `오늘은 ${todayWorkout}운동 진행했는데`;
 
-  if (feedbackPoint1) {
-    workoutLine += ` ${feedbackPoint1}`;
+  if (summary.includes("폼 좋음")) {
+    bodyLine += " 자세도 전체적으로 좋았고";
   }
 
-  if (feedbackPoint2) {
-    workoutLine += ` ${feedbackPoint2}`;
+  if (checkPoint.includes("집중력 좋음")) {
+    bodyLine += " 집중력이 좋아서 운동이 잘 된 것 같아요.";
+  } else if (condition === "좋음") {
+    bodyLine += " 전체적으로 컨디션도 괜찮았어요.";
+  } else {
+    bodyLine += " 전체적으로 잘 진행됐어요.";
   }
 
-  lines.push(workoutLine.trim() + ".");
-  lines.push("");
-
-  lines.push("다음에도 상태 체크 하면서 진행할게요.");
+  lines.push(bodyLine.trim());
   lines.push("");
 
   if (nextWorkout) {
-    lines.push(`다음 수업은 ${nextWorkout}입니다. 스트레칭 먼저 하고 진행할게요.`);
+    lines.push(`오늘 운동 흐름 기억하면서 다음 ${nextWorkout} 수업도 진행할게요 :)`);
     lines.push("");
   }
 
