@@ -4025,56 +4025,47 @@ ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
     return data?.[0] || null;
   }
 
-  function generateMemberCardFeedbackMessage(member, session) {
+  
+/*
+[빠른기능 피드백 버튼 수정]
+회원카드 빠른기능의 피드백 버튼도 운동기록 저장 후 피드백과 동일한 generateWorkoutFeedbackMessage() 로직을 사용합니다.
+기존 구버전 문구인 "수업 받으시느라", "체크하면서 진행했고", "방향으로 이어가볼게요" 계열 문장은 더 이상 빠른기능 피드백에서 사용하지 않습니다.
+*/
+
+function generateMemberCardFeedbackMessage(member, session) {
     if (!session) return "";
 
-    const memberName = member?.name || "회원";
-    const bodyParts = Array.isArray(session.body_parts)
-      ? session.body_parts.filter(Boolean)
-      : [];
-    const partText = bodyParts.length > 0
-      ? bodyParts.join(", ")
-      : getExerciseSummaryFromSession(session);
-
-    const conditionLine = (() => {
-      if (session.condition === "good") return "오늘은 전체적으로 컨디션이 괜찮아서 흐름이 좋았어요.";
-      if (session.condition === "bad") return "오늘은 컨디션에 맞춰서 무리 없이 조절해서 진행했어요.";
-      return "오늘은 컨디션 보면서 무리 없이 진행했어요.";
-    })();
-
-    const issue = softenFeedbackExpression(session.issue);
-    const issueLine = issue
-      ? `${issue}은 체크하면서 진행했고, 다음 시간에도 편하게 움직일 수 있게 먼저 확인하고 진행해볼게요.`
-      : "전체적으로 무리 없이 잘 진행됐어요.";
-
-    const next = cleanFeedbackText(session.next_plan);
-    const nextLine = next
-      ? `다음 시간에는 ${next} 방향으로 이어가볼게요.`
-      : "다음 시간에도 몸 상태 체크하면서 편하게 이어가볼게요.";
-
-    return `${memberName}님 오늘 수업 받으시느라 수고 많으셨어요.
-
-${partText ? `오늘은 ${partText} 위주로 진행했고
-` : ""}${conditionLine}
-
-${issueLine}
-
-${nextLine}
-
-편하게 쉬시고 다음 수업 때 뵐게요.`;
+    return generateWorkoutFeedbackMessage({
+      member,
+      trainingType: session.workout_type || session.training_type || "weight",
+      bodyParts: Array.isArray(session.body_parts) ? session.body_parts : [],
+      condition: session.condition || "normal",
+      issue: session.issue || "",
+      nextPlan: session.next_plan || "",
+      trainerNote: session.trainer_note || "",
+    });
   }
 
   async function openMemberCardFeedback(member) {
-    if (!member) return;
-
-    const latestWorkout = await getLatestWorkoutSessionForMember(member.id);
-
-    if (!latestWorkout) {
-      alert(`${member.name || "회원"} 회원의 최근 운동기록이 없어 피드백 초안을 만들 수 없습니다.\n운동기록 저장 후 사용하세요.`);
+    if (!member) {
+      alert("회원 정보를 찾을 수 없습니다.");
       return;
     }
 
-    openFeedbackModal(member, generateMemberCardFeedbackMessage(member, latestWorkout));
+    try {
+      const latestWorkout = await getLatestWorkoutSessionForMember(member.id);
+
+      if (!latestWorkout) {
+        alert(`${member.name || "회원"} 회원의 최근 운동기록이 없어 피드백 초안을 만들 수 없습니다.\n운동기록 저장 후 사용하세요.`);
+        return;
+      }
+
+      const draft = generateMemberCardFeedbackMessage(member, latestWorkout);
+      openFeedbackModal(member, draft);
+    } catch (error) {
+      console.error("빠른기능 피드백 열기 실패:", error);
+      alert("피드백 초안을 여는 중 오류가 발생했습니다. 최근 운동기록을 확인해주세요.");
+    }
   }
 
   async function sendConditionCheckSMS(member) {
@@ -9058,8 +9049,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
             <div style={styles.memberActionMenuGrid}>
               <button
                 type="button"
-                onClick={() => {
-                  openMemberCardFeedback(memberActionMenuMember);
+                onClick={async () => {
+                  const targetMember = memberActionMenuMember;
+                  await openMemberCardFeedback(targetMember);
                   closeMemberActionMenu();
                 }}
                 style={shouldRecommendFeedback(memberActionMenuMember) ? styles.memberActionMenuButtonHot : styles.memberActionMenuButton}
