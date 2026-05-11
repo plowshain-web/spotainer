@@ -4104,6 +4104,7 @@ function generateMemberCardFeedbackMessage(member, session) {
       return;
     }
 
+    closeMemberActionMenu();
     setFreeSmsModalMember(member);
     setFreeSmsDraft("");
   }
@@ -4133,8 +4134,13 @@ function generateMemberCardFeedbackMessage(member, session) {
       return;
     }
 
+    const targetPhone = phone;
+    const targetMessage = message;
+
     await markMemberContacted(freeSmsModalMember, "일반 문자");
-    window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
+    closeFreeSmsModal();
+    closeMemberActionMenu();
+    window.location.href = `sms:${targetPhone}?body=${encodeURIComponent(targetMessage)}`;
   }
 
   function sendReRegisterSMS(member) {
