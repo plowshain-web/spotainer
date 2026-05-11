@@ -4043,6 +4043,7 @@ function generateMemberCardFeedbackMessage(member, session) {
       issue: session.issue || "",
       nextPlan: session.next_plan || "",
       trainerNote: session.trainer_note || "",
+      memo: session.memo || "",
     });
   }
 
@@ -5323,6 +5324,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       .replace(/집중력\s*좋음/g, "집중력 좋음")
       .replace(/밸런스\s*좋음/g, "밸런스 좋음")
       .replace(/밸런스\s*무너짐/g, "밸런스 무너짐")
+      .replace(/전완\s*힘\s*빠짐/g, "전완 힘 빠짐")
       .trim();
   }
 
@@ -5330,61 +5332,90 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     const text = cleanFeedbackText(nextPlan);
     if (!text) return "";
 
-    const matchedPart = weightBodyPartOptions.find((part) => text.includes(part));
-    if (matchedPart) return matchedPart;
+    const parts = weightBodyPartOptions.filter((part) => text.includes(part));
+    if (parts.length > 0) return parts.join("/");
 
     if (/서킷|서킷트레이닝/.test(text)) return "서킷트레이닝";
     if (/전신/.test(text)) return "전신";
     return text;
   }
 
-  function makeTodayFeedbackSentence({ trainingType, bodyParts, condition, checkPoint, trainerNote }) {
-    const workoutText = getFeedbackWorkoutPartText(trainingType, bodyParts);
-    const checkText = normalizeJournalText(checkPoint);
-    const noteText = normalizeJournalText(trainerNote);
+  function getBalancedPositiveSentence({ workoutText, checkText, noteText, memoText }) {
+    if (/등\s*근육\s*발달|등\s*발달|등\s*근육/.test(memoText) && /가슴|어깨/.test(memoText)) {
+      return "등 쪽 힘은 잘 잡혀 있어서, 가슴이랑 어깨 쪽도 같이 맞춰가면 좋을 것 같아요.";
+    }
 
-    const positiveParts = [];
-    const followUpParts = [];
+    if (/폼 좋음|자세 좋음|자세 괜찮|자세 안정/.test(noteText) && /밸런스 좋음/.test(checkText)) {
+      return "자세도 좋았고 좌우 밸런스도 괜찮았어요.";
+    }
 
     if (/폼 좋음|자세 좋음|자세 괜찮|자세 안정/.test(noteText)) {
-      positiveParts.push("자세도 전체적으로 좋았고");
+      return "자세도 전체적으로 좋았어요.";
     }
 
     if (/밸런스 좋음/.test(checkText)) {
-      positiveParts.push("움직임도 자연스러웠고");
+      return "좌우 밸런스도 괜찮았어요.";
     }
 
     if (/집중력 좋음|집중 좋음|집중도 좋음/.test(checkText)) {
-      positiveParts.push("집중력이 좋아서 운동이 잘 된 것 같아요.");
+      return "집중력이 좋아서 운동이 잘 된 것 같아요.";
+    }
+
+    return "";
+  }
+
+  function getCareFollowUpSentence({ checkText, noteText, memoText }) {
+    if (/전완 힘 빠짐|전완|팔 힘|그립/.test(checkText)) {
+      return "전완 쪽 힘 빠지는 부분은 다음에도 같이 체크하면서 진행할게요.";
     }
 
     if (/폼 무너짐|자세 무너짐|자세 흔들림/.test(noteText) || /밸런스 무너짐|밸런스 흔들림/.test(checkText)) {
-      followUpParts.push("자세는 다음에도 계속 체크하면서 진행할게요.");
+      return "자세는 다음에도 같이 체크하면서 진행할게요.";
     }
 
-    if (/통증|불편|어깨 긴장|허리|무릎|손목/.test(checkText)) {
-      followUpParts.push("불편한 부분은 다음에도 먼저 확인하고 진행할게요.");
+    if (/통증|불편|어깨 긴장|허리|무릎|손목/.test(checkText) || /통증|불편|긴장/.test(memoText)) {
+      return "불편한 부분은 다음에도 먼저 확인하고 진행할게요.";
     }
 
-    let todayLine = `오늘은 ${workoutText}운동 진행했는데`;
+    return "";
+  }
 
-    if (trainingType === "circuit") {
-      todayLine = "오늘은 서킷트레이닝 진행했는데";
-    }
+  function makeTodayFeedbackSentence({ trainingType, bodyParts, condition, checkPoint, trainerNote, memo }) {
+    const workoutText = getFeedbackWorkoutPartText(trainingType, bodyParts);
+    const checkText = normalizeJournalText(checkPoint);
+    const noteText = normalizeJournalText(trainerNote);
+    const memoText = normalizeJournalText(memo);
 
-    if (positiveParts.length > 0) {
-      todayLine += ` ${positiveParts.join(" ")}`;
+    let todayLine = trainingType === "circuit"
+      ? "오늘은 서킷트레이닝 진행했는데"
+      : `오늘은 ${workoutText}운동 진행했는데`;
+
+    const positiveSentence = getBalancedPositiveSentence({
+      workoutText,
+      checkText,
+      noteText,
+      memoText,
+    });
+
+    if (positiveSentence) {
+      todayLine += ` ${positiveSentence}`;
     } else if (condition === "good") {
-      todayLine += " 컨디션도 괜찮은 편이었어요.";
+      todayLine += " 컨디션도 괜찮았어요.";
     } else if (condition === "bad") {
-      todayLine += " 몸 상태 보면서 강도 조절해서 진행했어요.";
+      todayLine += " 몸 상태에 맞춰 강도 조절해서 진행했어요.";
     } else {
       todayLine += " 몸 상태 보면서 진행했어요.";
     }
 
+    const followUpLine = getCareFollowUpSentence({
+      checkText,
+      noteText,
+      memoText,
+    });
+
     return {
       todayLine: todayLine.trim(),
-      followUpLine: followUpParts[0] || "",
+      followUpLine,
     };
   }
 
@@ -5393,17 +5424,17 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     const text = cleanFeedbackText(nextPlan);
 
     if (!nextPart) {
-      return "다음에도 상태 체크 하면서 진행할게요.";
+      return "다음에도 오늘 내용 이어서 진행할게요.";
     }
 
     if (/스트레칭/.test(text)) {
       return `다음 수업은 ${nextPart}운동입니다. 스트레칭 먼저 하고 진행할게요.`;
     }
 
-    return `오늘 운동 흐름 기억하면서 다음 ${nextPart} 수업도 진행할게요 :)`;
+    return `다음 수업은 ${nextPart}운동입니다. 오늘 내용 이어서 진행할게요.`;
   }
 
-  function generateWorkoutFeedbackMessage({ member, trainingType, bodyParts, condition, issue, nextPlan, trainerNote }) {
+  function generateWorkoutFeedbackMessage({ member, trainingType, bodyParts, condition, issue, nextPlan, trainerNote, memo }) {
     const memberName = member?.name || "회원";
     const { todayLine, followUpLine } = makeTodayFeedbackSentence({
       trainingType,
@@ -5411,6 +5442,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       condition,
       checkPoint: issue,
       trainerNote,
+      memo,
     });
     const nextText = toNaturalNextPlanSentence(nextPlan);
 
@@ -5436,6 +5468,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       issue: workoutIssue,
       nextPlan: workoutNextPlan,
       trainerNote: workoutTrainerNote,
+      memo: workoutMemo,
     }));
   }
 
@@ -5573,6 +5606,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       issue: workoutIssue,
       nextPlan: workoutNextPlan,
       trainerNote: workoutTrainerNote,
+      memo: workoutMemo,
     });
 
     setWorkoutBodyParts([]);
