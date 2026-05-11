@@ -6395,8 +6395,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       </section>
 
       {showTodayTodoModal && (
-        <div style={styles.fullScreenOverlay}>
-          <div style={styles.todayTodoFullModal}>
+        <div style={styles.todayTodoPopupOverlay} onClick={() => setShowTodayTodoModal(false)}>
+          <div style={styles.todayTodoPopupModal} onClick={(e) => e.stopPropagation()}>
             <div style={styles.todayTodoModalHeader}>
               <div>
                 <h2 style={styles.todayTodoModalTitle}>오늘 할 일</h2>
@@ -9597,10 +9597,23 @@ const styles = {
     fontWeight: 1000,
   },
 
-  todayTodoFullModal: {
-    width: "calc(100vw - 40px)",
-    height: "calc(100vh - 70px)",
+  todayTodoPopupOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,.72)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 40000,
+    padding: 18,
+    overflow: "hidden",
+  },
+
+  todayTodoPopupModal: {
+    width: "calc(100vw - 56px)",
     maxWidth: 1480,
+    height: "calc(100dvh - 88px)",
+    maxHeight: "calc(100dvh - 88px)",
     background: "#ffffff",
     color: "#111827",
     borderRadius: 24,
@@ -9616,9 +9629,10 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "flex-start",
     gap: 16,
-    paddingBottom: 16,
+    paddingBottom: 12,
     borderBottom: "1px solid #e5e7eb",
-    marginBottom: 16,
+    marginBottom: 12,
+    flexShrink: 0,
   },
 
   todayTodoModalTitle: {
@@ -9640,7 +9654,8 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
     gap: 10,
-    marginBottom: 14,
+    marginBottom: 12,
+    flexShrink: 0,
   },
 
   todayTodoModalSummaryCard: {
@@ -9674,7 +9689,9 @@ const styles = {
     paddingRight: 4,
     flex: 1,
     minHeight: 0,
+    maxHeight: "none",
     alignContent: "start",
+    WebkitOverflowScrolling: "touch",
   },
 
   todayTodoModalItem: {
