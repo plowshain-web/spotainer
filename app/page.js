@@ -364,6 +364,8 @@ export default function Page() {
   const [workoutTrainerNote, setWorkoutTrainerNote] = useState("");
   const [feedbackModalMember, setFeedbackModalMember] = useState(null);
   const [feedbackDraft, setFeedbackDraft] = useState("");
+  const [feedbackCandidateSections, setFeedbackCandidateSections] = useState([]);
+  const [selectedFeedbackCandidateMap, setSelectedFeedbackCandidateMap] = useState({});
   const [freeSmsModalMember, setFreeSmsModalMember] = useState(null);
   const [freeSmsDraft, setFreeSmsDraft] = useState("");
   const [completedTodayTodoKeys, setCompletedTodayTodoKeys] = useState({});
@@ -4062,7 +4064,16 @@ function generateMemberCardFeedbackMessage(member, session) {
       }
 
       const draft = generateMemberCardFeedbackMessage(member, latestWorkout);
-      openFeedbackModal(member, draft);
+      openFeedbackModal(member, draft, {
+        member,
+        trainingType: latestWorkout.workout_type || latestWorkout.training_type || "weight",
+        bodyParts: Array.isArray(latestWorkout.body_parts) ? latestWorkout.body_parts : [],
+        condition: latestWorkout.condition || "normal",
+        issue: latestWorkout.issue || "",
+        nextPlan: latestWorkout.next_plan || "",
+        trainerNote: latestWorkout.trainer_note || "",
+        memo: latestWorkout.memo || "",
+      });
     } catch (error) {
       console.error("빠른기능 피드백 열기 실패:", error);
       alert("피드백 초안을 여는 중 오류가 발생했습니다. 최근 운동기록을 확인해주세요.");
@@ -5319,6 +5330,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   function normalizeJournalText(value) {
     return cleanFeedbackText(value)
       .replace(/컨디션\s*좋음/g, "컨디션 좋음")
+      .replace(/컨디션\s*안좋음|컨디션\s*안 좋음/g, "컨디션 안좋음")
       .replace(/폼\s*좋음/g, "폼 좋음")
       .replace(/폼\s*무너짐/g, "폼 무너짐")
       .replace(/집중력\s*좋음/g, "집중력 좋음")
@@ -5326,6 +5338,13 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       .replace(/밸런스\s*무너짐/g, "밸런스 무너짐")
       .replace(/전완\s*힘\s*빠짐/g, "전완 힘 빠짐")
       .trim();
+  }
+
+  function splitJournalKeywords(value) {
+    return String(value || "")
+      .split(/[\n,\/·]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
   }
 
   function getNextWorkoutPartText(nextPlan = "") {
@@ -5340,127 +5359,279 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     return text;
   }
 
-  function getBalancedPositiveSentence({ workoutText, checkText, noteText, memoText }) {
-    if (/등\s*근육\s*발달|등\s*발달|등\s*근육/.test(memoText) && /가슴|어깨/.test(memoText)) {
-      return "등 쪽 힘은 잘 잡혀 있어서, 가슴이랑 어깨 쪽도 같이 맞춰가면 좋을 것 같아요.";
-    }
+  function addFeedbackSection(sections, key, title, options = []) {
+    const cleanOptions = Array.from(
+      new Set(
+        (options || [])
+          .map((option) => cleanFeedbackText(option))
+          .filter(Boolean)
+      )
+    );
 
-    if (/폼 좋음|자세 좋음|자세 괜찮|자세 안정/.test(noteText) && /밸런스 좋음/.test(checkText)) {
-      return "자세도 좋았고 좌우 밸런스도 괜찮았어요.";
-    }
-
-    if (/폼 좋음|자세 좋음|자세 괜찮|자세 안정/.test(noteText)) {
-      return "자세도 전체적으로 좋았어요.";
-    }
-
-    if (/밸런스 좋음/.test(checkText)) {
-      return "좌우 밸런스도 괜찮았어요.";
-    }
-
-    if (/집중력 좋음|집중 좋음|집중도 좋음/.test(checkText)) {
-      return "집중력이 좋아서 운동이 잘 된 것 같아요.";
-    }
-
-    return "";
+    if (cleanOptions.length === 0) return;
+    sections.push({ key, title, options: cleanOptions });
   }
 
-  function getCareFollowUpSentence({ checkText, noteText, memoText }) {
-    if (/전완 힘 빠짐|전완|팔 힘|그립/.test(checkText)) {
-      return "전완 쪽 힘 빠지는 부분은 다음에도 같이 체크하면서 진행할게요.";
+  function getWorkoutSpecificCandidateOptions(workoutText, rawText = "") {
+    const text = normalizeJournalText(rawText);
+    const options = [];
+
+    if (/가슴/.test(workoutText)) {
+      if (/자극|수축|가슴/.test(text)) {
+        options.push("가슴 쪽 자극은 괜찮게 잡혔어요.");
+        options.push("가슴 쓰는 느낌은 오늘 괜찮았어요.");
+        options.push("가슴 쪽은 오늘 느낌 잘 잡고 진행했어요.");
+      }
+      if (/어깨|개입/.test(text)) {
+        options.push("어깨 힘 들어가는 부분은 다음에도 같이 체크하면서 진행할게요.");
+        options.push("가슴 쪽에 더 잘 들어가게 다음에도 같이 맞춰볼게요.");
+      }
     }
 
-    if (/폼 무너짐|자세 무너짐|자세 흔들림/.test(noteText) || /밸런스 무너짐|밸런스 흔들림/.test(checkText)) {
-      return "자세는 다음에도 같이 체크하면서 진행할게요.";
+    if (/어깨/.test(workoutText)) {
+      if (/승모|목/.test(text)) {
+        options.push("승모 쪽 힘 들어가는 부분은 다음에도 같이 체크하면서 진행할게요.");
+        options.push("어깨 쪽은 목에 힘 덜 들어가게 같이 맞춰볼게요.");
+      }
+      if (/밸런스|좌우/.test(text)) {
+        options.push("어깨 좌우 밸런스는 다음에도 같이 체크하면서 진행할게요.");
+        options.push("어깨 움직임은 다음에도 좌우 차이 보면서 진행할게요.");
+      }
     }
 
-    if (/통증|불편|어깨 긴장|허리|무릎|손목/.test(checkText) || /통증|불편|긴장/.test(memoText)) {
-      return "불편한 부분은 다음에도 먼저 확인하고 진행할게요.";
+    if (/등/.test(workoutText)) {
+      if (/등|광배|날개|견갑/.test(text)) {
+        options.push("등 쪽은 힘 쓰는 느낌이 괜찮았어요.");
+        options.push("등 쓰는 느낌은 오늘 잘 잡고 진행했어요.");
+        options.push("등 쪽 자극은 괜찮게 잡혔어요.");
+      }
+      if (/전완|그립|손/.test(text)) {
+        options.push("전완 쪽 힘 빠지는 부분은 다음에도 같이 체크하면서 진행할게요.");
+        options.push("손에 힘 많이 들어가는 부분은 다음에도 같이 조절해볼게요.");
+      }
     }
 
-    return "";
+    if (/하체/.test(workoutText)) {
+      if (/무릎|중심|밸런스/.test(text)) {
+        options.push("중심 잡는 부분은 다음에도 같이 체크하면서 진행할게요.");
+        options.push("무릎 방향은 다음에도 같이 보면서 진행할게요.");
+      }
+      if (/엉덩이|힙|둔근/.test(text)) {
+        options.push("엉덩이 쪽 힘 쓰는 느낌은 조금씩 더 잡아가볼게요.");
+        options.push("하체 힘 쓰는 느낌은 다음에도 같이 맞춰볼게요.");
+      }
+    }
+
+    return options;
   }
 
-  function makeTodayFeedbackSentence({ trainingType, bodyParts, condition, checkPoint, trainerNote, memo }) {
+  function getKeywordCandidateOptions(keyword, workoutText = "") {
+    const text = normalizeJournalText(keyword);
+    const options = [];
+
+    if (/수면|잠|피곤|컨디션 안좋음|컨디션 안 좋음|몸 무거움/.test(text)) {
+      options.push("오늘은 몸이 조금 무거운 느낌이 있어서 강도 조절해서 진행했어요.");
+      options.push("수면 영향이 있어 보여서 무리되지 않게 진행했어요.");
+      options.push("컨디션은 조금 떨어져 보여서 오늘은 몸 상태에 맞춰 진행했어요.");
+      options.push("오늘은 컨디션 맞춰서 무리되지 않게 진행했어요.");
+    }
+
+    if (/컨디션 좋음|컨디션 괜찮/.test(text)) {
+      options.push("오늘은 컨디션도 괜찮아서 운동 들어가는 느낌이 좋았어요.");
+      options.push("컨디션이 괜찮아서 전체적으로 수업 진행하기 좋았어요.");
+      options.push("오늘은 몸 상태가 괜찮아서 운동도 편하게 이어갔어요.");
+    }
+
+    if (/집중력 좋음|집중 좋음|집중도 좋음/.test(text)) {
+      options.push("집중력이 좋아서 운동이 잘 된 것 같아요.");
+      options.push("오늘은 집중을 잘 해주셔서 운동 느낌이 좋았어요.");
+      options.push("운동할 때 집중이 좋아서 자세 잡기도 좋았어요.");
+    }
+
+    if (/밸런스 좋음|좌우 좋음|균형 좋음/.test(text)) {
+      options.push("좌우 밸런스도 괜찮았어요.");
+      options.push("밸런스는 오늘 괜찮은 편이었어요.");
+      options.push("좌우 차이도 크게 흔들리지 않고 진행했어요.");
+    }
+
+    if (/밸런스 무너짐|밸런스 안맞|좌우 차이|좌우 흔들/.test(text)) {
+      options.push("좌우 밸런스는 다음에도 같이 체크하면서 진행할게요.");
+      options.push("힘 들어가는 쪽 차이는 다음에도 같이 맞춰볼게요.");
+      options.push("밸런스 잡는 부분은 다음에도 계속 봐가면서 진행할게요.");
+    }
+
+    if (/폼 좋음|자세 좋음|자세 괜찮|자세 안정/.test(text)) {
+      options.push("자세도 전체적으로 좋았어요.");
+      options.push("자세는 오늘 괜찮게 잘 잡혔어요.");
+      options.push("자세 잡히는 느낌은 오늘 좋았어요.");
+    }
+
+    if (/폼 무너짐|자세 무너짐|자세 흔들|자세 불안/.test(text)) {
+      options.push("자세는 다음에도 같이 체크하면서 진행할게요.");
+      options.push("자세 잡는 부분은 다음에도 조금 더 신경써서 진행할게요.");
+      options.push("자세는 무리하지 않고 하나씩 맞춰가볼게요.");
+    }
+
+    if (/전완 힘 빠짐|전완|그립|손 힘|팔 힘/.test(text)) {
+      options.push("전완 쪽 힘 빠지는 부분은 다음에도 같이 체크하면서 진행할게요.");
+      options.push("손에 힘 많이 들어가는 부분은 다음에도 같이 조절해볼게요.");
+      options.push("후반부에 전완 힘 빠지는 부분은 조금씩 보완해볼게요.");
+    }
+
+    if (/왼쪽 어깨|오른쪽 어깨|어깨 불편|어깨 찌릿|어깨 통증|어깨 긴장/.test(text)) {
+      options.push("어깨 불편한 느낌은 다음에도 먼저 확인하고 진행할게요.");
+      options.push("어깨 쪽은 무리되지 않게 계속 체크하면서 진행할게요.");
+      options.push("어깨는 불편감 없는 범위에서 같이 맞춰가볼게요.");
+    }
+
+    if (/허리|무릎|손목|발목|통증|불편|찌릿/.test(text) && !/어깨/.test(text)) {
+      options.push("불편한 부분은 다음에도 먼저 확인하고 진행할게요.");
+      options.push("불편감 있는 부분은 무리되지 않게 같이 조절해볼게요.");
+      options.push("몸에 부담 가는 부분은 다음에도 체크하면서 진행할게요.");
+    }
+
+    if (/등\s*근육\s*발달|등\s*발달|등\s*근육/.test(text)) {
+      options.push("등 쪽은 힘을 잘 쓰고 계셨어요.");
+      options.push("등 쓰는 느낌은 괜찮은 편이었어요.");
+      options.push("등 쪽은 잘 잡혀 있어서 다른 부위도 같이 맞춰가면 좋을 것 같아요.");
+    }
+
+    options.push(...getWorkoutSpecificCandidateOptions(workoutText, text));
+
+    return options;
+  }
+
+  function createFeedbackCandidateSections({ member, trainingType, bodyParts, condition, issue, nextPlan, trainerNote, memo }) {
     const workoutText = getFeedbackWorkoutPartText(trainingType, bodyParts);
-    const checkText = normalizeJournalText(checkPoint);
-    const noteText = normalizeJournalText(trainerNote);
-    const memoText = normalizeJournalText(memo);
+    const sections = [];
 
-    let todayLine = trainingType === "circuit"
-      ? "오늘은 서킷트레이닝 진행했는데"
-      : `오늘은 ${workoutText}운동 진행했는데`;
-
-    const positiveSentence = getBalancedPositiveSentence({
-      workoutText,
-      checkText,
-      noteText,
-      memoText,
-    });
-
-    if (positiveSentence) {
-      todayLine += ` ${positiveSentence}`;
-    } else if (condition === "good") {
-      todayLine += " 컨디션도 괜찮았어요.";
-    } else if (condition === "bad") {
-      todayLine += " 몸 상태에 맞춰 강도 조절해서 진행했어요.";
+    if (trainingType === "circuit") {
+      addFeedbackSection(sections, "today-circuit", "오늘 서킷트레이닝", [
+        "오늘은 서킷트레이닝 진행했는데 중간중간 힘들었던 구간도 있었지만 끝까지 잘 해주셨어요~",
+        "오늘은 서킷트레이닝 진행했고 운동량 있었는데도 끝까지 잘 해주셨어요~",
+        "오늘은 서킷트레이닝 하면서 리듬 끊기지 않게 잘 이어갔어요.",
+      ]);
+      addFeedbackSection(sections, "circuit-next", "서킷 다음 연결", [
+        "점점 동작도 익숙해지고 있어서 다음 수업도 오늘 리듬, 텐션 유지해서 진행할게요 :)",
+        "다음 수업도 오늘 느낌 이어서 무리되지 않게 진행할게요.",
+        "다음에도 지금 리듬 살려서 진행할게요.",
+      ]);
     } else {
-      todayLine += " 몸 상태 보면서 진행했어요.";
+      addFeedbackSection(sections, "today-workout", "오늘 운동 시작 문장", [
+        `오늘은 ${workoutText}운동 진행했어요.`,
+        `오늘은 ${workoutText}운동 위주로 진행했어요.`,
+        `오늘은 ${workoutText} 쪽으로 수업 진행했어요.`,
+      ]);
     }
 
-    const followUpLine = getCareFollowUpSentence({
-      checkText,
-      noteText,
-      memoText,
+    const journalItems = [
+      ...splitJournalKeywords(issue).map((value, index) => ({ group: "체크사항", value, index })),
+      ...splitJournalKeywords(trainerNote).map((value, index) => ({ group: "총평", value, index })),
+      ...splitJournalKeywords(memo).map((value, index) => ({ group: "메모", value, index })),
+    ];
+
+    journalItems.forEach((item) => {
+      const options = getKeywordCandidateOptions(item.value, workoutText);
+      addFeedbackSection(
+        sections,
+        `${item.group}-${item.index}-${item.value}`,
+        `${item.group}: ${item.value}`,
+        options
+      );
     });
 
-    return {
-      todayLine: todayLine.trim(),
-      followUpLine,
-    };
-  }
+    if (condition === "good") {
+      addFeedbackSection(sections, "condition-good", "컨디션 좋음", [
+        "오늘은 컨디션도 괜찮아서 운동 들어가는 느낌이 좋았어요.",
+        "컨디션이 괜찮아서 수업 진행하기 좋았어요.",
+        "오늘은 몸 상태가 괜찮아서 운동도 잘 이어갔어요.",
+      ]);
+    }
 
-  function toNaturalNextPlanSentence(nextPlan) {
+    if (condition === "bad") {
+      addFeedbackSection(sections, "condition-bad", "컨디션 조절", [
+        "오늘은 몸 상태에 맞춰 강도 조절해서 진행했어요.",
+        "컨디션은 조금 떨어져 보여서 무리되지 않게 진행했어요.",
+        "오늘은 컨디션 맞춰서 부담 없게 진행했어요.",
+      ]);
+    }
+
     const nextPart = getNextWorkoutPartText(nextPlan);
-    const text = cleanFeedbackText(nextPlan);
-
-    if (!nextPart) {
-      return "다음에도 오늘 내용 이어서 진행할게요.";
+    if (nextPart) {
+      addFeedbackSection(sections, "next-plan", "다음 수업", [
+        `다음 수업은 ${nextPart}운동입니다. 오늘 내용 이어서 진행할게요.`,
+        `다음에는 ${nextPart} 쪽으로 이어서 진행할게요.`,
+        `다음 수업도 오늘 체크한 부분 이어서 ${nextPart}운동으로 진행할게요.`,
+      ]);
     }
 
-    if (/스트레칭/.test(text)) {
-      return `다음 수업은 ${nextPart}운동입니다. 스트레칭 먼저 하고 진행할게요.`;
-    }
-
-    return `다음 수업은 ${nextPart}운동입니다. 오늘 내용 이어서 진행할게요.`;
+    return sections;
   }
 
-  function generateWorkoutFeedbackMessage({ member, trainingType, bodyParts, condition, issue, nextPlan, trainerNote, memo }) {
+  function buildFeedbackDraftFromCandidateMap(member, sections, candidateMap) {
     const memberName = member?.name || "회원";
-    const { todayLine, followUpLine } = makeTodayFeedbackSentence({
-      trainingType,
-      bodyParts,
-      condition,
-      checkPoint: issue,
-      trainerNote,
-      memo,
-    });
-    const nextText = toNaturalNextPlanSentence(nextPlan);
+    const chosenLines = (sections || [])
+      .map((section) => {
+        const selectedIndex = candidateMap?.[section.key];
+        if (selectedIndex === null || selectedIndex === undefined) return "";
+        return section.options?.[selectedIndex] || "";
+      })
+      .filter(Boolean);
 
     return [
       `${memberName}님 오늘 수업도 고생 많으셨어요 :)`,
-      todayLine,
-      followUpLine,
-      nextText,
+      ...chosenLines,
       "편하게 쉬시고 다음 수업 때 뵐게요~",
     ]
       .filter((line) => String(line || "").trim())
       .join("\n\n");
   }
 
-  function openFeedbackModal(member, draft) {
+  function getDefaultCandidateMap(sections = []) {
+    const map = {};
+    (sections || []).forEach((section) => {
+      if (section?.options?.length > 0) {
+        map[section.key] = 0;
+      }
+    });
+    return map;
+  }
+
+  function generateWorkoutFeedbackMessage({ member, trainingType, bodyParts, condition, issue, nextPlan, trainerNote, memo }) {
+    const sections = createFeedbackCandidateSections({
+      member,
+      trainingType,
+      bodyParts,
+      condition,
+      issue,
+      nextPlan,
+      trainerNote,
+      memo,
+    });
+    const defaultMap = getDefaultCandidateMap(sections);
+    return buildFeedbackDraftFromCandidateMap(member, sections, defaultMap);
+  }
+
+  function selectFeedbackCandidate(sectionKey, optionIndex) {
+    setSelectedFeedbackCandidateMap((prev) => {
+      const nextMap = { ...prev, [sectionKey]: optionIndex };
+      setFeedbackDraft(buildFeedbackDraftFromCandidateMap(feedbackModalMember, feedbackCandidateSections, nextMap));
+      return nextMap;
+    });
+  }
+
+  function removeFeedbackCandidateSection(sectionKey) {
+    setSelectedFeedbackCandidateMap((prev) => {
+      const nextMap = { ...prev, [sectionKey]: null };
+      setFeedbackDraft(buildFeedbackDraftFromCandidateMap(feedbackModalMember, feedbackCandidateSections, nextMap));
+      return nextMap;
+    });
+  }
+
+  function openFeedbackModal(member, draft, sourceData = null) {
     if (!member) return;
-    setFeedbackModalMember(member);
-    setFeedbackDraft(draft || generateWorkoutFeedbackMessage({
+
+    const feedbackSource = sourceData || {
       member,
       trainingType: workoutTrainingType,
       bodyParts: workoutBodyParts,
@@ -5469,7 +5640,16 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       nextPlan: workoutNextPlan,
       trainerNote: workoutTrainerNote,
       memo: workoutMemo,
-    }));
+    };
+
+    const sections = createFeedbackCandidateSections(feedbackSource);
+    const defaultMap = getDefaultCandidateMap(sections);
+    const nextDraft = draft || buildFeedbackDraftFromCandidateMap(member, sections, defaultMap);
+
+    setFeedbackModalMember(member);
+    setFeedbackCandidateSections(sections);
+    setSelectedFeedbackCandidateMap(defaultMap);
+    setFeedbackDraft(nextDraft);
   }
 
   async function runPendingAfterFeedbackAction() {
@@ -5502,6 +5682,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     const shouldContinue = options?.continueAfterClose !== false;
     setFeedbackModalMember(null);
     setFeedbackDraft("");
+    setFeedbackCandidateSections([]);
+    setSelectedFeedbackCandidateMap({});
     setActiveTodayTodoKey(null);
 
     if (shouldContinue) {
@@ -5635,7 +5817,16 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
             member: nextMember,
             index: nextIndex,
           };
-          openFeedbackModal(savedWorkoutMember, feedbackMessage);
+          openFeedbackModal(savedWorkoutMember, feedbackMessage, {
+            member: savedWorkoutMember,
+            trainingType: workoutTrainingType,
+            bodyParts: getSafeWorkoutBodyParts(workoutTrainingType, workoutBodyParts, validExercises),
+            condition: workoutCondition,
+            issue: workoutIssue,
+            nextPlan: workoutNextPlan,
+            trainerNote: workoutTrainerNote,
+            memo: workoutMemo,
+          });
           return;
         }
 
@@ -5648,7 +5839,16 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
           type: "groupComplete",
           scheduleDate: scheduleCheckDate || getTodayDateString(),
         };
-        openFeedbackModal(savedWorkoutMember, feedbackMessage);
+        openFeedbackModal(savedWorkoutMember, feedbackMessage, {
+          member: savedWorkoutMember,
+          trainingType: workoutTrainingType,
+          bodyParts: getSafeWorkoutBodyParts(workoutTrainingType, workoutBodyParts, validExercises),
+          condition: workoutCondition,
+          issue: workoutIssue,
+          nextPlan: workoutNextPlan,
+          trainerNote: workoutTrainerNote,
+          memo: workoutMemo,
+        });
         return;
       }
 
@@ -5667,7 +5867,16 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     }
 
     if (shouldOpenFeedback) {
-      openFeedbackModal(savedWorkoutMember, feedbackMessage);
+      openFeedbackModal(savedWorkoutMember, feedbackMessage, {
+        member: savedWorkoutMember,
+        trainingType: workoutTrainingType,
+        bodyParts: getSafeWorkoutBodyParts(workoutTrainingType, workoutBodyParts, validExercises),
+        condition: workoutCondition,
+        issue: workoutIssue,
+        nextPlan: workoutNextPlan,
+        trainerNote: workoutTrainerNote,
+        memo: workoutMemo,
+      });
     }
   }
 
@@ -9200,12 +9409,54 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
               </button>
             </div>
 
+            {feedbackCandidateSections.length > 0 && (
+              <div style={styles.feedbackCandidateBox}>
+                <strong style={styles.whiteSectionTitle}>추천 문장 선택</strong>
+                <p style={styles.feedbackCandidateHelp}>
+                  일지 내용별로 마음에 드는 문장을 선택하면 아래 문자 초안이 자동으로 정리됩니다.
+                </p>
+
+                <div style={styles.feedbackCandidateList}>
+                  {feedbackCandidateSections.map((section) => (
+                    <div key={section.key} style={styles.feedbackCandidateSection}>
+                      <div style={styles.feedbackCandidateSectionTop}>
+                        <strong style={styles.feedbackCandidateTitle}>{section.title}</strong>
+                        <button
+                          type="button"
+                          onClick={() => removeFeedbackCandidateSection(section.key)}
+                          style={styles.feedbackCandidateSkipButton}
+                        >
+                          제외
+                        </button>
+                      </div>
+
+                      <div style={styles.feedbackCandidateOptionGrid}>
+                        {section.options.map((option, optionIndex) => {
+                          const isSelected = selectedFeedbackCandidateMap[section.key] === optionIndex;
+                          return (
+                            <button
+                              key={`${section.key}-${optionIndex}`}
+                              type="button"
+                              onClick={() => selectFeedbackCandidate(section.key, optionIndex)}
+                              style={isSelected ? styles.feedbackCandidateOptionSelected : styles.feedbackCandidateOption}
+                            >
+                              {option}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div style={styles.whiteInfoBox}>
               <strong style={styles.whiteSectionTitle}>문자 초안</strong>
               <textarea
                 value={feedbackDraft}
                 onChange={(e) => setFeedbackDraft(e.target.value)}
-                style={{ ...styles.textarea, minHeight: 280, background: "#fff", color: "#111", border: "1px solid #111" }}
+                style={{ ...styles.textarea, minHeight: 240, background: "#fff", color: "#111", border: "1px solid #111" }}
               />
             </div>
 
@@ -12669,6 +12920,91 @@ textarea: {
     overflow: "hidden",
     overscrollBehavior: "none",
   },
+  feedbackCandidateBox: {
+    border: "1px solid #e5e7eb",
+    background: "#f9fafb",
+    color: "#111827",
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 16,
+  },
+
+  feedbackCandidateHelp: {
+    margin: "6px 0 14px",
+    color: "#6b7280",
+    fontSize: 14,
+    fontWeight: 700,
+  },
+
+  feedbackCandidateList: {
+    display: "grid",
+    gap: 12,
+  },
+
+  feedbackCandidateSection: {
+    border: "1px solid #d1d5db",
+    background: "#ffffff",
+    borderRadius: 16,
+    padding: 12,
+  },
+
+  feedbackCandidateSectionTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 10,
+  },
+
+  feedbackCandidateTitle: {
+    color: "#111827",
+    fontSize: 15,
+    fontWeight: 1000,
+  },
+
+  feedbackCandidateSkipButton: {
+    border: "1px solid #d1d5db",
+    background: "#fff",
+    color: "#6b7280",
+    borderRadius: 999,
+    padding: "6px 10px",
+    fontSize: 12,
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+
+  feedbackCandidateOptionGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: 8,
+  },
+
+  feedbackCandidateOption: {
+    border: "1px solid #d1d5db",
+    background: "#ffffff",
+    color: "#111827",
+    borderRadius: 12,
+    padding: "10px 12px",
+    textAlign: "left",
+    fontSize: 14,
+    fontWeight: 800,
+    lineHeight: 1.45,
+    cursor: "pointer",
+  },
+
+  feedbackCandidateOptionSelected: {
+    border: "2px solid #111827",
+    background: "#111827",
+    color: "#ffffff",
+    borderRadius: 12,
+    padding: "10px 12px",
+    textAlign: "left",
+    fontSize: 14,
+    fontWeight: 900,
+    lineHeight: 1.45,
+    cursor: "pointer",
+  },
+
   messageModalOverlay: {
     position: "fixed",
     inset: 0,
