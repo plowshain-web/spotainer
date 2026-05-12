@@ -5406,7 +5406,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
         options.push("등 쪽 자극은 괜찮게 잡혔어요.");
       }
       if (/전완|그립|손/.test(text)) {
-        options.push("전완 쪽 힘 빠지는 부분은 다음에도 같이 체크하면서 진행할게요.");
+        options.push("전완 쪽은 힘 빠지지 않게 다음에도 같이 조절해볼게요.");
         options.push("손에 힘 많이 들어가는 부분은 다음에도 같이 조절해볼게요.");
       }
     }
@@ -5473,9 +5473,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     }
 
     if (/전완 힘 빠짐|전완|그립|손 힘|팔 힘/.test(text)) {
-      options.push("전완 쪽 힘 빠지는 부분은 다음에도 같이 체크하면서 진행할게요.");
-      options.push("손에 힘 많이 들어가는 부분은 다음에도 같이 조절해볼게요.");
-      options.push("후반부에 전완 힘 빠지는 부분은 조금씩 보완해볼게요.");
+      options.push("전완 쪽은 힘 빠지지 않게 다음에도 같이 조절해볼게요.");
+      options.push("손에 힘 많이 들어가는 부분은 다음에도 조금 줄여가볼게요.");
+      options.push("후반부에 전완 힘 빠지는 부분은 다음에도 같이 봐가면서 진행할게요.");
     }
 
     if (/왼쪽 어깨|오른쪽 어깨|어깨 불편|어깨 찌릿|어깨 통증|어깨 긴장/.test(text)) {
@@ -5491,9 +5491,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     }
 
     if (/등\s*근육\s*발달|등\s*발달|등\s*근육/.test(text)) {
-      options.push("등 쪽은 힘을 잘 쓰고 계셨어요.");
-      options.push("등 쓰는 느낌은 괜찮은 편이었어요.");
-      options.push("등 쪽은 잘 잡혀 있어서 다른 부위도 같이 맞춰가면 좋을 것 같아요.");
+      options.push("등 쪽은 힘 쓰는 느낌이 괜찮았어요.");
+      options.push("등운동은 오늘 느낌 잘 잡고 진행했어요.");
+      options.push("등 쪽 자극은 괜찮게 잡혔어요.");
     }
 
     options.push(...getWorkoutSpecificCandidateOptions(workoutText, text));
@@ -5559,9 +5559,10 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     const nextPart = getNextWorkoutPartText(nextPlan);
     if (nextPart) {
       addFeedbackSection(sections, "next-plan", "다음 수업", [
-        `다음 수업은 ${nextPart}운동입니다. 오늘 내용 이어서 진행할게요.`,
-        `다음에는 ${nextPart} 쪽으로 이어서 진행할게요.`,
-        `다음 수업도 오늘 체크한 부분 이어서 ${nextPart}운동으로 진행할게요.`,
+        `다음 수업은 ${nextPart}운동입니다. 오늘 체크한 부분 이어서 진행할게요.`,
+        `다음에는 ${nextPart}운동으로 이어서 진행할게요.`,
+        `다음 수업도 ${nextPart}운동으로 진행할게요.`,
+        `다음 수업은 ${nextPart}운동입니다. 무리 없이 이어서 진행할게요.`,
       ]);
     }
 
@@ -9456,7 +9457,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
               <textarea
                 value={feedbackDraft}
                 onChange={(e) => setFeedbackDraft(e.target.value)}
-                style={{ ...styles.textarea, minHeight: 240, background: "#fff", color: "#111", border: "1px solid #111" }}
+                style={{ ...styles.textarea, minHeight: 200, background: "#fff", color: "#111", border: "1px solid #111" }}
               />
             </div>
 
