@@ -10,7 +10,7 @@ const supabase = createClient(
 
 const typeOptions = [
   { value: "pt", label: "PT" },
-  { value: "group_pt", label: "그룹PT" },
+  { value: "group", label: "그룹PT" },
   { value: "ot", label: "OT" },
   { value: "consult", label: "상담" },
 ];
@@ -47,6 +47,11 @@ function formatKoreanDateText(dateText) {
   return formatKoreanDate(parseLocalDate(dateText));
 }
 
+function formatTime(time) {
+  if (!time) return "";
+  return String(time).slice(0, 5);
+}
+
 function addDays(date, amount) {
   const next = new Date(date);
   next.setDate(next.getDate() + amount);
@@ -70,12 +75,24 @@ function getMemberPt(member) {
 }
 
 function getTypeLabel(type, memo) {
-  if (memo?.includes("그룹PT")) return "그룹PT";
+  if (type === "group" || type === "group_pt" || memo?.includes("그룹PT")) {
+    return "그룹PT";
+  }
   if (type === "pt") return "PT";
   if (type === "ot") return "OT";
   if (type === "consult") return "상담";
-  if (type === "group_pt") return "그룹PT";
   return type || "-";
+}
+
+function sendSms(phone, message) {
+  if (!phone) {
+    alert("전화번호가 없어요.");
+    return;
+  }
+
+  const cleanPhone = String(phone).replace(/[^0-9]/g, "");
+  const encodedMessage = encodeURIComponent(message);
+  window.location.href = `sms:${cleanPhone}?body=${encodedMessage}`;
 }
 
 export default function MobileSchedulePage() {
@@ -95,7 +112,6 @@ export default function MobileSchedulePage() {
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-
   const [touchStartX, setTouchStartX] = useState(null);
 
   useEffect(() => {
@@ -110,17 +126,27 @@ export default function MobileSchedulePage() {
     const map = {};
 
     daySchedules.forEach((schedule) => {
-      const key = `${schedule.start_time}-${schedule.type}-${schedule.memo || ""}`;
+      const isGroup =
+        schedule.type === "group" ||
+        schedule.type === "group_pt" ||
+        schedule.memo?.includes("그룹PT");
+
+      const key = isGroup
+        ? `${schedule.schedule_date}-${formatTime(schedule.start_time)}-group`
+        : `${schedule.id}`;
+
       if (!map[key]) {
         map[key] = {
           start_time: schedule.start_time,
-          type: schedule.type,
+          type: isGroup ? "group" : schedule.type,
           memo: schedule.memo,
           names: [],
+          phones: [],
         };
       }
 
       map[key].names.push(schedule.member?.name || "회원 정보 없음");
+      if (schedule.member?.phone) map[key].phones.push(schedule.member.phone);
     });
 
     return Object.values(map).sort((a, b) =>
@@ -131,8 +157,9 @@ export default function MobileSchedulePage() {
   const bookedTimeMap = useMemo(() => {
     const map = {};
     daySchedules.forEach((schedule) => {
-      if (!map[schedule.start_time]) map[schedule.start_time] = [];
-      map[schedule.start_time].push(schedule.member?.name || "예약 있음");
+      const key = formatTime(schedule.start_time);
+      if (!map[key]) map[key] = [];
+      map[key].push(schedule.member?.name || "예약 있음");
     });
     return map;
   }, [daySchedules]);
@@ -213,12 +240,12 @@ export default function MobileSchedulePage() {
       return;
     }
 
-    if (selectedType !== "group_pt" && selectedMembers.length >= 1) {
+    if (selectedType !== "group" && selectedMembers.length >= 1) {
       setSelectedMembers([member]);
       return;
     }
 
-    if (selectedType === "group_pt" && selectedMembers.length >= 3) {
+    if (selectedType === "group" && selectedMembers.length >= 3) {
       alert("그룹PT는 최대 3명까지만 선택할 수 있어요.");
       return;
     }
@@ -271,7 +298,7 @@ export default function MobileSchedulePage() {
       return;
     }
 
-    if (selectedType !== "group_pt" && selectedMembers.length > 1) {
+    if (selectedType !== "group" && selectedMembers.length > 1) {
       alert("일반 PT/OT/상담은 회원 1명만 선택해주세요.");
       return;
     }
@@ -301,7 +328,7 @@ export default function MobileSchedulePage() {
       return;
     }
 
-    const isGroup = selectedType === "group_pt";
+    const isGroup = selectedType === "group";
     const groupMemo = isGroup
       ? `[그룹PT] ${memo.trim()}`.trim()
       : memo.trim() || null;
@@ -311,7 +338,7 @@ export default function MobileSchedulePage() {
       schedule_date: selectedDateText,
       start_time: selectedTime,
       end_time: addOneHour(selectedTime),
-      type: isGroup ? "pt" : selectedType,
+      type: isGroup ? "group" : selectedType,
       memo: groupMemo || null,
     }));
 
@@ -326,6 +353,12 @@ export default function MobileSchedulePage() {
 
     alert("일정이 등록되었어요.");
 
+    const message = `${formatKoreanDate(selectedDate)} ${selectedTime} 수업으로 예약해드렸어요.`;
+
+    selectedMembers.forEach((member) => {
+      console.log(`${member.name} 문자 내용: ${message}`);
+    });
+
     setSelectedTime("");
     setMemo("");
     await loadDaySchedules();
@@ -337,7 +370,7 @@ export default function MobileSchedulePage() {
   function handleTypeChange(value) {
     setSelectedType(value);
 
-    if (value !== "group_pt" && selectedMembers.length > 1) {
+    if (value !== "group" && selectedMembers.length > 1) {
       setSelectedMembers(selectedMembers.slice(0, 1));
     }
   }
@@ -362,6 +395,17 @@ export default function MobileSchedulePage() {
     }
 
     setTouchStartX(null);
+  }
+
+  function sendSelectedScheduleSms(member) {
+    if (!selectedTime) {
+      alert("시간을 먼저 선택해주세요.");
+      return;
+    }
+
+    const typeLabel = getTypeLabel(selectedType, selectedType === "group" ? "그룹PT" : "");
+    const message = `${member.name}님 ${formatKoreanDate(selectedDate)} ${selectedTime} ${typeLabel} 수업으로 예약해드렸어요.`;
+    sendSms(member.phone, message);
   }
 
   return (
@@ -410,12 +454,12 @@ export default function MobileSchedulePage() {
           <div style={styles.scheduleList}>
             {groupedDaySchedules.map((schedule, index) => (
               <div key={`${schedule.start_time}-${index}`} style={styles.scheduleItem}>
-                <div style={styles.scheduleTime}>{schedule.start_time}</div>
+                <div style={styles.scheduleTime}>{formatTime(schedule.start_time)}</div>
                 <div style={styles.scheduleInfo}>
                   <div style={styles.scheduleName}>{schedule.names.join(", ")}</div>
                   <div style={styles.scheduleMeta}>
                     {getTypeLabel(schedule.type, schedule.memo)}
-                    {schedule.memo ? ` · ${schedule.memo}` : ""}
+                    {schedule.memo ? ` · ${schedule.memo.replace("[그룹PT]", "").trim()}` : ""}
                   </div>
                 </div>
               </div>
@@ -446,7 +490,7 @@ export default function MobileSchedulePage() {
 
       <section style={styles.card}>
         <div style={styles.cardTitle}>
-          회원 검색 {selectedType === "group_pt" ? "(그룹PT는 최대 3명)" : ""}
+          회원 검색 {selectedType === "group" ? `(${selectedMembers.length}/3명 선택)` : ""}
         </div>
 
         <div style={styles.searchRow}>
@@ -526,7 +570,7 @@ export default function MobileSchedulePage() {
                     </div>
                   </div>
                   <div style={styles.memberScheduleDetail}>
-                    {schedule.start_time} · {getTypeLabel(schedule.type, schedule.memo)}
+                    {formatTime(schedule.start_time)} · {getTypeLabel(schedule.type, schedule.memo)}
                   </div>
                 </div>
               ))}
@@ -583,6 +627,21 @@ export default function MobileSchedulePage() {
             onChange={(e) => setMemo(e.target.value)}
             placeholder="메모 선택사항"
           />
+
+          {selectedTime && (
+            <div style={styles.smsBox}>
+              <div style={styles.smsTitle}>문자 보내기</div>
+              {selectedMembers.map((member) => (
+                <button
+                  key={member.id}
+                  style={styles.smsButton}
+                  onClick={() => sendSelectedScheduleSms(member)}
+                >
+                  {member.name}님에게 예약 문자
+                </button>
+              ))}
+            </div>
+          )}
 
           <button style={styles.saveButton} onClick={saveSchedule} disabled={saving}>
             {saving ? "저장 중..." : "일정 등록하기"}
@@ -846,6 +905,29 @@ const styles = {
     boxSizing: "border-box",
     outline: "none",
     marginBottom: "12px",
+  },
+  smsBox: {
+    background: "#f9fafb",
+    border: "1px solid #e5e7eb",
+    borderRadius: "14px",
+    padding: "10px",
+    marginBottom: "12px",
+  },
+  smsTitle: {
+    fontSize: "14px",
+    fontWeight: "900",
+    marginBottom: "8px",
+  },
+  smsButton: {
+    width: "100%",
+    height: "42px",
+    border: "none",
+    borderRadius: "12px",
+    background: "#374151",
+    color: "#ffffff",
+    fontSize: "14px",
+    fontWeight: "900",
+    marginBottom: "6px",
   },
   saveButton: {
     width: "100%",
