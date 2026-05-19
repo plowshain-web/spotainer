@@ -8,18 +8,23 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-const timeOptions = [
-  "06:00", "07:00", "08:00", "09:00", "10:00",
-  "11:00", "12:00", "13:00", "14:00", "15:00",
-  "16:00", "17:00", "18:00", "19:00", "20:00",
-  "21:00", "22:00",
-];
-
 const typeOptions = [
   { value: "pt", label: "PT" },
+  { value: "group_pt", label: "그룹PT" },
   { value: "ot", label: "OT" },
   { value: "consult", label: "상담" },
 ];
+
+function makeTimeOptions() {
+  const result = [];
+  for (let h = 6; h <= 22; h++) {
+    result.push(`${String(h).padStart(2, "0")}:00`);
+    if (h !== 22) result.push(`${String(h).padStart(2, "0")}:30`);
+  }
+  return result;
+}
+
+const timeOptions = makeTimeOptions();
 
 function formatDate(date) {
   const y = date.getFullYear();
@@ -28,9 +33,18 @@ function formatDate(date) {
   return `${y}-${m}-${d}`;
 }
 
+function parseLocalDate(dateText) {
+  const [y, m, d] = dateText.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 function formatKoreanDate(date) {
   const yoil = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()];
   return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 ${yoil}`;
+}
+
+function formatKoreanDateText(dateText) {
+  return formatKoreanDate(parseLocalDate(dateText));
 }
 
 function addDays(date, amount) {
@@ -55,15 +69,24 @@ function getMemberPt(member) {
   );
 }
 
+function getTypeLabel(type, memo) {
+  if (memo?.includes("그룹PT")) return "그룹PT";
+  if (type === "pt") return "PT";
+  if (type === "ot") return "OT";
+  if (type === "consult") return "상담";
+  if (type === "group_pt") return "그룹PT";
+  return type || "-";
+}
+
 export default function MobileSchedulePage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const selectedDateText = useMemo(() => formatDate(selectedDate), [selectedDate]);
 
   const [search, setSearch] = useState("");
   const [members, setMembers] = useState([]);
-  const [selectedMember, setSelectedMember] = useState(null);
+  const [selectedMembers, setSelectedMembers] = useState([]);
 
-  const [todaySchedules, setTodaySchedules] = useState([]);
+  const [daySchedules, setDaySchedules] = useState([]);
   const [memberSchedules, setMemberSchedules] = useState([]);
 
   const [selectedTime, setSelectedTime] = useState("");
@@ -80,9 +103,39 @@ export default function MobileSchedulePage() {
   }, [selectedDateText]);
 
   useEffect(() => {
-    if (!selectedMember) return;
-    loadMemberSchedules(selectedMember.id);
-  }, [selectedMember]);
+    loadSelectedMemberSchedules();
+  }, [selectedMembers]);
+
+  const groupedDaySchedules = useMemo(() => {
+    const map = {};
+
+    daySchedules.forEach((schedule) => {
+      const key = `${schedule.start_time}-${schedule.type}-${schedule.memo || ""}`;
+      if (!map[key]) {
+        map[key] = {
+          start_time: schedule.start_time,
+          type: schedule.type,
+          memo: schedule.memo,
+          names: [],
+        };
+      }
+
+      map[key].names.push(schedule.member?.name || "회원 정보 없음");
+    });
+
+    return Object.values(map).sort((a, b) =>
+      String(a.start_time).localeCompare(String(b.start_time))
+    );
+  }, [daySchedules]);
+
+  const bookedTimeMap = useMemo(() => {
+    const map = {};
+    daySchedules.forEach((schedule) => {
+      if (!map[schedule.start_time]) map[schedule.start_time] = [];
+      map[schedule.start_time].push(schedule.member?.name || "예약 있음");
+    });
+    return map;
+  }, [daySchedules]);
 
   async function loadDaySchedules() {
     setLoading(true);
@@ -96,14 +149,13 @@ export default function MobileSchedulePage() {
     if (error) {
       console.error(error);
       alert("일정을 불러오지 못했어요.");
-      setTodaySchedules([]);
+      setDaySchedules([]);
       setLoading(false);
       return;
     }
 
-    const validSchedules = (data || []).filter((item) => item.status !== "cancelled");
-
-    const memberIds = [...new Set(validSchedules.map((s) => s.member_id).filter(Boolean))];
+    const activeSchedules = (data || []).filter((item) => item.status !== "cancelled");
+    const memberIds = [...new Set(activeSchedules.map((s) => s.member_id).filter(Boolean))];
 
     let memberMap = {};
     if (memberIds.length > 0) {
@@ -118,12 +170,13 @@ export default function MobileSchedulePage() {
       }, {});
     }
 
-    const merged = validSchedules.map((s) => ({
-      ...s,
-      member: memberMap[s.member_id] || null,
-    }));
+    setDaySchedules(
+      activeSchedules.map((s) => ({
+        ...s,
+        member: memberMap[s.member_id] || null,
+      }))
+    );
 
-    setTodaySchedules(merged);
     setLoading(false);
   }
 
@@ -152,17 +205,44 @@ export default function MobileSchedulePage() {
     setMembers(data || []);
   }
 
-  async function loadMemberSchedules(memberId) {
+  function toggleMember(member) {
+    const exists = selectedMembers.some((m) => m.id === member.id);
+
+    if (exists) {
+      setSelectedMembers((prev) => prev.filter((m) => m.id !== member.id));
+      return;
+    }
+
+    if (selectedType !== "group_pt" && selectedMembers.length >= 1) {
+      setSelectedMembers([member]);
+      return;
+    }
+
+    if (selectedType === "group_pt" && selectedMembers.length >= 3) {
+      alert("그룹PT는 최대 3명까지만 선택할 수 있어요.");
+      return;
+    }
+
+    setSelectedMembers((prev) => [...prev, member]);
+  }
+
+  async function loadSelectedMemberSchedules() {
+    if (selectedMembers.length === 0) {
+      setMemberSchedules([]);
+      return;
+    }
+
     const today = formatDate(new Date());
+    const ids = selectedMembers.map((m) => m.id);
 
     const { data, error } = await supabase
       .from("schedules")
       .select("*")
-      .eq("member_id", memberId)
+      .in("member_id", ids)
       .gte("schedule_date", today)
       .order("schedule_date", { ascending: true })
       .order("start_time", { ascending: true })
-      .limit(10);
+      .limit(20);
 
     if (error) {
       console.error(error);
@@ -170,17 +250,29 @@ export default function MobileSchedulePage() {
       return;
     }
 
-    setMemberSchedules((data || []).filter((item) => item.status !== "cancelled"));
+    const activeSchedules = (data || []).filter((item) => item.status !== "cancelled");
+
+    setMemberSchedules(
+      activeSchedules.map((schedule) => ({
+        ...schedule,
+        member: selectedMembers.find((m) => m.id === schedule.member_id),
+      }))
+    );
   }
 
   async function saveSchedule() {
-    if (!selectedMember) {
+    if (selectedMembers.length === 0) {
       alert("회원을 먼저 선택해주세요.");
       return;
     }
 
     if (!selectedTime) {
       alert("시간을 선택해주세요.");
+      return;
+    }
+
+    if (selectedType !== "group_pt" && selectedMembers.length > 1) {
+      alert("일반 PT/OT/상담은 회원 1명만 선택해주세요.");
       return;
     }
 
@@ -209,14 +301,19 @@ export default function MobileSchedulePage() {
       return;
     }
 
-    const payload = {
-      member_id: selectedMember.id,
+    const isGroup = selectedType === "group_pt";
+    const groupMemo = isGroup
+      ? `[그룹PT] ${memo.trim()}`.trim()
+      : memo.trim() || null;
+
+    const payload = selectedMembers.map((member) => ({
+      member_id: member.id,
       schedule_date: selectedDateText,
       start_time: selectedTime,
       end_time: addOneHour(selectedTime),
-      type: selectedType,
-      memo: memo.trim() || null,
-    };
+      type: isGroup ? "pt" : selectedType,
+      memo: groupMemo || null,
+    }));
 
     const { error } = await supabase.from("schedules").insert(payload);
 
@@ -232,9 +329,23 @@ export default function MobileSchedulePage() {
     setSelectedTime("");
     setMemo("");
     await loadDaySchedules();
-    await loadMemberSchedules(selectedMember.id);
+    await loadSelectedMemberSchedules();
 
     setSaving(false);
+  }
+
+  function handleTypeChange(value) {
+    setSelectedType(value);
+
+    if (value !== "group_pt" && selectedMembers.length > 1) {
+      setSelectedMembers(selectedMembers.slice(0, 1));
+    }
+  }
+
+  function handleDateInputChange(value) {
+    if (!value) return;
+    setSelectedDate(parseLocalDate(value));
+    setSelectedTime("");
   }
 
   function handleSwipeEnd(e) {
@@ -244,11 +355,10 @@ export default function MobileSchedulePage() {
     const diff = endX - touchStartX;
 
     if (Math.abs(diff) > 60) {
-      if (diff < 0) {
-        setSelectedDate((prev) => addDays(prev, 1));
-      } else {
-        setSelectedDate((prev) => addDays(prev, -1));
-      }
+      if (diff < 0) setSelectedDate((prev) => addDays(prev, 1));
+      else setSelectedDate((prev) => addDays(prev, -1));
+
+      setSelectedTime("");
     }
 
     setTouchStartX(null);
@@ -265,10 +375,23 @@ export default function MobileSchedulePage() {
           ‹
         </button>
 
-        <div>
+        <div style={styles.headerCenter}>
           <div style={styles.title}>모바일 일정등록</div>
           <div style={styles.dateText}>{formatKoreanDate(selectedDate)}</div>
-          <div style={styles.subText}>좌우 스와이프로 날짜 변경</div>
+          <input
+            style={styles.dateInput}
+            type="date"
+            value={selectedDateText}
+            onChange={(e) => handleDateInputChange(e.target.value)}
+          />
+          <div style={styles.quickRow}>
+            <button style={styles.quickButton} onClick={() => setSelectedDate(new Date())}>
+              오늘
+            </button>
+            <button style={styles.quickButton} onClick={() => setSelectedDate(addDays(new Date(), 1))}>
+              내일
+            </button>
+          </div>
         </div>
 
         <button style={styles.arrowButton} onClick={() => setSelectedDate(addDays(selectedDate, 1))}>
@@ -277,23 +400,22 @@ export default function MobileSchedulePage() {
       </section>
 
       <section style={styles.card}>
-        <div style={styles.cardTitle}>오늘 선택 날짜 일정</div>
+        <div style={styles.cardTitle}>선택 날짜 일정</div>
 
         {loading ? (
           <div style={styles.emptyText}>불러오는 중...</div>
-        ) : todaySchedules.length === 0 ? (
+        ) : groupedDaySchedules.length === 0 ? (
           <div style={styles.emptyText}>등록된 일정이 없어요.</div>
         ) : (
           <div style={styles.scheduleList}>
-            {todaySchedules.map((schedule) => (
-              <div key={schedule.id} style={styles.scheduleItem}>
+            {groupedDaySchedules.map((schedule, index) => (
+              <div key={`${schedule.start_time}-${index}`} style={styles.scheduleItem}>
                 <div style={styles.scheduleTime}>{schedule.start_time}</div>
                 <div style={styles.scheduleInfo}>
-                  <div style={styles.scheduleName}>
-                    {schedule.member?.name || "회원 정보 없음"}
-                  </div>
+                  <div style={styles.scheduleName}>{schedule.names.join(", ")}</div>
                   <div style={styles.scheduleMeta}>
-                    {(schedule.type || "").toUpperCase()} {schedule.memo ? `· ${schedule.memo}` : ""}
+                    {getTypeLabel(schedule.type, schedule.memo)}
+                    {schedule.memo ? ` · ${schedule.memo}` : ""}
                   </div>
                 </div>
               </div>
@@ -303,7 +425,29 @@ export default function MobileSchedulePage() {
       </section>
 
       <section style={styles.card}>
-        <div style={styles.cardTitle}>회원 검색</div>
+        <div style={styles.cardTitle}>수업 종류</div>
+
+        <div style={styles.typeGrid}>
+          {typeOptions.map((item) => (
+            <button
+              key={item.value}
+              style={{
+                ...styles.typeButton,
+                background: selectedType === item.value ? "#111827" : "#ffffff",
+                color: selectedType === item.value ? "#ffffff" : "#111827",
+              }}
+              onClick={() => handleTypeChange(item.value)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section style={styles.card}>
+        <div style={styles.cardTitle}>
+          회원 검색 {selectedType === "group_pt" ? "(그룹PT는 최대 3명)" : ""}
+        </div>
 
         <div style={styles.searchRow}>
           <input
@@ -320,38 +464,52 @@ export default function MobileSchedulePage() {
           </button>
         </div>
 
-        {members.length > 0 && (
-          <div style={styles.memberList}>
-            {members.map((member) => (
+        {selectedMembers.length > 0 && (
+          <div style={styles.selectedChipWrap}>
+            {selectedMembers.map((member) => (
               <button
                 key={member.id}
-                style={{
-                  ...styles.memberItem,
-                  borderColor: selectedMember?.id === member.id ? "#111827" : "#e5e7eb",
-                  background: selectedMember?.id === member.id ? "#f3f4f6" : "#ffffff",
-                }}
-                onClick={() => setSelectedMember(member)}
+                style={styles.selectedChip}
+                onClick={() => toggleMember(member)}
               >
-                <div style={styles.memberName}>{member.name}</div>
-                <div style={styles.memberPhone}>{member.phone || "전화번호 없음"}</div>
-                <div style={styles.memberPt}>잔여 PT: {getMemberPt(member)}</div>
+                {member.name} ✕
               </button>
             ))}
           </div>
         )}
+
+        {members.length > 0 && (
+          <div style={styles.memberList}>
+            {members.map((member) => {
+              const checked = selectedMembers.some((m) => m.id === member.id);
+
+              return (
+                <button
+                  key={member.id}
+                  style={{
+                    ...styles.memberItem,
+                    borderColor: checked ? "#111827" : "#e5e7eb",
+                    background: checked ? "#f3f4f6" : "#ffffff",
+                  }}
+                  onClick={() => toggleMember(member)}
+                >
+                  <div style={styles.memberTopRow}>
+                    <div>
+                      <div style={styles.memberName}>{member.name}</div>
+                      <div style={styles.memberPhone}>{member.phone || "전화번호 없음"}</div>
+                    </div>
+                    <div style={styles.memberPt}>PT {getMemberPt(member)}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </section>
 
-      {selectedMember && (
+      {selectedMembers.length > 0 && (
         <section style={styles.card}>
-          <div style={styles.selectedBox}>
-            <div>
-              <div style={styles.selectedName}>{selectedMember.name}</div>
-              <div style={styles.memberPhone}>{selectedMember.phone || "전화번호 없음"}</div>
-            </div>
-            <div style={styles.ptBadge}>PT {getMemberPt(selectedMember)}</div>
-          </div>
-
-          <div style={styles.cardTitle}>예정 수업</div>
+          <div style={styles.cardTitle}>선택 회원 예정 수업</div>
 
           {memberSchedules.length === 0 ? (
             <div style={styles.emptyText}>예정된 수업이 없어요.</div>
@@ -359,47 +517,64 @@ export default function MobileSchedulePage() {
             <div style={styles.scheduleList}>
               {memberSchedules.map((schedule) => (
                 <div key={schedule.id} style={styles.memberScheduleItem}>
-                  <div style={styles.memberScheduleDate}>{schedule.schedule_date}</div>
+                  <div>
+                    <div style={styles.memberScheduleName}>
+                      {schedule.member?.name || "회원"}
+                    </div>
+                    <div style={styles.memberScheduleDate}>
+                      {formatKoreanDateText(schedule.schedule_date)}
+                    </div>
+                  </div>
                   <div style={styles.memberScheduleDetail}>
-                    {schedule.start_time} · {(schedule.type || "").toUpperCase()}
+                    {schedule.start_time} · {getTypeLabel(schedule.type, schedule.memo)}
                   </div>
                 </div>
               ))}
             </div>
           )}
+        </section>
+      )}
 
+      {selectedMembers.length > 0 && (
+        <section style={styles.card}>
           <div style={styles.cardTitle}>수업 등록</div>
 
-          <div style={styles.typeGrid}>
-            {typeOptions.map((item) => (
-              <button
-                key={item.value}
-                style={{
-                  ...styles.typeButton,
-                  background: selectedType === item.value ? "#111827" : "#ffffff",
-                  color: selectedType === item.value ? "#ffffff" : "#111827",
-                }}
-                onClick={() => setSelectedType(item.value)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-
           <div style={styles.timeGrid}>
-            {timeOptions.map((time) => (
-              <button
-                key={time}
-                style={{
-                  ...styles.timeButton,
-                  background: selectedTime === time ? "#111827" : "#ffffff",
-                  color: selectedTime === time ? "#ffffff" : "#111827",
-                }}
-                onClick={() => setSelectedTime(time)}
-              >
-                {time}
-              </button>
-            ))}
+            {timeOptions.map((time) => {
+              const bookedNames = bookedTimeMap[time] || [];
+              const disabled = bookedNames.length > 0;
+
+              return (
+                <button
+                  key={time}
+                  disabled={disabled}
+                  style={{
+                    ...styles.timeButton,
+                    background: disabled
+                      ? "#e5e7eb"
+                      : selectedTime === time
+                      ? "#111827"
+                      : "#ffffff",
+                    color: disabled
+                      ? "#9ca3af"
+                      : selectedTime === time
+                      ? "#ffffff"
+                      : "#111827",
+                    borderColor: disabled ? "#e5e7eb" : "#d1d5db",
+                  }}
+                  onClick={() => {
+                    if (!disabled) setSelectedTime(time);
+                  }}
+                >
+                  <div>{time}</div>
+                  {disabled && (
+                    <div style={styles.bookedName}>
+                      {bookedNames.slice(0, 2).join(", ")}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           <textarea
@@ -424,8 +599,7 @@ const styles = {
     background: "#f5f5f5",
     color: "#111827",
     padding: "14px",
-    fontFamily:
-      "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   },
   header: {
     display: "flex",
@@ -434,35 +608,58 @@ const styles = {
     background: "#111827",
     color: "#ffffff",
     borderRadius: "18px",
-    padding: "16px",
+    padding: "14px",
     marginBottom: "14px",
+  },
+  headerCenter: {
+    flex: 1,
+    padding: "0 10px",
+    textAlign: "center",
   },
   title: {
     fontSize: "18px",
-    fontWeight: "800",
-    textAlign: "center",
+    fontWeight: "900",
   },
   dateText: {
-    fontSize: "15px",
-    fontWeight: "700",
-    textAlign: "center",
+    fontSize: "18px",
+    fontWeight: "900",
     marginTop: "6px",
   },
-  subText: {
-    fontSize: "12px",
-    opacity: 0.75,
-    textAlign: "center",
-    marginTop: "4px",
+  dateInput: {
+    marginTop: "10px",
+    width: "100%",
+    height: "40px",
+    borderRadius: "12px",
+    border: "1px solid rgba(255,255,255,0.35)",
+    background: "rgba(255,255,255,0.12)",
+    color: "#ffffff",
+    fontSize: "15px",
+    padding: "0 10px",
+    boxSizing: "border-box",
+  },
+  quickRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "8px",
+    marginTop: "8px",
+  },
+  quickButton: {
+    height: "34px",
+    borderRadius: "10px",
+    border: "1px solid rgba(255,255,255,0.35)",
+    background: "rgba(255,255,255,0.12)",
+    color: "#ffffff",
+    fontSize: "13px",
+    fontWeight: "800",
   },
   arrowButton: {
-    width: "44px",
-    height: "44px",
+    width: "42px",
+    height: "42px",
     borderRadius: "14px",
     border: "1px solid rgba(255,255,255,0.3)",
     background: "rgba(255,255,255,0.12)",
     color: "#ffffff",
-    fontSize: "32px",
-    lineHeight: "32px",
+    fontSize: "30px",
   },
   card: {
     background: "#ffffff",
@@ -473,7 +670,7 @@ const styles = {
   },
   cardTitle: {
     fontSize: "15px",
-    fontWeight: "800",
+    fontWeight: "900",
     marginBottom: "10px",
   },
   emptyText: {
@@ -488,7 +685,6 @@ const styles = {
   },
   scheduleItem: {
     display: "flex",
-    alignItems: "center",
     gap: "10px",
     padding: "10px",
     borderRadius: "14px",
@@ -505,12 +701,24 @@ const styles = {
   },
   scheduleName: {
     fontSize: "15px",
-    fontWeight: "800",
+    fontWeight: "900",
   },
   scheduleMeta: {
     fontSize: "13px",
     color: "#6b7280",
     marginTop: "3px",
+  },
+  typeGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: "8px",
+  },
+  typeButton: {
+    height: "44px",
+    borderRadius: "14px",
+    border: "1px solid #111827",
+    fontSize: "14px",
+    fontWeight: "900",
   },
   searchRow: {
     display: "flex",
@@ -532,7 +740,22 @@ const styles = {
     background: "#111827",
     color: "#ffffff",
     fontSize: "15px",
-    fontWeight: "800",
+    fontWeight: "900",
+  },
+  selectedChipWrap: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+    marginTop: "12px",
+  },
+  selectedChip: {
+    border: "none",
+    borderRadius: "999px",
+    background: "#111827",
+    color: "#ffffff",
+    padding: "8px 12px",
+    fontSize: "13px",
+    fontWeight: "900",
   },
   memberList: {
     marginTop: "12px",
@@ -546,6 +769,12 @@ const styles = {
     borderRadius: "16px",
     padding: "12px",
   },
+  memberTopRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "10px",
+  },
   memberName: {
     fontSize: "16px",
     fontWeight: "900",
@@ -556,61 +785,36 @@ const styles = {
     marginTop: "4px",
   },
   memberPt: {
-    fontSize: "13px",
-    fontWeight: "700",
-    marginTop: "4px",
-  },
-  selectedBox: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    background: "#f9fafb",
-    border: "1px solid #e5e7eb",
-    borderRadius: "16px",
-    padding: "12px",
-    marginBottom: "14px",
-  },
-  selectedName: {
-    fontSize: "18px",
-    fontWeight: "900",
-  },
-  ptBadge: {
-    background: "#111827",
-    color: "#ffffff",
+    background: "#f3f4f6",
     borderRadius: "999px",
-    padding: "8px 12px",
+    padding: "7px 10px",
     fontSize: "13px",
     fontWeight: "900",
+    whiteSpace: "nowrap",
   },
   memberScheduleItem: {
     display: "flex",
     justifyContent: "space-between",
+    gap: "10px",
     padding: "10px",
     borderRadius: "14px",
     background: "#f9fafb",
     border: "1px solid #e5e7eb",
   },
+  memberScheduleName: {
+    fontSize: "14px",
+    fontWeight: "900",
+  },
   memberScheduleDate: {
     fontSize: "13px",
-    fontWeight: "800",
+    color: "#6b7280",
+    marginTop: "3px",
   },
   memberScheduleDetail: {
     fontSize: "13px",
     color: "#374151",
-    fontWeight: "700",
-  },
-  typeGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: "8px",
-    marginBottom: "12px",
-  },
-  typeButton: {
-    height: "44px",
-    borderRadius: "14px",
-    border: "1px solid #111827",
-    fontSize: "15px",
-    fontWeight: "900",
+    fontWeight: "800",
+    whiteSpace: "nowrap",
   },
   timeGrid: {
     display: "grid",
@@ -619,11 +823,17 @@ const styles = {
     marginBottom: "12px",
   },
   timeButton: {
-    height: "42px",
+    minHeight: "48px",
     borderRadius: "14px",
     border: "1px solid #d1d5db",
     fontSize: "14px",
-    fontWeight: "800",
+    fontWeight: "900",
+  },
+  bookedName: {
+    fontSize: "10px",
+    fontWeight: "700",
+    marginTop: "2px",
+    lineHeight: "1.1",
   },
   textarea: {
     width: "100%",
