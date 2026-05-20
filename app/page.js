@@ -19,7 +19,7 @@ const supabase = createClient(
 최종 입력 구조:
 - 오늘운동: 운동 기록에서 선택한 부위/운동 종류 사용
 - 컨디션: 좋음 / 보통 / 나쁨
-- 체크사항: 집중력 좋음, 밸런스 좋음, 밸런스 무너짐 등
+- 체크사항: 집중력 좋음, 좌우 차이 적음, 좌우 흔들림 등
 - 총평: 폼 좋음, 폼 무너짐, 컨디션 좋음 등
 - 다음운동: 어깨, 하체, 스트레칭 먼저 어깨 등
 
@@ -5348,8 +5348,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       .replace(/폼\s*좋음/g, "폼 좋음")
       .replace(/폼\s*무너짐/g, "폼 무너짐")
       .replace(/집중력\s*좋음/g, "집중력 좋음")
-      .replace(/밸런스\s*좋음/g, "밸런스 좋음")
-      .replace(/밸런스\s*무너짐/g, "밸런스 무너짐")
+      .replace(/밸런스\s*좋음/g, "좌우 좋음")
+      .replace(/밸런스\s*무너짐/g, "좌우 흔들림")
       .replace(/전완\s*힘\s*빠짐/g, "전완 힘 빠짐")
       .trim();
   }
@@ -5425,14 +5425,14 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
     if (/어색|낯설|잘 안됨|안익|안 익/.test(text)) {
       if (exerciseName && exerciseName !== "운동") {
-        options.push(`${exerciseName}는 아직 조금 어색한데 몇번만 더하면 금방 익숙해질거에요 :)`);
+        options.push(`${exerciseName}는 아직 조금 어색한데 몇번만 더하면 금방 익숙해질거에요`);
       } else {
-        options.push("아직 조금 어색한 동작은 몇번만 더하면 금방 익숙해질거에요 :)");
+        options.push("아직 조금 어색한 동작은 몇번만 더하면 금방 익숙해질거에요");
       }
     }
 
     if (/리드|따라/.test(text)) {
-      options.push("오늘 제 리드에 맞춰 잘 따라오셨어요 :)");
+      options.push("오늘 제 리드에 맞춰 잘 따라오셨어요👍");
     }
 
     if (/수축|통증|아픔|아파|찌릿|뻐근|불편/.test(text)) {
@@ -5458,8 +5458,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     const exerciseName = guessExerciseFromKeyword(text, exerciseNames);
 
     if (/없음|특이사항\s*없|이슈\s*없/.test(text)) {
-      options.push("오늘 특별히 걸리는 부분 없이 운동 잘 됐어요👍");
-      options.push("오늘은 전체적으로 무난하게 잘 했어요 :)");
+      options.push("오늘 특별히 걸리는 부분 없이 잘 했어요👍");
+      options.push("오늘은 큰 문제 없이 잘 마무리했어요");
     }
 
     if (/수면|잠|피곤|컨디션 안좋음|컨디션 안 좋음|몸 무거움/.test(text)) {
@@ -5474,8 +5474,8 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     }
 
     if (/컨디션 좋음|컨디션 괜찮|힘 좋|운동 잘됨|운동 잘 됨/.test(text)) {
-      options.push("오늘 운동 잘 나왔어요👍");
       options.push("오늘 힘 좋았어요👍");
+      options.push("오늘 리드에 맞춰 잘 따라오셨어요👍");
     }
 
     if (/집중력 좋음|집중 좋음|집중도 좋음|집중력/.test(text)) {
@@ -5487,7 +5487,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     }
 
     if (/밸런스 무너짐|밸런스 안맞|좌우 차이|좌우 흔들/.test(text)) {
-      options.push("좌우 차이는 제가 옆에서 계속 맞춰드릴게요 :)");
+      options.push("좌우 차이는 제가 옆에서 계속 맞춰드릴게요");
     }
 
     if (/폼 좋음|자세 좋음|자세 괜찮|자세 안정|동작 좋/.test(text)) {
@@ -5496,11 +5496,11 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     }
 
     if (/폼 무너짐|자세 무너짐|자세 흔들|자세 불안/.test(text)) {
-      options.push("자세는 제가 옆에서 계속 잡아드릴게요 :)");
+      options.push("자세는 제가 옆에서 계속 잡아드릴게요");
     }
 
     if (/전완 힘 빠짐|전완|그립|손 힘|팔 힘/.test(text)) {
-      options.push("손이랑 팔에 힘 많이 들어가는 부분은 제가 계속 봐드릴게요 :)");
+      options.push("손이랑 팔에 힘 많이 들어가는 부분은 제가 계속 봐드릴게요");
     }
 
     if (/무게|중량|올림|증가|늘었|증량/.test(text)) {
@@ -5512,9 +5512,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
     if (/어색|낯설|잘 안됨|안익|안 익/.test(text)) {
       if (exerciseName && exerciseName !== "운동") {
-        options.push(`${exerciseName}는 아직 조금 어색한데 몇번만 더하면 금방 익숙해질거에요 :)`);
+        options.push(`${exerciseName}는 아직 조금 어색한데 몇번만 더하면 금방 익숙해질거에요`);
       } else {
-        options.push("아직 조금 어색한 동작은 몇번만 더하면 금방 익숙해질거에요 :)");
+        options.push("아직 조금 어색한 동작은 몇번만 더하면 금방 익숙해질거에요");
       }
     }
 
@@ -5541,20 +5541,20 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
     if (trainingType === "circuit") {
       addFeedbackSection(sections, "today-circuit", "오늘 서킷트레이닝", [
-        "오늘 서킷트레이닝 했어요 :)",
+        "오늘 서킷트레이닝 했어요",
         "오늘 서킷 돌리느라 진짜 고생하셨어요👍",
         "오늘 운동량 꽤 있었는데 끝까지 잘 해주셨어요👍",
       ]);
     } else if (exerciseListText) {
       addFeedbackSection(sections, "today-workout", "오늘 운동", [
-        `오늘 ${exerciseListText} 했어요 :)`,
-        `오늘 운동은 ${exerciseListText} 순서로 했어요 :)`,
-        `오늘 ${exerciseListText} 들어갔어요 :)`,
+        `오늘 ${exerciseListText} 했어요`,
+        `오늘은 ${exerciseListText} 순서로 운동했어요`,
+        `오늘 ${exerciseListText} 들어갔어요`,
       ]);
     } else {
       addFeedbackSection(sections, "today-workout", "오늘 운동", [
-        `오늘 ${workoutText} 운동 했어요 :)`,
-        `오늘 ${workoutText} 했어요 :)`,
+        `오늘 ${workoutText} 운동 했어요`,
+        `오늘 ${workoutText} 했어요`,
       ]);
     }
 
@@ -5576,23 +5576,23 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
     if (condition === "good") {
       addFeedbackSection(sections, "condition-good", "컨디션 좋음", [
-        "오늘 운동 잘 나왔어요👍",
         "오늘 힘 좋았어요👍",
+        "오늘 리드에 맞춰 너무 잘 따라오셨어요👍",
       ]);
     }
 
     if (condition === "bad") {
       addFeedbackSection(sections, "condition-bad", "컨디션 조절", [
-        "오늘 컨디션이 좋진 않았는데도 끝까지 잘 해주셨어요👍",
-        "오늘은 무리하지 않고 몸 상태에 맞춰서 했어요 :)",
+        "오늘 컨디션 안 좋았는데도 끝까지 잘 해주셨어요👍",
+        "오늘은 무리하지 않는 선에서 맞춰서 했어요",
       ]);
     }
 
     const nextPart = getNextWorkoutPartText(nextPlan);
     if (nextPart) {
       addFeedbackSection(sections, "next-plan", "다음 수업", [
-        `다음엔 ${nextPart} 쪽으로 해볼게요 :)`,
-        `다음시간엔 ${nextPart} 해봐요 :)`,
+        `다음엔 ${nextPart} 해봐요`,
+        `다음시간엔 ${nextPart} 해봐요`,
       ]);
     }
 
@@ -5610,7 +5610,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       .filter(Boolean);
 
     return [
-      `${memberName}님 오늘 운동 하느라 고생하셨어요 :)`,
+      `${memberName}님 오늘 운동 하느라 고생하셨어요`,
       ...chosenLines,
       "컨디션 조절 잘하시고 다음시간에 뵈요^^",
     ]
@@ -7343,7 +7343,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   <input
                     value={trainerNextPlan}
                     onChange={(e) => setTrainerNextPlan(e.target.value)}
-                    placeholder="예: 하체 보강, 중량 유지, 어깨 가동성"
+                    placeholder="예: 하체 보강, 중량 유지, 어깨 상태 확인"
                     style={styles.whiteInput}
                   />
 
@@ -9050,7 +9050,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   <textarea
                     value={workoutIssue}
                     onChange={(e) => setWorkoutIssue(e.target.value)}
-                    placeholder="예: 집중력 좋음, 밸런스 좋음, 밸런스 무너짐"
+                    placeholder="예: 집중력 좋음, 좌우 차이 적음, 좌우 흔들림"
                     style={styles.textarea}
                   />
 
