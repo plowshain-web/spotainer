@@ -1,5 +1,3 @@
-// app/mobile-schedule/page.js
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -19,15 +17,10 @@ const typeOptions = [
 
 function makeTimeOptions() {
   const result = [];
-
   for (let h = 6; h <= 22; h++) {
     result.push(`${String(h).padStart(2, "0")}:00`);
-
-    if (h !== 22) {
-      result.push(`${String(h).padStart(2, "0")}:30`);
-    }
+    if (h !== 22) result.push(`${String(h).padStart(2, "0")}:30`);
   }
-
   return result;
 }
 
@@ -37,7 +30,6 @@ function formatDate(date) {
   const y = date.getFullYear();
   const m = `${date.getMonth() + 1}`.padStart(2, "0");
   const d = `${date.getDate()}`.padStart(2, "0");
-
   return `${y}-${m}-${d}`;
 }
 
@@ -48,12 +40,7 @@ function parseLocalDate(dateText) {
 
 function formatKoreanDate(date) {
   const yoil = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()];
-
   return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 ${yoil}`;
-}
-
-function formatKoreanDateText(dateText) {
-  return formatKoreanDate(parseLocalDate(dateText));
 }
 
 function formatTime(time) {
@@ -61,18 +48,23 @@ function formatTime(time) {
   return String(time).slice(0, 5);
 }
 
-function addDays(date, amount) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + amount);
-  return next;
+function formatAmPm(time) {
+  const [h, m] = formatTime(time).split(":").map(Number);
+  const period = h < 12 ? "오전" : "오후";
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${period} ${hour}:${String(m).padStart(2, "0")}`;
 }
 
 function addOneHour(time) {
   const [h, m] = time.split(":").map(Number);
-
   const endHour = String((h + 1) % 24).padStart(2, "0");
-
   return `${endHour}:${String(m).padStart(2, "0")}`;
+}
+
+function addDays(date, amount) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + amount);
+  return next;
 }
 
 function getMemberPt(member) {
@@ -86,19 +78,29 @@ function getMemberPt(member) {
 }
 
 function getTypeLabel(type, memo) {
-  if (
-    type === "group" ||
-    type === "group_pt" ||
-    memo?.includes("그룹PT")
-  ) {
-    return "그룹PT";
-  }
-
+  if (type === "group" || type === "group_pt" || memo?.includes("그룹PT")) return "그룹PT";
   if (type === "pt") return "PT";
   if (type === "ot") return "OT";
   if (type === "consult") return "상담";
-
   return type || "-";
+}
+
+function hasSmsDone(memo) {
+  return String(memo || "").includes("문자완료");
+}
+
+function cleanMemo(memo) {
+  return String(memo || "")
+    .replace("[그룹PT]", "")
+    .replace("[문자완료]", "")
+    .trim();
+}
+
+function getStatusLabel(status) {
+  if (status === "completed") return "완료";
+  if (status === "cancelled") return "취소";
+  if (status === "noshow") return "노쇼";
+  return "예약";
 }
 
 function sendSms(phone, message) {
@@ -108,18 +110,12 @@ function sendSms(phone, message) {
   }
 
   const cleanPhone = String(phone).replace(/[^0-9]/g, "");
-  const encodedMessage = encodeURIComponent(message);
-
-  window.location.href = `sms:${cleanPhone}?body=${encodedMessage}`;
+  window.location.href = `sms:${cleanPhone}?body=${encodeURIComponent(message)}`;
 }
 
 export default function MobileSchedulePage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
-
-  const selectedDateText = useMemo(
-    () => formatDate(selectedDate),
-    [selectedDate]
-  );
+  const selectedDateText = useMemo(() => formatDate(selectedDate), [selectedDate]);
 
   const [search, setSearch] = useState("");
   const [members, setMembers] = useState([]);
@@ -128,14 +124,12 @@ export default function MobileSchedulePage() {
   const [daySchedules, setDaySchedules] = useState([]);
   const [memberSchedules, setMemberSchedules] = useState([]);
 
-  const [selectedTime, setSelectedTime] = useState("");
   const [selectedType, setSelectedType] = useState("pt");
-
+  const [selectedTime, setSelectedTime] = useState("");
   const [memo, setMemo] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-
   const [touchStartX, setTouchStartX] = useState(null);
 
   useEffect(() => {
@@ -161,19 +155,24 @@ export default function MobileSchedulePage() {
 
       if (!map[key]) {
         map[key] = {
+          ids: [],
           start_time: schedule.start_time,
+          end_time: schedule.end_time,
           type: isGroup ? "group" : schedule.type,
           memo: schedule.memo,
+          status: schedule.status || "scheduled",
           names: [],
           phones: [],
+          members: [],
+          smsDone: true,
         };
       }
 
+      map[key].ids.push(schedule.id);
       map[key].names.push(schedule.member?.name || "회원 정보 없음");
-
-      if (schedule.member?.phone) {
-        map[key].phones.push(schedule.member.phone);
-      }
+      map[key].phones.push(schedule.member?.phone || "");
+      map[key].members.push(schedule.member || null);
+      if (!hasSmsDone(schedule.memo)) map[key].smsDone = false;
     });
 
     return Object.values(map).sort((a, b) =>
@@ -183,17 +182,12 @@ export default function MobileSchedulePage() {
 
   const bookedTimeMap = useMemo(() => {
     const map = {};
-
     daySchedules.forEach((schedule) => {
+      if (schedule.status === "cancelled") return;
       const key = formatTime(schedule.start_time);
-
-      if (!map[key]) {
-        map[key] = [];
-      }
-
+      if (!map[key]) map[key] = [];
       map[key].push(schedule.member?.name || "예약 있음");
     });
-
     return map;
   }, [daySchedules]);
 
@@ -214,18 +208,10 @@ export default function MobileSchedulePage() {
       return;
     }
 
-    const activeSchedules = (data || []).filter(
-      (item) => item.status !== "cancelled"
-    );
-
-    const memberIds = [
-      ...new Set(
-        activeSchedules.map((s) => s.member_id).filter(Boolean)
-      ),
-    ];
+    const activeSchedules = (data || []).filter((item) => item.status !== "cancelled");
+    const memberIds = [...new Set(activeSchedules.map((s) => s.member_id).filter(Boolean))];
 
     let memberMap = {};
-
     if (memberIds.length > 0) {
       const { data: memberData } = await supabase
         .from("members")
@@ -250,7 +236,6 @@ export default function MobileSchedulePage() {
 
   async function searchMembers() {
     const keyword = search.trim();
-
     if (!keyword) {
       setMembers([]);
       return;
@@ -277,10 +262,7 @@ export default function MobileSchedulePage() {
     const exists = selectedMembers.some((m) => m.id === member.id);
 
     if (exists) {
-      setSelectedMembers((prev) =>
-        prev.filter((m) => m.id !== member.id)
-      );
-
+      setSelectedMembers((prev) => prev.filter((m) => m.id !== member.id));
       return;
     }
 
@@ -304,7 +286,6 @@ export default function MobileSchedulePage() {
     }
 
     const today = formatDate(new Date());
-
     const ids = selectedMembers.map((m) => m.id);
 
     const { data, error } = await supabase
@@ -322,17 +303,13 @@ export default function MobileSchedulePage() {
       return;
     }
 
-    const activeSchedules = (data || []).filter(
-      (item) => item.status !== "cancelled"
-    );
-
     setMemberSchedules(
-      activeSchedules.map((schedule) => ({
-        ...schedule,
-        member: selectedMembers.find(
-          (m) => m.id === schedule.member_id
-        ),
-      }))
+      (data || [])
+        .filter((item) => item.status !== "cancelled")
+        .map((schedule) => ({
+          ...schedule,
+          member: selectedMembers.find((m) => m.id === schedule.member_id),
+        }))
     );
   }
 
@@ -355,9 +332,7 @@ export default function MobileSchedulePage() {
       .eq("schedule_date", selectedDateText)
       .eq("start_time", selectedTime);
 
-    const activeSameTime = (sameTimeData || []).filter(
-      (item) => item.status !== "cancelled"
-    );
+    const activeSameTime = (sameTimeData || []).filter((item) => item.status !== "cancelled");
 
     if (activeSameTime.length > 0) {
       alert("이미 예약된 시간이에요.");
@@ -373,14 +348,11 @@ export default function MobileSchedulePage() {
       start_time: selectedTime,
       end_time: addOneHour(selectedTime),
       type: isGroup ? "group" : selectedType,
-      memo: isGroup
-        ? `[그룹PT] ${memo.trim()}`
-        : memo.trim() || null,
+      status: "scheduled",
+      memo: isGroup ? `[그룹PT] ${memo.trim()}` : memo.trim() || null,
     }));
 
-    const { error } = await supabase
-      .from("schedules")
-      .insert(payload);
+    const { error } = await supabase.from("schedules").insert(payload);
 
     if (error) {
       console.error(error);
@@ -390,7 +362,6 @@ export default function MobileSchedulePage() {
     }
 
     alert("일정 등록 완료");
-
     setSelectedTime("");
     setMemo("");
 
@@ -400,9 +371,44 @@ export default function MobileSchedulePage() {
     setSaving(false);
   }
 
+  async function markSmsDone(scheduleId, oldMemo) {
+    const currentMemo = String(oldMemo || "");
+    const nextMemo = hasSmsDone(currentMemo)
+      ? currentMemo
+      : `${currentMemo ? `${currentMemo} ` : ""}[문자완료]`;
+
+    await supabase
+      .from("schedules")
+      .update({ memo: nextMemo })
+      .eq("id", scheduleId);
+
+    await loadDaySchedules();
+    await loadSelectedMemberSchedules();
+  }
+
+  function makeReservationMessage(schedule, memberName) {
+    return `[스포테이너]\n\n${formatKoreanDate(selectedDate)} ${formatAmPm(
+      schedule.start_time
+    )} ~ ${formatAmPm(schedule.end_time || addOneHour(formatTime(schedule.start_time)))} ${getTypeLabel(
+      schedule.type,
+      schedule.memo
+    )} 수업 예약되어 있어요 :)\n\n오늘 컨디션이나 불편한 부위 있으면 미리 말씀해주세요.\n늦지 않게 방문 부탁드릴게요 :)`;
+  }
+
+  async function handleScheduleSms(schedule, phone, index) {
+    const memberName = schedule.names[index] || "회원";
+    const message = makeReservationMessage(schedule, memberName);
+
+    sendSms(phone, message);
+
+    const scheduleId = schedule.ids[index];
+    if (scheduleId) {
+      await markSmsDone(scheduleId, schedule.memo);
+    }
+  }
+
   function handleTypeChange(value) {
     setSelectedType(value);
-
     if (value !== "group" && selectedMembers.length > 1) {
       setSelectedMembers(selectedMembers.slice(0, 1));
     }
@@ -410,7 +416,6 @@ export default function MobileSchedulePage() {
 
   function handleDateInputChange(value) {
     if (!value) return;
-
     setSelectedDate(parseLocalDate(value));
     setSelectedTime("");
   }
@@ -422,12 +427,8 @@ export default function MobileSchedulePage() {
     const diff = endX - touchStartX;
 
     if (Math.abs(diff) > 60) {
-      if (diff < 0) {
-        setSelectedDate((prev) => addDays(prev, 1));
-      } else {
-        setSelectedDate((prev) => addDays(prev, -1));
-      }
-
+      if (diff < 0) setSelectedDate((prev) => addDays(prev, 1));
+      else setSelectedDate((prev) => addDays(prev, -1));
       setSelectedTime("");
     }
 
@@ -437,44 +438,26 @@ export default function MobileSchedulePage() {
   return (
     <main
       style={styles.page}
-      onTouchStart={(e) =>
-        setTouchStartX(e.touches[0].clientX)
-      }
+      onTouchStart={(e) => setTouchStartX(e.touches[0].clientX)}
       onTouchEnd={handleSwipeEnd}
     >
       <section style={styles.header}>
-        <button
-          style={styles.arrowButton}
-          onClick={() =>
-            setSelectedDate(addDays(selectedDate, -1))
-          }
-        >
+        <button style={styles.arrowButton} onClick={() => setSelectedDate(addDays(selectedDate, -1))}>
           ‹
         </button>
 
         <div style={styles.headerCenter}>
           <div style={styles.title}>모바일 일정등록</div>
-
-          <div style={styles.dateText}>
-            {formatKoreanDate(selectedDate)}
-          </div>
-
+          <div style={styles.dateText}>{formatKoreanDate(selectedDate)}</div>
           <input
             style={styles.dateInput}
             type="date"
             value={selectedDateText}
-            onChange={(e) =>
-              handleDateInputChange(e.target.value)
-            }
+            onChange={(e) => handleDateInputChange(e.target.value)}
           />
         </div>
 
-        <button
-          style={styles.arrowButton}
-          onClick={() =>
-            setSelectedDate(addDays(selectedDate, 1))
-          }
-        >
+        <button style={styles.arrowButton} onClick={() => setSelectedDate(addDays(selectedDate, 1))}>
           ›
         </button>
       </section>
@@ -485,70 +468,52 @@ export default function MobileSchedulePage() {
         {loading ? (
           <div style={styles.emptyText}>불러오는 중...</div>
         ) : groupedDaySchedules.length === 0 ? (
-          <div style={styles.emptyText}>
-            등록된 일정이 없어요.
-          </div>
+          <div style={styles.emptyText}>등록된 일정이 없어요.</div>
         ) : (
           <div style={styles.scheduleList}>
             {groupedDaySchedules.map((schedule, index) => (
-              <div
-                key={`${schedule.start_time}-${index}`}
-                style={styles.scheduleItem}
-              >
-                <div style={styles.scheduleTime}>
-                  {formatTime(schedule.start_time)}
+              <div key={`${schedule.start_time}-${index}`} style={styles.scheduleCard}>
+                <div style={styles.scheduleTop}>
+                  <div style={styles.scheduleTimeBig}>
+                    {formatAmPm(schedule.start_time)} ~ {formatAmPm(schedule.end_time || addOneHour(formatTime(schedule.start_time)))}
+                  </div>
+
+                  <div
+                    style={{
+                      ...styles.statusBadge,
+                      background: getStatusLabel(schedule.status) === "완료" ? "#2f5d50" : "#6b4500",
+                    }}
+                  >
+                    {getStatusLabel(schedule.status)}
+                  </div>
                 </div>
 
-                <div style={styles.scheduleInfo}>
-                  <div style={styles.scheduleName}>
-                    {schedule.names.join(", ")}
-                  </div>
+                <div style={styles.scheduleNameBig}>
+                  {getTypeLabel(schedule.type, schedule.memo)} · {schedule.names.join(", ")}
+                </div>
 
-                  <div style={styles.scheduleMeta}>
-                    {getTypeLabel(
-                      schedule.type,
-                      schedule.memo
-                    )}
+                <div style={styles.scheduleSub}>
+                  {schedule.members
+                    .filter(Boolean)
+                    .map((m) => `PT ${getMemberPt(m)}회`)
+                    .join(" / ")}
+                  {schedule.smsDone ? " · 문자 완료" : ""}
+                </div>
 
-                    {schedule.memo
-                      ? ` · ${schedule.memo
-                          .replace("[그룹PT]", "")
-                          .trim()}`
-                      : ""}
-                  </div>
+                {cleanMemo(schedule.memo) && (
+                  <div style={styles.memoBox}>{cleanMemo(schedule.memo)}</div>
+                )}
 
-                  <div style={styles.scheduleButtonRow}>
-                    {schedule.phones?.map(
-                      (phone, phoneIndex) => (
-                        <button
-                          key={`${phone}-${phoneIndex}`}
-                          style={styles.scheduleSmsButton}
-                          onClick={() => {
-                            const memberName =
-                              schedule.names[phoneIndex] ||
-                              "회원";
-
-                            const message =
-                              `${memberName}님 ` +
-                              `${formatKoreanDate(
-                                selectedDate
-                              )} ` +
-                              `${formatTime(
-                                schedule.start_time
-                              )} ` +
-                              `${getTypeLabel(
-                                schedule.type,
-                                schedule.memo
-                              )} 수업으로 예약되어 있어요 :)`;
-
-                            sendSms(phone, message);
-                          }}
-                        >
-                          문자 보내기
-                        </button>
-                      )
-                    )}
-                  </div>
+                <div style={styles.scheduleButtonRow}>
+                  {schedule.phones.map((phone, phoneIndex) => (
+                    <button
+                      key={`${phone}-${phoneIndex}`}
+                      style={styles.smsButton}
+                      onClick={() => handleScheduleSms(schedule, phone, phoneIndex)}
+                    >
+                      문자
+                    </button>
+                  ))}
                 </div>
               </div>
             ))}
@@ -558,25 +523,16 @@ export default function MobileSchedulePage() {
 
       <section style={styles.card}>
         <div style={styles.cardTitle}>수업 종류</div>
-
         <div style={styles.typeGrid}>
           {typeOptions.map((item) => (
             <button
               key={item.value}
               style={{
                 ...styles.typeButton,
-                background:
-                  selectedType === item.value
-                    ? "#111827"
-                    : "#ffffff",
-                color:
-                  selectedType === item.value
-                    ? "#ffffff"
-                    : "#111827",
+                background: selectedType === item.value ? "#111827" : "#ffffff",
+                color: selectedType === item.value ? "#ffffff" : "#111827",
               }}
-              onClick={() =>
-                handleTypeChange(item.value)
-              }
+              onClick={() => handleTypeChange(item.value)}
             >
               {item.label}
             </button>
@@ -586,10 +542,7 @@ export default function MobileSchedulePage() {
 
       <section style={styles.card}>
         <div style={styles.cardTitle}>
-          회원 검색
-          {selectedType === "group"
-            ? ` (${selectedMembers.length}/3명)`
-            : ""}
+          회원 검색{selectedType === "group" ? ` (${selectedMembers.length}/3명)` : ""}
         </div>
 
         <div style={styles.searchRow}>
@@ -599,16 +552,10 @@ export default function MobileSchedulePage() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="이름 또는 전화번호"
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                searchMembers();
-              }
+              if (e.key === "Enter") searchMembers();
             }}
           />
-
-          <button
-            style={styles.searchButton}
-            onClick={searchMembers}
-          >
+          <button style={styles.searchButton} onClick={searchMembers}>
             검색
           </button>
         </div>
@@ -616,11 +563,7 @@ export default function MobileSchedulePage() {
         {selectedMembers.length > 0 && (
           <div style={styles.selectedChipWrap}>
             {selectedMembers.map((member) => (
-              <button
-                key={member.id}
-                style={styles.selectedChip}
-                onClick={() => toggleMember(member)}
-              >
+              <button key={member.id} style={styles.selectedChip} onClick={() => toggleMember(member)}>
                 {member.name} ✕
               </button>
             ))}
@@ -630,39 +573,24 @@ export default function MobileSchedulePage() {
         {members.length > 0 && (
           <div style={styles.memberList}>
             {members.map((member) => {
-              const checked = selectedMembers.some(
-                (m) => m.id === member.id
-              );
+              const checked = selectedMembers.some((m) => m.id === member.id);
 
               return (
                 <button
                   key={member.id}
                   style={{
                     ...styles.memberItem,
-                    borderColor: checked
-                      ? "#111827"
-                      : "#e5e7eb",
-                    background: checked
-                      ? "#f3f4f6"
-                      : "#ffffff",
+                    borderColor: checked ? "#111827" : "#e5e7eb",
+                    background: checked ? "#f3f4f6" : "#ffffff",
                   }}
                   onClick={() => toggleMember(member)}
                 >
                   <div style={styles.memberTopRow}>
                     <div>
-                      <div style={styles.memberName}>
-                        {member.name}
-                      </div>
-
-                      <div style={styles.memberPhone}>
-                        {member.phone ||
-                          "전화번호 없음"}
-                      </div>
+                      <div style={styles.memberName}>{member.name}</div>
+                      <div style={styles.memberPhone}>{member.phone || "전화번호 없음"}</div>
                     </div>
-
-                    <div style={styles.memberPt}>
-                      PT {getMemberPt(member)}
-                    </div>
+                    <div style={styles.memberPt}>PT {getMemberPt(member)}</div>
                   </div>
                 </button>
               );
@@ -673,62 +601,12 @@ export default function MobileSchedulePage() {
 
       {selectedMembers.length > 0 && (
         <section style={styles.card}>
-          <div style={styles.cardTitle}>
-            선택 회원 예정 수업
-          </div>
-
-          {memberSchedules.length === 0 ? (
-            <div style={styles.emptyText}>
-              예정된 수업이 없어요.
-            </div>
-          ) : (
-            <div style={styles.scheduleList}>
-              {memberSchedules.map((schedule) => (
-                <div
-                  key={schedule.id}
-                  style={styles.memberScheduleItem}
-                >
-                  <div>
-                    <div style={styles.memberScheduleName}>
-                      {schedule.member?.name || "회원"}
-                    </div>
-
-                    <div
-                      style={styles.memberScheduleDate}
-                    >
-                      {formatKoreanDateText(
-                        schedule.schedule_date
-                      )}
-                    </div>
-                  </div>
-
-                  <div
-                    style={styles.memberScheduleDetail}
-                  >
-                    {formatTime(schedule.start_time)} ·{" "}
-                    {getTypeLabel(
-                      schedule.type,
-                      schedule.memo
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      {selectedMembers.length > 0 && (
-        <section style={styles.card}>
           <div style={styles.cardTitle}>수업 등록</div>
 
           <div style={styles.timeGrid}>
             {timeOptions.map((time) => {
-              const bookedNames =
-                bookedTimeMap[time] || [];
-
-              const disabled =
-                bookedNames.length > 0;
+              const bookedNames = bookedTimeMap[time] || [];
+              const disabled = bookedNames.length > 0;
 
               return (
                 <button
@@ -736,32 +614,15 @@ export default function MobileSchedulePage() {
                   disabled={disabled}
                   style={{
                     ...styles.timeButton,
-                    background: disabled
-                      ? "#e5e7eb"
-                      : selectedTime === time
-                      ? "#111827"
-                      : "#ffffff",
-                    color: disabled
-                      ? "#9ca3af"
-                      : selectedTime === time
-                      ? "#ffffff"
-                      : "#111827",
+                    background: disabled ? "#e5e7eb" : selectedTime === time ? "#111827" : "#ffffff",
+                    color: disabled ? "#9ca3af" : selectedTime === time ? "#ffffff" : "#111827",
                   }}
                   onClick={() => {
-                    if (!disabled) {
-                      setSelectedTime(time);
-                    }
+                    if (!disabled) setSelectedTime(time);
                   }}
                 >
                   <div>{time}</div>
-
-                  {disabled && (
-                    <div style={styles.bookedName}>
-                      {bookedNames
-                        .slice(0, 2)
-                        .join(", ")}
-                    </div>
-                  )}
+                  {disabled && <div style={styles.bookedName}>{bookedNames.slice(0, 2).join(", ")}</div>}
                 </button>
               );
             })}
@@ -774,14 +635,8 @@ export default function MobileSchedulePage() {
             placeholder="메모"
           />
 
-          <button
-            style={styles.saveButton}
-            onClick={saveSchedule}
-            disabled={saving}
-          >
-            {saving
-              ? "저장 중..."
-              : `선택 ${selectedMembers.length}명 일정 등록`}
+          <button style={styles.saveButton} onClick={saveSchedule} disabled={saving}>
+            {saving ? "저장 중..." : `선택 ${selectedMembers.length}명 일정 등록`}
           </button>
         </section>
       )}
@@ -792,11 +647,11 @@ export default function MobileSchedulePage() {
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "#f5f5f5",
+    background: "#f3f4f6",
     padding: "14px",
     color: "#111827",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   },
-
   header: {
     display: "flex",
     alignItems: "center",
@@ -807,24 +662,9 @@ const styles = {
     padding: "14px",
     marginBottom: "14px",
   },
-
-  headerCenter: {
-    flex: 1,
-    padding: "0 10px",
-    textAlign: "center",
-  },
-
-  title: {
-    fontSize: "18px",
-    fontWeight: "900",
-  },
-
-  dateText: {
-    fontSize: "18px",
-    fontWeight: "900",
-    marginTop: "6px",
-  },
-
+  headerCenter: { flex: 1, padding: "0 10px", textAlign: "center" },
+  title: { fontSize: "18px", fontWeight: "900" },
+  dateText: { fontSize: "18px", fontWeight: "900", marginTop: "6px" },
   dateInput: {
     marginTop: "10px",
     width: "100%",
@@ -832,8 +672,8 @@ const styles = {
     borderRadius: "12px",
     border: "none",
     padding: "0 10px",
+    fontSize: "15px",
   },
-
   arrowButton: {
     width: "42px",
     height: "42px",
@@ -843,84 +683,60 @@ const styles = {
     color: "#ffffff",
     fontSize: "30px",
   },
-
   card: {
     background: "#ffffff",
     borderRadius: "18px",
     padding: "14px",
     marginBottom: "14px",
   },
-
-  cardTitle: {
-    fontSize: "15px",
-    fontWeight: "900",
-    marginBottom: "10px",
+  cardTitle: { fontSize: "17px", fontWeight: "900", marginBottom: "12px" },
+  emptyText: { fontSize: "14px", color: "#6b7280" },
+  scheduleList: { display: "flex", flexDirection: "column", gap: "12px" },
+  scheduleCard: {
+    background: "#ffffff",
+    border: "1px solid #e5e7eb",
+    borderRadius: "18px",
+    padding: "14px",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
   },
-
-  emptyText: {
-    fontSize: "14px",
-    color: "#6b7280",
-  },
-
-  scheduleList: {
+  scheduleTop: {
     display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-  },
-
-  scheduleItem: {
-    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
     gap: "10px",
-    padding: "10px",
-    borderRadius: "14px",
-    background: "#f9fafb",
   },
-
-  scheduleTime: {
-    fontSize: "16px",
-    fontWeight: "900",
-    minWidth: "58px",
-  },
-
-  scheduleInfo: {
-    flex: 1,
-  },
-
-  scheduleName: {
-    fontSize: "15px",
-    fontWeight: "900",
-  },
-
-  scheduleMeta: {
-    fontSize: "13px",
-    color: "#6b7280",
-    marginTop: "3px",
-  },
-
-  scheduleButtonRow: {
-    display: "flex",
-    gap: "6px",
-    marginTop: "8px",
-    flexWrap: "wrap",
-  },
-
-  scheduleSmsButton: {
-    height: "32px",
-    padding: "0 12px",
-    borderRadius: "10px",
-    border: "none",
-    background: "#111827",
+  scheduleTimeBig: { fontSize: "17px", fontWeight: "900" },
+  statusBadge: {
     color: "#ffffff",
+    borderRadius: "999px",
+    padding: "6px 10px",
     fontSize: "12px",
+    fontWeight: "900",
+    whiteSpace: "nowrap",
+  },
+  scheduleNameBig: { fontSize: "17px", fontWeight: "900", marginTop: "14px" },
+  scheduleSub: { fontSize: "14px", color: "#6b7280", fontWeight: "800", marginTop: "6px" },
+  memoBox: {
+    marginTop: "12px",
+    background: "#f9fafb",
+    border: "1px solid #e5e7eb",
+    borderRadius: "14px",
+    padding: "10px 12px",
+    fontSize: "14px",
     fontWeight: "800",
   },
-
-  typeGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: "8px",
+  scheduleButtonRow: { display: "flex", gap: "8px", marginTop: "12px", flexWrap: "wrap" },
+  smsButton: {
+    height: "42px",
+    padding: "0 18px",
+    borderRadius: "999px",
+    border: "none",
+    background: "#111111",
+    color: "#ffffff",
+    fontSize: "14px",
+    fontWeight: "900",
   },
-
+  typeGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px" },
   typeButton: {
     height: "44px",
     borderRadius: "14px",
@@ -928,20 +744,15 @@ const styles = {
     fontSize: "14px",
     fontWeight: "900",
   },
-
-  searchRow: {
-    display: "flex",
-    gap: "8px",
-  },
-
+  searchRow: { display: "flex", gap: "8px" },
   input: {
     flex: 1,
     height: "46px",
     border: "1px solid #d1d5db",
     borderRadius: "14px",
     padding: "0 12px",
+    fontSize: "15px",
   },
-
   searchButton: {
     width: "72px",
     border: "none",
@@ -950,14 +761,7 @@ const styles = {
     color: "#ffffff",
     fontWeight: "900",
   },
-
-  selectedChipWrap: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "8px",
-    marginTop: "12px",
-  },
-
+  selectedChipWrap: { display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "12px" },
   selectedChip: {
     border: "none",
     borderRadius: "999px",
@@ -967,75 +771,25 @@ const styles = {
     fontSize: "13px",
     fontWeight: "900",
   },
-
-  memberList: {
-    marginTop: "12px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-  },
-
+  memberList: { marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px" },
   memberItem: {
     border: "2px solid #e5e7eb",
     borderRadius: "16px",
     padding: "12px",
+    textAlign: "left",
   },
-
-  memberTopRow: {
-    display: "flex",
-    justifyContent: "space-between",
-  },
-
-  memberName: {
-    fontSize: "16px",
-    fontWeight: "900",
-  },
-
-  memberPhone: {
-    fontSize: "13px",
-    color: "#6b7280",
-    marginTop: "4px",
-  },
-
+  memberTopRow: { display: "flex", justifyContent: "space-between", gap: "10px" },
+  memberName: { fontSize: "16px", fontWeight: "900" },
+  memberPhone: { fontSize: "13px", color: "#6b7280", marginTop: "4px" },
   memberPt: {
     background: "#f3f4f6",
     borderRadius: "999px",
     padding: "7px 10px",
     fontSize: "13px",
     fontWeight: "900",
+    whiteSpace: "nowrap",
   },
-
-  memberScheduleItem: {
-    display: "flex",
-    justifyContent: "space-between",
-    padding: "10px",
-    borderRadius: "14px",
-    background: "#f9fafb",
-  },
-
-  memberScheduleName: {
-    fontSize: "14px",
-    fontWeight: "900",
-  },
-
-  memberScheduleDate: {
-    fontSize: "13px",
-    color: "#6b7280",
-    marginTop: "3px",
-  },
-
-  memberScheduleDetail: {
-    fontSize: "13px",
-    fontWeight: "800",
-  },
-
-  timeGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: "8px",
-    marginBottom: "12px",
-  },
-
+  timeGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", marginBottom: "12px" },
   timeButton: {
     minHeight: "48px",
     borderRadius: "14px",
@@ -1043,12 +797,7 @@ const styles = {
     fontSize: "14px",
     fontWeight: "900",
   },
-
-  bookedName: {
-    fontSize: "10px",
-    marginTop: "2px",
-  },
-
+  bookedName: { fontSize: "10px", marginTop: "2px" },
   textarea: {
     width: "100%",
     minHeight: "72px",
@@ -1056,8 +805,8 @@ const styles = {
     borderRadius: "14px",
     padding: "12px",
     marginBottom: "12px",
+    boxSizing: "border-box",
   },
-
   saveButton: {
     width: "100%",
     height: "52px",
