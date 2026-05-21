@@ -325,11 +325,11 @@ export default function Page() {
   const [detailMode, setDetailMode] = useState(null);
 
   const [prefIntensity, setPrefIntensity] = useState("");
-  const [prefManagementStyle, setPrefManagementStyle] = useState("");
-  const [prefMotivationStyle, setPrefMotivationStyle] = useState("");
-  const [prefTouchStyle, setPrefTouchStyle] = useState("");
-  const [prefCommunicationStyle, setPrefCommunicationStyle] = useState("");
-  const [prefClassMood, setPrefClassMood] = useState("");
+const [prefManagementStyle, setPrefManagementStyle] = useState("");
+const [prefMotivationStyle, setPrefMotivationStyle] = useState("");
+const [prefTouchStyle, setPrefTouchStyle] = useState("");
+const [prefCommunicationStyle, setPrefCommunicationStyle] = useState("");
+const [prefClassMood, setPrefClassMood] = useState("");
   const [prefRequestNote, setPrefRequestNote] = useState("");
 
   const [attendanceList, setAttendanceList] = useState([]);
@@ -4255,52 +4255,77 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }
 
 
-  function fillPreferenceForm(member) {
-    setPrefIntensity(member?.preference_intensity || "");
-    setPrefManagementStyle(member?.preference_management_style || "");
-    setPrefMotivationStyle(member?.preference_motivation_style || "");
-    setPrefTouchStyle(member?.preference_touch_style || "");
-    setPrefCommunicationStyle(member?.preference_communication_style || "");
-    setPrefClassMood(member?.preference_class_mood || "");
-    setPrefRequestNote(member?.preference_request_note || "");
+  function parsePreferenceValue(value) {
+  if (!value) return [];
+
+  if (Array.isArray(value)) return value;
+
+  return String(value)
+    .split("||")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function stringifyPreferenceValue(value) {
+  if (!Array.isArray(value)) return value || null;
+  return value.length > 0 ? value.join("||") : null;
+}
+
+function togglePreferenceValue(currentValues, nextValue) {
+  if (!Array.isArray(currentValues)) currentValues = parsePreferenceValue(currentValues);
+
+  if (currentValues.includes(nextValue)) {
+    return currentValues.filter((item) => item !== nextValue);
   }
 
-  async function saveMemberPreference() {
-    if (!selectedMember) return;
+  return [...currentValues, nextValue];
+}
 
-    const payload = {
-      preference_intensity: prefIntensity || null,
-      preference_management_style: prefManagementStyle || null,
-      preference_motivation_style: prefMotivationStyle || null,
-      preference_touch_style: prefTouchStyle || null,
-      preference_communication_style: prefCommunicationStyle || null,
-      preference_class_mood: prefClassMood || null,
-      preference_request_note: prefRequestNote.trim() || null,
-      preference_updated_at: new Date().toISOString(),
-    };
+function fillPreferenceForm(member) {
+  setPrefIntensity(parsePreferenceValue(member?.preference_intensity));
+  setPrefManagementStyle(parsePreferenceValue(member?.preference_management_style));
+  setPrefMotivationStyle(parsePreferenceValue(member?.preference_motivation_style));
+  setPrefTouchStyle(parsePreferenceValue(member?.preference_touch_style));
+  setPrefCommunicationStyle(parsePreferenceValue(member?.preference_communication_style));
+  setPrefClassMood(parsePreferenceValue(member?.preference_class_mood));
+  setPrefRequestNote(member?.preference_request_note || "");
+}
 
-    const { data, error } = await supabase
-      .from("members")
-      .update(payload)
-      .eq("id", selectedMember.id)
-      .select("*")
-      .single();
+async function saveMemberPreference() {
+  if (!selectedMember) return;
 
-    if (error) {
-      alert("성향체크 저장 실패: " + error.message);
-      return;
-    }
+  const payload = {
+    preference_intensity: stringifyPreferenceValue(prefIntensity),
+    preference_management_style: stringifyPreferenceValue(prefManagementStyle),
+    preference_motivation_style: stringifyPreferenceValue(prefMotivationStyle),
+    preference_touch_style: stringifyPreferenceValue(prefTouchStyle),
+    preference_communication_style: stringifyPreferenceValue(prefCommunicationStyle),
+    preference_class_mood: stringifyPreferenceValue(prefClassMood),
+    preference_request_note: prefRequestNote.trim() || null,
+    preference_updated_at: new Date().toISOString(),
+  };
 
-    setSelectedMember(data || { ...selectedMember, ...payload });
-    setMembers((prev) =>
-      prev.map((member) =>
-        member.id === selectedMember.id ? { ...member, ...(data || payload) } : member
-      )
-    );
+  const { data, error } = await supabase
+    .from("members")
+    .update(payload)
+    .eq("id", selectedMember.id)
+    .select("*")
+    .single();
 
-    alert("성향체크가 저장되었습니다.");
+  if (error) {
+    alert("성향체크 저장 실패: " + error.message);
+    return;
   }
 
+  setSelectedMember(data || { ...selectedMember, ...payload });
+  setMembers((prev) =>
+    prev.map((member) =>
+      member.id === selectedMember.id ? { ...member, ...(data || payload) } : member
+    )
+  );
+
+  setDetailMode("menu");
+}
   async function openDetail(member, mode = "menu") {
     setSelectedMember(member);
     fillPreferenceForm(member);
@@ -8389,189 +8414,192 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
             )}
 
             {detailMode === "preference" && (
-              <>
-                <div style={styles.recordHeader}>
-                  <h3 style={styles.subTitle}>회원 성향 메모</h3>
-                  <button
-                    type="button"
-                    onClick={saveMemberPreference}
-                    style={styles.smallDark}
-                  >
-                    저장
-                  </button>
-                </div>
+  <>
+    <div style={styles.recordHeader}>
+      <h3 style={styles.subTitle}>회원 성향 메모</h3>
+      <button type="button" onClick={saveMemberPreference} style={styles.smallDark}>
+        저장
+      </button>
+    </div>
 
-                <div style={preferenceStyles.noticeBox}>
-                  <div style={preferenceStyles.noticeTitle}>회원님이 편하게 운동할 수 있게 기억해두는 메모예요.</div>
-                  <div style={preferenceStyles.noticeText}>
-                    수업 강도, 말투, 터치 범위, 대화 스타일을 기록해두면 피드백 문자도 회원 성향에 맞춰 더 자연스럽게 보낼 수 있어요.
-                  </div>
-                </div>
+    <div style={preferenceStyles.noticeBox}>
+      <div style={preferenceStyles.noticeTitle}>
+        회원님이 편하게 운동할 수 있게 기억해두는 메모예요.
+      </div>
+      <div style={preferenceStyles.noticeText}>
+        수업 강도, 말투, 터치 범위, 대화 스타일을 기록해두면 피드백 문자도 회원 성향에 맞춰 더 자연스럽게 보낼 수 있어요.
+      </div>
+    </div>
 
-                <div style={preferenceStyles.section}>
-                  <div style={preferenceStyles.label}>운동 강도 느낌</div>
-                  <div style={preferenceStyles.helper}>회원님이 부담 없이 받아들이는 운동 강도예요.</div>
-                  <div style={preferenceStyles.grid3}>
-                    {[
-                      ["strong", "조금 강하게\n도전하고 싶어요"],
-                      ["normal", "적당히\n꾸준히 하고 싶어요"],
-                      ["light", "천천히\n편하게 하고 싶어요"],
-                    ].map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setPrefIntensity(value)}
-                        style={{
-                          ...preferenceStyles.optionButton,
-                          ...(prefIntensity === value ? preferenceStyles.activeButton : {}),
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+    <div style={preferenceStyles.section}>
+      <div style={preferenceStyles.label}>트레이닝 스타일</div>
+      <div style={preferenceStyles.helper}>회원님이 운동할 때 어떤 방식이 편한지 체크해요. 중복 선택 가능해요.</div>
+      <div style={preferenceStyles.grid3}>
+        {[
+          "강하게 밀어주세요 (혼자 하면 잘 안해서 끌어주는 게 좋아요)",
+          "부드럽고 긍정적으로 해주세요 (칭찬과 격려가 좋아요)",
+          "천천히 맞춰주세요 (처음이라 부담이 적었으면 좋겠어요)",
+          "자세를 꼼꼼하게 봐주세요 (정확하게 배우고 싶어요)",
+          "힘들어도 끝까지 하게 도와주세요 (포기하지 않게 해주세요)",
+        ].map((label) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => setPrefIntensity((prev) => togglePreferenceValue(prev, label))}
+            style={{
+              ...preferenceStyles.optionButton,
+              ...(prefIntensity.includes(label) ? preferenceStyles.activeButton : {}),
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
 
-                <div style={preferenceStyles.section}>
-                  <div style={preferenceStyles.label}>관리받는 방식</div>
-                  <div style={preferenceStyles.helper}>운동, 식단, 생활습관을 어느 정도까지 챙겨드리면 좋은지 기록해요.</div>
-                  <div style={preferenceStyles.grid3}>
-                    {[
-                      ["detailed", "꼼꼼하게\n챙겨주세요"],
-                      ["normal", "필요한 부분만\n체크해주세요"],
-                      ["free", "편하게\n맡겨주세요"],
-                    ].map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setPrefManagementStyle(value)}
-                        style={{
-                          ...preferenceStyles.optionButton,
-                          ...(prefManagementStyle === value ? preferenceStyles.activeButton : {}),
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+    <div style={preferenceStyles.section}>
+      <div style={preferenceStyles.label}>관리받는 방식</div>
+      <div style={preferenceStyles.helper}>운동 외에 식단, 생활습관, 컨디션을 어느 정도 챙기면 좋을지 기록해요.</div>
+      <div style={preferenceStyles.grid3}>
+        {[
+          "꼼꼼하게 챙겨주세요 (식단, 생활습관도 같이 봐주세요)",
+          "필요한 부분만 체크해주세요 (너무 과한 관리는 부담스러워요)",
+          "운동 위주로 봐주세요 (운동에 집중하고 싶어요)",
+          "제가 물어볼 때 알려주세요 (필요할 때만 도움받고 싶어요)",
+        ].map((label) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => setPrefManagementStyle((prev) => togglePreferenceValue(prev, label))}
+            style={{
+              ...preferenceStyles.optionButton,
+              ...(prefManagementStyle.includes(label) ? preferenceStyles.activeButton : {}),
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
 
-                <div style={preferenceStyles.section}>
-                  <div style={preferenceStyles.label}>응원 방식</div>
-                  <div style={preferenceStyles.helper}>회원님이 힘들 때 어떤 말투가 편한지 남겨둬요.</div>
-                  <div style={preferenceStyles.grid3}>
-                    {[
-                      ["strong", "조금 강하게\n끌어주세요"],
-                      ["positive", "부드럽게\n응원해주세요"],
-                      ["quiet", "조용히\n옆에서 도와주세요"],
-                    ].map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setPrefMotivationStyle(value)}
-                        style={{
-                          ...preferenceStyles.optionButton,
-                          ...(prefMotivationStyle === value ? preferenceStyles.activeButton : {}),
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+    <div style={preferenceStyles.section}>
+      <div style={preferenceStyles.label}>응원 방식</div>
+      <div style={preferenceStyles.helper}>힘들 때 어떤 말투가 편한지 남겨둬요.</div>
+      <div style={preferenceStyles.grid3}>
+        {[
+          "장난 섞어서 편하게 해주세요 (친근한 분위기가 좋아요)",
+          "담백하게 말해주세요 (과한 표현은 부담스러워요)",
+          "칭찬 많이 해주세요 (잘하고 있다는 말이 힘이 돼요)",
+          "차분하게 알려주세요 (혼나거나 압박받는 느낌은 싫어요)",
+          "조금 강하게 말해도 괜찮아요 (운동할 때는 밀어줘도 좋아요)",
+        ].map((label) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => setPrefMotivationStyle((prev) => togglePreferenceValue(prev, label))}
+            style={{
+              ...preferenceStyles.optionButton,
+              ...(prefMotivationStyle.includes(label) ? preferenceStyles.activeButton : {}),
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
 
-                <div style={preferenceStyles.section}>
-                  <div style={preferenceStyles.label}>자세 잡을 때 터치</div>
-                  <div style={preferenceStyles.helper}>여성전용 수업에서 꼭 확인해두면 좋은 부분이에요.</div>
-                  <div style={preferenceStyles.grid3}>
-                    {[
-                      ["ok", "괜찮아요"],
-                      ["minimal", "꼭 필요할 때만"],
-                      ["no", "설명으로만\n해주세요"],
-                    ].map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setPrefTouchStyle(value)}
-                        style={{
-                          ...preferenceStyles.optionButton,
-                          ...(prefTouchStyle === value ? preferenceStyles.activeButton : {}),
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+    <div style={preferenceStyles.section}>
+      <div style={preferenceStyles.label}>자세 잡을 때 터치</div>
+      <div style={preferenceStyles.helper}>여성전용 수업에서 꼭 확인해두면 좋은 부분이에요.</div>
+      <div style={preferenceStyles.grid3}>
+        {[
+          "괜찮아요 (자세 잡을 때 필요한 터치는 괜찮아요)",
+          "꼭 필요할 때만 해주세요 (말로 먼저 설명해주면 좋아요)",
+          "설명으로만 해주세요 (터치 없이 알려주세요)",
+          "부위에 따라 조심해주세요 (어깨, 허리, 골반 등 민감한 부위는 조심해주세요)",
+        ].map((label) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => setPrefTouchStyle((prev) => togglePreferenceValue(prev, label))}
+            style={{
+              ...preferenceStyles.optionButton,
+              ...(prefTouchStyle.includes(label) ? preferenceStyles.activeButton : {}),
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
 
-                <div style={preferenceStyles.section}>
-                  <div style={preferenceStyles.label}>대화 스타일</div>
-                  <div style={preferenceStyles.helper}>수업 중 대화와 피드백 톤을 맞추기 위한 기록이에요.</div>
-                  <div style={preferenceStyles.grid3}>
-                    {[
-                      ["active", "편하게\n대화하면서"],
-                      ["minimal", "운동에\n집중하고 싶어요"],
-                      ["privacy", "개인 얘기는\n조심스럽게"],
-                    ].map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setPrefCommunicationStyle(value)}
-                        style={{
-                          ...preferenceStyles.optionButton,
-                          ...(prefCommunicationStyle === value ? preferenceStyles.activeButton : {}),
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+    <div style={preferenceStyles.section}>
+      <div style={preferenceStyles.label}>대화 스타일</div>
+      <div style={preferenceStyles.helper}>수업 중 대화와 피드백 톤을 맞추기 위한 기록이에요.</div>
+      <div style={preferenceStyles.grid3}>
+        {[
+          "편하게 대화하면서 하고 싶어요 (수다도 괜찮아요)",
+          "운동에 집중하고 싶어요 (말은 필요한 만큼만 좋아요)",
+          "개인 얘기는 조심스럽게 해주세요 (사적인 질문은 부담스러워요)",
+          "컨디션은 자주 물어봐주세요 (몸 상태 체크가 좋아요)",
+          "먼저 말 걸어주면 좋아요 (제가 먼저 말하는 게 어려워요)",
+        ].map((label) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => setPrefCommunicationStyle((prev) => togglePreferenceValue(prev, label))}
+            style={{
+              ...preferenceStyles.optionButton,
+              ...(prefCommunicationStyle.includes(label) ? preferenceStyles.activeButton : {}),
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
 
-                <div style={preferenceStyles.section}>
-                  <div style={preferenceStyles.label}>수업 분위기</div>
-                  <div style={preferenceStyles.helper}>밝게 갈지, 차분하게 갈지, 그날 컨디션에 맞출지 기록해요.</div>
-                  <div style={preferenceStyles.grid3}>
-                    {[
-                      ["bright", "밝고\n재밌게"],
-                      ["quiet", "차분하게"],
-                      ["mixed", "그날 컨디션에\n맞게"],
-                    ].map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setPrefClassMood(value)}
-                        style={{
-                          ...preferenceStyles.optionButton,
-                          ...(prefClassMood === value ? preferenceStyles.activeButton : {}),
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+    <div style={preferenceStyles.section}>
+      <div style={preferenceStyles.label}>수업 분위기</div>
+      <div style={preferenceStyles.helper}>밝게 갈지, 차분하게 갈지, 그날 컨디션에 맞출지 기록해요.</div>
+      <div style={preferenceStyles.grid3}>
+        {[
+          "밝고 재밌게 해주세요 (운동이 덜 부담스러웠으면 좋겠어요)",
+          "차분하게 해주세요 (조용하고 안정적인 분위기가 좋아요)",
+          "그날 컨디션에 맞춰주세요 (몸 상태에 따라 조절하고 싶어요)",
+          "운동할 땐 확실하게 해주세요 (할 땐 제대로 하고 싶어요)",
+        ].map((label) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => setPrefClassMood((prev) => togglePreferenceValue(prev, label))}
+            style={{
+              ...preferenceStyles.optionButton,
+              ...(prefClassMood.includes(label) ? preferenceStyles.activeButton : {}),
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
 
-                <div style={preferenceStyles.section}>
-                  <div style={preferenceStyles.label}>선생님께 바라는 점</div>
-                  <div style={preferenceStyles.helper}>회원님이 편하게 운동하기 위해 따로 남겨두고 싶은 내용이에요.</div>
-                  <textarea
-                    value={prefRequestNote}
-                    onChange={(e) => setPrefRequestNote(e.target.value)}
-                    placeholder="예: 설명을 조금 더 자세히 듣고 싶어요 / 조용히 운동하고 싶어요 / 힘들 때는 조금 끌어주셔도 괜찮아요"
-                    style={preferenceStyles.textarea}
-                  />
-                </div>
+    <div style={preferenceStyles.section}>
+      <div style={preferenceStyles.label}>선생님께 바라는 점</div>
+      <div style={preferenceStyles.helper}>회원님이 편하게 운동하기 위해 따로 남겨두고 싶은 내용이에요.</div>
+      <textarea
+        value={prefRequestNote}
+        onChange={(e) => setPrefRequestNote(e.target.value)}
+        placeholder="예: 설명을 조금 더 자세히 듣고 싶어요 / 조용히 운동하고 싶어요 / 힘들 때는 조금 끌어주셔도 괜찮아요"
+        style={preferenceStyles.textarea}
+      />
+    </div>
 
-                <button
-                  type="button"
-                  onClick={saveMemberPreference}
-                  style={preferenceStyles.saveButton}
-                >
-                  성향 메모 저장
-                </button>
-              </>
-            )}
+    <button type="button" onClick={saveMemberPreference} style={preferenceStyles.saveButton}>
+      성향 메모 저장
+    </button>
+  </>
+)}
 
             {detailMode === "inbody" && (
               <>
