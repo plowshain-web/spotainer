@@ -4270,6 +4270,53 @@ function stringifyPreferenceValue(value) {
   if (!Array.isArray(value)) return value || null;
   return value.length > 0 ? value.join("||") : null;
 }
+function getPreferenceTags(member) {
+  const tags = [];
+
+  const motivation = String(member?.preference_motivation_style || "");
+  const communication = String(member?.preference_communication_style || "");
+  const touch = String(member?.preference_touch_style || "");
+  const management = String(member?.preference_management_style || "");
+  const mood = String(member?.preference_class_mood || "");
+
+  if (
+    motivation.includes("장난 섞어서") ||
+    mood.includes("밝고 재밌게")
+  ) {
+    tags.push("친근형");
+  }
+
+  if (
+    motivation.includes("담백하게") ||
+    communication.includes("운동에 집중") ||
+    communication.includes("개인 얘기는 조심")
+  ) {
+    tags.push("차분형");
+  }
+
+  if (
+    touch.includes("설명으로만") ||
+    touch.includes("꼭 필요할 때만") ||
+    touch.includes("민감한 부위")
+  ) {
+    tags.push("터치주의");
+  }
+
+  if (
+    communication.includes("컨디션은 자주") ||
+    mood.includes("그날 컨디션")
+  ) {
+    tags.push("컨디션체크");
+  }
+
+  if (
+    management.includes("꼼꼼하게 챙겨")
+  ) {
+    tags.push("꼼꼼관리");
+  }
+
+  return [...new Set(tags)];
+}
 
 function togglePreferenceValue(currentValues, nextValue) {
   if (!Array.isArray(currentValues)) currentValues = parsePreferenceValue(currentValues);
@@ -8339,6 +8386,33 @@ async function saveMemberPreference() {
                     + 이용권
                   </button>
                 </div>
+                      {getPreferenceTags(selectedMember).length > 0 && (
+  <div
+    style={{
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 6,
+      marginTop: 8,
+      marginBottom: 8,
+    }}
+  >
+    {getPreferenceTags(selectedMember).map((tag) => (
+      <div
+        key={tag}
+        style={{
+          background: "#f3f4f6",
+          color: "#111",
+          padding: "6px 10px",
+          borderRadius: 999,
+          fontSize: 12,
+          fontWeight: 600,
+        }}
+      >
+        {tag}
+      </div>
+    ))}
+  </div>
+)}
                 <p style={styles.muted}>
                   {selectedMember.age ? `${selectedMember.age}세 · ` : ""}
                   {selectedMember.height ? `${selectedMember.height}cm · ` : ""}
