@@ -19,7 +19,7 @@ const supabase = createClient(
 최종 입력 구조:
 - 오늘운동: 운동 기록에서 선택한 부위/운동 종류 사용
 - 컨디션: 좋음 / 보통 / 나쁨
-- 체크사항: 집중력 좋음, 좌우 차이 적음, 좌우 흔들림 등
+- 체크사항: 열심히 운동함, 동작 자연스러움, 동작 어색함 등
 - 총평: 폼 좋음, 폼 무너짐, 컨디션 좋음 등
 - 다음운동: 어깨, 하체, 스트레칭 먼저 어깨 등
 
@@ -5347,9 +5347,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       .replace(/컨디션\s*안좋음|컨디션\s*안 좋음/g, "컨디션 안좋음")
       .replace(/폼\s*좋음/g, "폼 좋음")
       .replace(/폼\s*무너짐/g, "폼 무너짐")
-      .replace(/집중력\s*좋음/g, "집중력 좋음")
+      .replace(/집중력\s*좋음/g, "열심히 운동함")
       .replace(/밸런스\s*좋음/g, "좌우 좋음")
-      .replace(/밸런스\s*무너짐/g, "좌우 흔들림")
+      .replace(/밸런스\s*무너짐/g, "동작 어색함")
       .replace(/전완\s*힘\s*빠짐/g, "전완 힘 빠짐")
       .trim();
   }
@@ -5432,7 +5432,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     }
 
     if (/리드|따라/.test(text)) {
-      options.push("오늘 제 리드에 맞춰 잘 따라오셨어요👍");
+      options.push("오늘 무게 좀 올렸는데 끝까지 잘 해주셨어요👍");
     }
 
     if (/수축|통증|아픔|아파|찌릿|뻐근|불편/.test(text)) {
@@ -5475,11 +5475,11 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
     if (/컨디션 좋음|컨디션 괜찮|힘 좋|운동 잘됨|운동 잘 됨/.test(text)) {
       options.push("오늘 힘 좋았어요👍");
-      options.push("오늘 리드에 맞춰 잘 따라오셨어요👍");
+      options.push("오늘 마지막 세트까지 잘 버텼네요👍");
     }
 
-    if (/집중력 좋음|집중 좋음|집중도 좋음|집중력/.test(text)) {
-      options.push(`${memberName}님 오늘 집중력 완전 최고~~!👍👍`);
+    if (/열심히 운동함|집중 좋음|열심히 운동함|집중력/.test(text)) {
+      options.push(`${memberName}님 오늘 진짜 열심히 했네요👍👍`);
     }
 
     if (/밸런스 좋음|좌우 좋음|균형 좋음/.test(text)) {
@@ -5577,7 +5577,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     if (condition === "good") {
       addFeedbackSection(sections, "condition-good", "컨디션 좋음", [
         "오늘 힘 좋았어요👍",
-        "오늘 리드에 맞춰 너무 잘 따라오셨어요👍",
+        "오늘 무게 올렸는데 끝까지 잘 했네요👍",
       ]);
     }
 
@@ -7335,7 +7335,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   <input
                     value={trainerIssue}
                     onChange={(e) => setTrainerIssue(e.target.value)}
-                    placeholder="예: 허리 불편, 수면 부족, 집중력 좋음"
+                    placeholder="예: 공복운동, 수면부족, 바벨로우 어색함"
                     style={styles.whiteInput}
                   />
 
@@ -9050,7 +9050,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   <textarea
                     value={workoutIssue}
                     onChange={(e) => setWorkoutIssue(e.target.value)}
-                    placeholder="예: 집중력 좋음, 좌우 차이 적음, 좌우 흔들림"
+                    placeholder="예: 공복운동, 수면부족, 어깨 힘듦"
                     style={styles.textarea}
                   />
 
