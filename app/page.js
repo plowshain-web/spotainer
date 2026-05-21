@@ -8337,7 +8337,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                     회원 정보
                   </button>
                   <button onClick={() => setDetailMode("preference")} style={styles.menuButton}>
-                    성향 체크
+                    성향 메모
                   </button>
                   <button onClick={() => setDetailMode("pt")} style={styles.menuButton}>
                     PT 사용 기록
@@ -8391,7 +8391,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
             {detailMode === "preference" && (
               <>
                 <div style={styles.recordHeader}>
-                  <h3 style={styles.subTitle}>성향 체크</h3>
+                  <h3 style={styles.subTitle}>회원 성향 메모</h3>
                   <button
                     type="button"
                     onClick={saveMemberPreference}
@@ -8401,17 +8401,21 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   </button>
                 </div>
 
-                <p style={styles.muted}>
-                  회원이 편하게 느끼는 수업 방식과 소통 스타일을 기록해두는 공간입니다.
-                </p>
+                <div style={preferenceStyles.noticeBox}>
+                  <div style={preferenceStyles.noticeTitle}>회원님이 편하게 운동할 수 있게 기억해두는 메모예요.</div>
+                  <div style={preferenceStyles.noticeText}>
+                    수업 강도, 말투, 터치 범위, 대화 스타일을 기록해두면 피드백 문자도 회원 성향에 맞춰 더 자연스럽게 보낼 수 있어요.
+                  </div>
+                </div>
 
                 <div style={preferenceStyles.section}>
-                  <div style={preferenceStyles.label}>운동 강도</div>
+                  <div style={preferenceStyles.label}>운동 강도 느낌</div>
+                  <div style={preferenceStyles.helper}>회원님이 부담 없이 받아들이는 운동 강도예요.</div>
                   <div style={preferenceStyles.grid3}>
                     {[
-                      ["strong", "강하게"],
-                      ["normal", "적당히"],
-                      ["light", "가볍게"],
+                      ["strong", "조금 강하게\n도전하고 싶어요"],
+                      ["normal", "적당히\n꾸준히 하고 싶어요"],
+                      ["light", "천천히\n편하게 하고 싶어요"],
                     ].map(([value, label]) => (
                       <button
                         key={value}
@@ -8429,12 +8433,13 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 </div>
 
                 <div style={preferenceStyles.section}>
-                  <div style={preferenceStyles.label}>관리 스타일</div>
+                  <div style={preferenceStyles.label}>관리받는 방식</div>
+                  <div style={preferenceStyles.helper}>운동, 식단, 생활습관을 어느 정도까지 챙겨드리면 좋은지 기록해요.</div>
                   <div style={preferenceStyles.grid3}>
                     {[
-                      ["detailed", "꼼꼼하게"],
-                      ["normal", "필요할 때만"],
-                      ["free", "자유롭게"],
+                      ["detailed", "꼼꼼하게\n챙겨주세요"],
+                      ["normal", "필요한 부분만\n체크해주세요"],
+                      ["free", "편하게\n맡겨주세요"],
                     ].map(([value, label]) => (
                       <button
                         key={value}
@@ -8452,12 +8457,13 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 </div>
 
                 <div style={preferenceStyles.section}>
-                  <div style={preferenceStyles.label}>동기부여 스타일</div>
+                  <div style={preferenceStyles.label}>응원 방식</div>
+                  <div style={preferenceStyles.helper}>회원님이 힘들 때 어떤 말투가 편한지 남겨둬요.</div>
                   <div style={preferenceStyles.grid3}>
                     {[
-                      ["strong", "강하게"],
-                      ["positive", "부드럽게"],
-                      ["quiet", "조용히"],
+                      ["strong", "조금 강하게\n끌어주세요"],
+                      ["positive", "부드럽게\n응원해주세요"],
+                      ["quiet", "조용히\n옆에서 도와주세요"],
                     ].map(([value, label]) => (
                       <button
                         key={value}
@@ -8475,12 +8481,13 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 </div>
 
                 <div style={preferenceStyles.section}>
-                  <div style={preferenceStyles.label}>터치 허용 범위</div>
+                  <div style={preferenceStyles.label}>자세 잡을 때 터치</div>
+                  <div style={preferenceStyles.helper}>여성전용 수업에서 꼭 확인해두면 좋은 부분이에요.</div>
                   <div style={preferenceStyles.grid3}>
                     {[
-                      ["ok", "가능"],
-                      ["minimal", "최소한"],
-                      ["no", "설명만"],
+                      ["ok", "괜찮아요"],
+                      ["minimal", "꼭 필요할 때만"],
+                      ["no", "설명으로만\n해주세요"],
                     ].map(([value, label]) => (
                       <button
                         key={value}
@@ -8498,12 +8505,13 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 </div>
 
                 <div style={preferenceStyles.section}>
-                  <div style={preferenceStyles.label}>소통 스타일</div>
+                  <div style={preferenceStyles.label}>대화 스타일</div>
+                  <div style={preferenceStyles.helper}>수업 중 대화와 피드백 톤을 맞추기 위한 기록이에요.</div>
                   <div style={preferenceStyles.grid3}>
                     {[
-                      ["active", "대화 좋아함"],
-                      ["minimal", "운동에 집중"],
-                      ["privacy", "개인 얘기 X"],
+                      ["active", "편하게\n대화하면서"],
+                      ["minimal", "운동에\n집중하고 싶어요"],
+                      ["privacy", "개인 얘기는\n조심스럽게"],
                     ].map(([value, label]) => (
                       <button
                         key={value}
@@ -8522,11 +8530,12 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
                 <div style={preferenceStyles.section}>
                   <div style={preferenceStyles.label}>수업 분위기</div>
+                  <div style={preferenceStyles.helper}>밝게 갈지, 차분하게 갈지, 그날 컨디션에 맞출지 기록해요.</div>
                   <div style={preferenceStyles.grid3}>
                     {[
-                      ["bright", "밝게"],
-                      ["quiet", "조용하게"],
-                      ["mixed", "상황에 맞게"],
+                      ["bright", "밝고\n재밌게"],
+                      ["quiet", "차분하게"],
+                      ["mixed", "그날 컨디션에\n맞게"],
                     ].map(([value, label]) => (
                       <button
                         key={value}
@@ -8544,11 +8553,12 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 </div>
 
                 <div style={preferenceStyles.section}>
-                  <div style={preferenceStyles.label}>선생님께 요청하고 싶은 것</div>
+                  <div style={preferenceStyles.label}>선생님께 바라는 점</div>
+                  <div style={preferenceStyles.helper}>회원님이 편하게 운동하기 위해 따로 남겨두고 싶은 내용이에요.</div>
                   <textarea
                     value={prefRequestNote}
                     onChange={(e) => setPrefRequestNote(e.target.value)}
-                    placeholder="예: 수업시간 잘 지켜주세요 / 설명을 조금 더 해주세요 / 조용히 운동하고 싶어요"
+                    placeholder="예: 설명을 조금 더 자세히 듣고 싶어요 / 조용히 운동하고 싶어요 / 힘들 때는 조금 끌어주셔도 괜찮아요"
                     style={preferenceStyles.textarea}
                   />
                 </div>
@@ -8558,7 +8568,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   onClick={saveMemberPreference}
                   style={preferenceStyles.saveButton}
                 >
-                  성향 체크 저장
+                  성향 메모 저장
                 </button>
               </>
             )}
@@ -9967,18 +9977,46 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 }
 
 const preferenceStyles = {
-  section: {
-    marginTop: "18px",
+  noticeBox: {
+    marginTop: "10px",
+    marginBottom: "18px",
     padding: "16px",
-    border: "1px solid #e5e7eb",
-    borderRadius: "18px",
-    background: "#ffffff",
+    borderRadius: "20px",
+    background: "#fff7f3",
+    border: "1px solid #fed7c3",
   },
-  label: {
+  noticeTitle: {
     fontSize: "16px",
     fontWeight: 900,
-    marginBottom: "10px",
     color: "#111827",
+    marginBottom: "6px",
+  },
+  noticeText: {
+    fontSize: "14px",
+    fontWeight: 700,
+    color: "#6b4f45",
+    lineHeight: 1.55,
+  },
+  section: {
+    marginTop: "16px",
+    padding: "16px",
+    border: "1px solid #f1e5de",
+    borderRadius: "20px",
+    background: "#fffdfb",
+    boxShadow: "0 8px 18px rgba(17, 24, 39, 0.04)",
+  },
+  label: {
+    fontSize: "17px",
+    fontWeight: 900,
+    marginBottom: "4px",
+    color: "#111827",
+  },
+  helper: {
+    fontSize: "13px",
+    fontWeight: 700,
+    color: "#8a6f63",
+    lineHeight: 1.45,
+    marginBottom: "12px",
   },
   grid3: {
     display: "grid",
@@ -9986,41 +10024,46 @@ const preferenceStyles = {
     gap: "10px",
   },
   optionButton: {
-    minHeight: "54px",
-    borderRadius: "14px",
-    border: "1px solid #d1d5db",
+    minHeight: "62px",
+    borderRadius: "16px",
+    border: "1px solid #eadbd2",
     background: "#ffffff",
     color: "#111827",
     fontSize: "14px",
-    fontWeight: 800,
+    fontWeight: 850,
     padding: "10px",
+    whiteSpace: "pre-line",
+    lineHeight: 1.35,
   },
   activeButton: {
     background: "#111827",
     color: "#ffffff",
     borderColor: "#111827",
+    boxShadow: "0 10px 18px rgba(17, 24, 39, 0.16)",
   },
   textarea: {
     width: "100%",
-    minHeight: "92px",
-    border: "1px solid #d1d5db",
-    borderRadius: "14px",
-    padding: "12px",
+    minHeight: "96px",
+    border: "1px solid #eadbd2",
+    borderRadius: "16px",
+    padding: "13px",
     fontSize: "15px",
-    lineHeight: 1.5,
+    lineHeight: 1.55,
     boxSizing: "border-box",
     resize: "vertical",
+    background: "#ffffff",
   },
   saveButton: {
     width: "100%",
-    height: "54px",
+    height: "56px",
     marginTop: "18px",
     border: "none",
-    borderRadius: "16px",
+    borderRadius: "18px",
     background: "#111827",
     color: "#ffffff",
     fontSize: "17px",
     fontWeight: 900,
+    boxShadow: "0 10px 20px rgba(17, 24, 39, 0.16)",
   },
 };
 
