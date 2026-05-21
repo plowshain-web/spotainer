@@ -4324,6 +4324,7 @@ async function saveMemberPreference() {
     )
   );
 
+  alert("성향 메모가 저장되었어요.");
   setDetailMode("menu");
 }
   async function openDetail(member, mode = "menu") {
