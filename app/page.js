@@ -19,7 +19,7 @@ const supabase = createClient(
 최종 입력 구조:
 - 오늘운동: 운동 기록에서 선택한 부위/운동 종류 사용
 - 컨디션: 좋음 / 보통 / 나쁨
-- 체크사항: 열심히 운동함, 동작 자연스러움, 동작 어색함 등
+- 체크사항: 집중력 좋음, 좌우 차이 적음, 좌우 흔들림 등
 - 총평: 폼 좋음, 폼 무너짐, 컨디션 좋음 등
 - 다음운동: 어깨, 하체, 스트레칭 먼저 어깨 등
 
@@ -323,6 +323,15 @@ export default function Page() {
 
   const [selectedMember, setSelectedMember] = useState(null);
   const [detailMode, setDetailMode] = useState(null);
+
+  const [prefIntensity, setPrefIntensity] = useState("");
+  const [prefManagementStyle, setPrefManagementStyle] = useState("");
+  const [prefMotivationStyle, setPrefMotivationStyle] = useState("");
+  const [prefTouchStyle, setPrefTouchStyle] = useState("");
+  const [prefCommunicationStyle, setPrefCommunicationStyle] = useState("");
+  const [prefClassMood, setPrefClassMood] = useState("");
+  const [prefRequestNote, setPrefRequestNote] = useState("");
+
   const [attendanceList, setAttendanceList] = useState([]);
   const [ptLogList, setPtLogList] = useState([]);
 
@@ -4246,8 +4255,55 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }
 
 
+  function fillPreferenceForm(member) {
+    setPrefIntensity(member?.preference_intensity || "");
+    setPrefManagementStyle(member?.preference_management_style || "");
+    setPrefMotivationStyle(member?.preference_motivation_style || "");
+    setPrefTouchStyle(member?.preference_touch_style || "");
+    setPrefCommunicationStyle(member?.preference_communication_style || "");
+    setPrefClassMood(member?.preference_class_mood || "");
+    setPrefRequestNote(member?.preference_request_note || "");
+  }
+
+  async function saveMemberPreference() {
+    if (!selectedMember) return;
+
+    const payload = {
+      preference_intensity: prefIntensity || null,
+      preference_management_style: prefManagementStyle || null,
+      preference_motivation_style: prefMotivationStyle || null,
+      preference_touch_style: prefTouchStyle || null,
+      preference_communication_style: prefCommunicationStyle || null,
+      preference_class_mood: prefClassMood || null,
+      preference_request_note: prefRequestNote.trim() || null,
+      preference_updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from("members")
+      .update(payload)
+      .eq("id", selectedMember.id)
+      .select("*")
+      .single();
+
+    if (error) {
+      alert("성향체크 저장 실패: " + error.message);
+      return;
+    }
+
+    setSelectedMember(data || { ...selectedMember, ...payload });
+    setMembers((prev) =>
+      prev.map((member) =>
+        member.id === selectedMember.id ? { ...member, ...(data || payload) } : member
+      )
+    );
+
+    alert("성향체크가 저장되었습니다.");
+  }
+
   async function openDetail(member, mode = "menu") {
     setSelectedMember(member);
+    fillPreferenceForm(member);
     setDetailMode(mode);
     setShowAllPtModal(false);
     setShowAllAttendanceModal(false);
@@ -5347,9 +5403,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
       .replace(/컨디션\s*안좋음|컨디션\s*안 좋음/g, "컨디션 안좋음")
       .replace(/폼\s*좋음/g, "폼 좋음")
       .replace(/폼\s*무너짐/g, "폼 무너짐")
-      .replace(/집중력\s*좋음/g, "열심히 운동함")
+      .replace(/집중력\s*좋음/g, "집중력 좋음")
       .replace(/밸런스\s*좋음/g, "좌우 좋음")
-      .replace(/밸런스\s*무너짐/g, "동작 어색함")
+      .replace(/밸런스\s*무너짐/g, "좌우 흔들림")
       .replace(/전완\s*힘\s*빠짐/g, "전완 힘 빠짐")
       .trim();
   }
@@ -5432,7 +5488,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     }
 
     if (/리드|따라/.test(text)) {
-      options.push("오늘 무게 좀 올렸는데 끝까지 잘 해주셨어요👍");
+      options.push("오늘 제 리드에 맞춰 잘 따라오셨어요👍");
     }
 
     if (/수축|통증|아픔|아파|찌릿|뻐근|불편/.test(text)) {
@@ -5475,11 +5531,11 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
 
     if (/컨디션 좋음|컨디션 괜찮|힘 좋|운동 잘됨|운동 잘 됨/.test(text)) {
       options.push("오늘 힘 좋았어요👍");
-      options.push("오늘 마지막 세트까지 잘 버텼네요👍");
+      options.push("오늘 리드에 맞춰 잘 따라오셨어요👍");
     }
 
-    if (/열심히 운동함|집중 좋음|열심히 운동함|집중력/.test(text)) {
-      options.push(`${memberName}님 오늘 진짜 열심히 했네요👍👍`);
+    if (/집중력 좋음|집중 좋음|집중도 좋음|집중력/.test(text)) {
+      options.push(`${memberName}님 오늘 집중력 완전 최고~~!👍👍`);
     }
 
     if (/밸런스 좋음|좌우 좋음|균형 좋음/.test(text)) {
@@ -5577,7 +5633,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     if (condition === "good") {
       addFeedbackSection(sections, "condition-good", "컨디션 좋음", [
         "오늘 힘 좋았어요👍",
-        "오늘 무게 올렸는데 끝까지 잘 했네요👍",
+        "오늘 리드에 맞춰 너무 잘 따라오셨어요👍",
       ]);
     }
 
@@ -7335,7 +7391,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   <input
                     value={trainerIssue}
                     onChange={(e) => setTrainerIssue(e.target.value)}
-                    placeholder="예: 공복운동, 수면부족, 바벨로우 어색함"
+                    placeholder="예: 허리 불편, 수면 부족, 집중력 좋음"
                     style={styles.whiteInput}
                   />
 
@@ -8280,6 +8336,9 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   <button onClick={() => setDetailMode("info")} style={styles.menuButton}>
                     회원 정보
                   </button>
+                  <button onClick={() => setDetailMode("preference")} style={styles.menuButton}>
+                    성향 체크
+                  </button>
                   <button onClick={() => setDetailMode("pt")} style={styles.menuButton}>
                     PT 사용 기록
                   </button>
@@ -8326,6 +8385,181 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                 {renderInfoBlock("목표", selectedMember.goal)}
                 {renderInfoBlock("특이사항", selectedMember.note)}
                 {renderInfoBlock("트레이너 메모", selectedMember.memo)}
+              </>
+            )}
+
+            {detailMode === "preference" && (
+              <>
+                <div style={styles.recordHeader}>
+                  <h3 style={styles.subTitle}>성향 체크</h3>
+                  <button
+                    type="button"
+                    onClick={saveMemberPreference}
+                    style={styles.smallDark}
+                  >
+                    저장
+                  </button>
+                </div>
+
+                <p style={styles.muted}>
+                  회원이 편하게 느끼는 수업 방식과 소통 스타일을 기록해두는 공간입니다.
+                </p>
+
+                <div style={preferenceStyles.section}>
+                  <div style={preferenceStyles.label}>운동 강도</div>
+                  <div style={preferenceStyles.grid3}>
+                    {[
+                      ["strong", "강하게"],
+                      ["normal", "적당히"],
+                      ["light", "가볍게"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setPrefIntensity(value)}
+                        style={{
+                          ...preferenceStyles.optionButton,
+                          ...(prefIntensity === value ? preferenceStyles.activeButton : {}),
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={preferenceStyles.section}>
+                  <div style={preferenceStyles.label}>관리 스타일</div>
+                  <div style={preferenceStyles.grid3}>
+                    {[
+                      ["detailed", "꼼꼼하게"],
+                      ["normal", "필요할 때만"],
+                      ["free", "자유롭게"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setPrefManagementStyle(value)}
+                        style={{
+                          ...preferenceStyles.optionButton,
+                          ...(prefManagementStyle === value ? preferenceStyles.activeButton : {}),
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={preferenceStyles.section}>
+                  <div style={preferenceStyles.label}>동기부여 스타일</div>
+                  <div style={preferenceStyles.grid3}>
+                    {[
+                      ["strong", "강하게"],
+                      ["positive", "부드럽게"],
+                      ["quiet", "조용히"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setPrefMotivationStyle(value)}
+                        style={{
+                          ...preferenceStyles.optionButton,
+                          ...(prefMotivationStyle === value ? preferenceStyles.activeButton : {}),
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={preferenceStyles.section}>
+                  <div style={preferenceStyles.label}>터치 허용 범위</div>
+                  <div style={preferenceStyles.grid3}>
+                    {[
+                      ["ok", "가능"],
+                      ["minimal", "최소한"],
+                      ["no", "설명만"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setPrefTouchStyle(value)}
+                        style={{
+                          ...preferenceStyles.optionButton,
+                          ...(prefTouchStyle === value ? preferenceStyles.activeButton : {}),
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={preferenceStyles.section}>
+                  <div style={preferenceStyles.label}>소통 스타일</div>
+                  <div style={preferenceStyles.grid3}>
+                    {[
+                      ["active", "대화 좋아함"],
+                      ["minimal", "운동에 집중"],
+                      ["privacy", "개인 얘기 X"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setPrefCommunicationStyle(value)}
+                        style={{
+                          ...preferenceStyles.optionButton,
+                          ...(prefCommunicationStyle === value ? preferenceStyles.activeButton : {}),
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={preferenceStyles.section}>
+                  <div style={preferenceStyles.label}>수업 분위기</div>
+                  <div style={preferenceStyles.grid3}>
+                    {[
+                      ["bright", "밝게"],
+                      ["quiet", "조용하게"],
+                      ["mixed", "상황에 맞게"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setPrefClassMood(value)}
+                        style={{
+                          ...preferenceStyles.optionButton,
+                          ...(prefClassMood === value ? preferenceStyles.activeButton : {}),
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={preferenceStyles.section}>
+                  <div style={preferenceStyles.label}>선생님께 요청하고 싶은 것</div>
+                  <textarea
+                    value={prefRequestNote}
+                    onChange={(e) => setPrefRequestNote(e.target.value)}
+                    placeholder="예: 수업시간 잘 지켜주세요 / 설명을 조금 더 해주세요 / 조용히 운동하고 싶어요"
+                    style={preferenceStyles.textarea}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={saveMemberPreference}
+                  style={preferenceStyles.saveButton}
+                >
+                  성향 체크 저장
+                </button>
               </>
             )}
 
@@ -9050,7 +9284,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
                   <textarea
                     value={workoutIssue}
                     onChange={(e) => setWorkoutIssue(e.target.value)}
-                    placeholder="예: 공복운동, 수면부족, 어깨 힘듦"
+                    placeholder="예: 집중력 좋음, 좌우 차이 적음, 좌우 흔들림"
                     style={styles.textarea}
                   />
 
@@ -9731,6 +9965,64 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     </main>
   );
 }
+
+const preferenceStyles = {
+  section: {
+    marginTop: "18px",
+    padding: "16px",
+    border: "1px solid #e5e7eb",
+    borderRadius: "18px",
+    background: "#ffffff",
+  },
+  label: {
+    fontSize: "16px",
+    fontWeight: 900,
+    marginBottom: "10px",
+    color: "#111827",
+  },
+  grid3: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: "10px",
+  },
+  optionButton: {
+    minHeight: "54px",
+    borderRadius: "14px",
+    border: "1px solid #d1d5db",
+    background: "#ffffff",
+    color: "#111827",
+    fontSize: "14px",
+    fontWeight: 800,
+    padding: "10px",
+  },
+  activeButton: {
+    background: "#111827",
+    color: "#ffffff",
+    borderColor: "#111827",
+  },
+  textarea: {
+    width: "100%",
+    minHeight: "92px",
+    border: "1px solid #d1d5db",
+    borderRadius: "14px",
+    padding: "12px",
+    fontSize: "15px",
+    lineHeight: 1.5,
+    boxSizing: "border-box",
+    resize: "vertical",
+  },
+  saveButton: {
+    width: "100%",
+    height: "54px",
+    marginTop: "18px",
+    border: "none",
+    borderRadius: "16px",
+    background: "#111827",
+    color: "#ffffff",
+    fontSize: "17px",
+    fontWeight: 900,
+  },
+};
 
 const styles = {
   mainReturnButton: {
