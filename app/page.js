@@ -4306,57 +4306,100 @@ function getPreferenceTags(member) {
     if (!tags.includes(tag)) tags.push(tag);
   };
 
+  const hasAny = (field, keywords) =>
+    keywords.some((keyword) => hasPreference(member, field, keyword));
+
   if (
-    hasPreference(member, "preference_motivation_style", "적극적이고 강하게") ||
-    hasPreference(member, "preference_class_mood", "활기차고") ||
-    hasPreference(member, "preference_communication_style", "재미있게 대화")
+    hasAny("preference_motivation_style", ["장난", "편하게 장난", "조금 밀어", "강하게"]) ||
+    hasAny("preference_class_mood", ["밝고", "재밌", "활기"])
   ) {
     add("활발형");
   }
 
   if (
-    hasPreference(member, "preference_intensity", "가볍게 천천히") ||
-    hasPreference(member, "preference_motivation_style", "부드럽고 긍정") ||
-    hasPreference(member, "preference_motivation_style", "조용히 혼자") ||
-    hasPreference(member, "preference_communication_style", "최소한으로 대화") ||
-    hasPreference(member, "preference_communication_style", "개인적인 이야기는") ||
-    hasPreference(member, "preference_class_mood", "조용하게")
+    hasAny("preference_intensity", ["부드럽", "천천히", "부담 없이"]) ||
+    hasAny("preference_motivation_style", ["담백", "차분", "과한 리액션"]) ||
+    hasAny("preference_communication_style", ["필요한 말만", "운동에 집중", "최소한", "개인"]) ||
+    hasAny("preference_class_mood", ["차분", "편한 분위기"])
   ) {
     add("차분형");
   }
 
-  if (hasPreference(member, "preference_touch_style", "괜찮아요")) {
+  if (hasAny("preference_touch_style", ["괜찮아요"])) {
     add("터치가능");
   }
 
-  if (hasPreference(member, "preference_touch_style", "가능하지만 최소한")) {
+  if (hasAny("preference_touch_style", ["최소한", "미리 설명"])) {
     add("터치최소");
   }
 
-  if (hasPreference(member, "preference_touch_style", "조금 불편")) {
-    add("터치금지");
+  if (hasAny("preference_touch_style", ["불편", "터치 없이"])) {
+    add("터치없이");
   }
 
   if (
-    hasPreference(member, "preference_class_mood", "컨디션에 맞춰") ||
-    hasPreference(member, "preference_communication_style", "먼저 물어봐")
+    hasAny("preference_class_mood", ["컨디션", "조절"]) ||
+    hasAny("preference_communication_style", ["먼저 물어", "컨디션"])
   ) {
     add("컨디션체크");
   }
 
-  if (hasPreference(member, "preference_management_style", "세세한 관리")) {
-    add("세세관리");
+  if (hasAny("preference_management_style", ["세세", "꼼꼼", "식단", "생활습관"])) {
+    add("꼼꼼관리");
   }
 
-  if (hasPreference(member, "preference_management_style", "적당히 체크")) {
+  if (hasAny("preference_management_style", ["적당히", "필요한 부분만"])) {
     add("적당관리");
   }
 
-  if (hasPreference(member, "preference_management_style", "운동에만 집중")) {
+  if (hasAny("preference_management_style", ["운동에만", "간섭은 최소", "최소한"])) {
     add("운동집중");
   }
 
   return tags;
+}
+
+function renderPreferenceTagRow(memberOrMembers) {
+  const members = Array.isArray(memberOrMembers)
+    ? memberOrMembers.filter(Boolean)
+    : memberOrMembers
+      ? [memberOrMembers]
+      : [];
+
+  const tags = members.flatMap((member) => getPreferenceTags(member));
+  const uniqueTags = [...new Set(tags)];
+
+  if (uniqueTags.length === 0) return null;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 6,
+        marginTop: 7,
+        marginBottom: 6,
+      }}
+    >
+      {uniqueTags.map((tag) => (
+        <span
+          key={tag}
+          style={{
+            background: "#f3f4f6",
+            color: "#111827",
+            border: "1px solid #e5e7eb",
+            padding: "5px 9px",
+            borderRadius: 999,
+            fontSize: 11,
+            fontWeight: 800,
+            lineHeight: 1,
+          }}
+        >
+          {tag}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function togglePreferenceValue(currentValues, nextValue) {
@@ -6454,6 +6497,8 @@ async function saveMemberPreference() {
               <span>{member.phone || "전화번호 없음"}</span>
             </div>
 
+            {renderPreferenceTagRow(member)}
+
             <div style={styles.compactInfoRow}>
               <span>출석 {formatDate(member.latest_visit)}</span>
               <span>PT {formatDate(member.latest_pt)}</span>
@@ -7053,6 +7098,8 @@ async function saveMemberPreference() {
                         {getScheduleTypeText(schedule.type)} · {getScheduleMemberNames(schedule)}
                         {getScheduleMemberPtText(schedule) ? ` (${getScheduleMemberPtText(schedule)})` : ""}
                       </strong>
+
+                      {renderPreferenceTagRow(getScheduleMembers(schedule))}
 
                       {getReRegisterAlert(member) && (
                         <div style={styles.reRegisterInlineAlertDark}>
@@ -8431,33 +8478,7 @@ async function saveMemberPreference() {
                     + 이용권
                   </button>
                 </div>
-                      {getPreferenceTags(selectedMember).length > 0 && (
-  <div
-    style={{
-      display: "flex",
-      flexWrap: "wrap",
-      gap: 6,
-      marginTop: 8,
-      marginBottom: 8,
-    }}
-  >
-    {getPreferenceTags(selectedMember).map((tag) => (
-      <div
-        key={tag}
-        style={{
-          background: "#f3f4f6",
-          color: "#111",
-          padding: "6px 10px",
-          borderRadius: 999,
-          fontSize: 12,
-          fontWeight: 600,
-        }}
-      >
-        {tag}
-      </div>
-    ))}
-  </div>
-)}
+{renderPreferenceTagRow(selectedMember)}
                 <p style={styles.muted}>
                   {selectedMember.age ? `${selectedMember.age}세 · ` : ""}
                   {selectedMember.height ? `${selectedMember.height}cm · ` : ""}
