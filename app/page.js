@@ -4233,44 +4233,7 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }
 
 
-  const preferenceOptionGroups = {
-  intensity: [
-    "강하게 밀어주세요! (도전적이고 고강도 트레이닝 선호)",
-    "적당히 꾸준하게! (꾸준하고 부담 없는 강도)",
-    "가볍게 천천히! (부드럽고 천천히 진행)",
-    "자세 꼼꼼하게! (정확하게 배우고 싶어요)",
-    "힘들어도 끝까지! (포기하지 않게 해주세요)",
-  ],
-  management: [
-    "세세한 관리가 좋아요 (운동, 식단, 생활습관도 같이 봐주세요)",
-    "적당히 체크만 해주세요 (필요한 부분만 피드백 해주세요)",
-    "운동에만 집중하고 싶어요 (간섭은 최소한이 좋아요)",
-  ],
-  motivation: [
-    "적극적이고 강하게! (밀어붙이는 스타일 선호)",
-    "부드럽고 긍정적으로! (칭찬과 격려가 좋아요)",
-    "조용히 혼자 할게요. (필요한 가이드만 제공)",
-  ],
-  touch: [
-    "괜찮아요 (자세 잡을 때 필요한 터치는 괜찮아요)",
-    "가능하지만 최소한으로 해주세요. (필요한 경우에만 요청해주세요)",
-    "조금 불편해요. (터치 없이 설명으로만 진행해주세요)",
-  ],
-  communication: [
-    "재미있게 대화 나누면서 운동하고 싶어요. (수업 분위기가 편한 게 좋아요)",
-    "최소한으로 대화하고 싶어요. (운동에 집중하는게 좋아요)",
-    "개인적인 이야기는 나누고 싶지 않아요 (프라이버시 존중)",
-    "먼저 물어봐주면 편해요 (제가 먼저 말하는 건 어려워요)",
-  ],
-  mood: [
-    "활기차고 에너지 넘치는 분위기가 좋아요",
-    "선생님과 조용하게 수업하고 싶어요",
-    "컨디션에 맞춰 조절해주세요 (몸 상태에 따라 조절하고 싶어요)",
-    "운동할 땐 확실하게 해주세요 (할 땐 제대로 하고 싶어요)",
-  ],
-};
-
-function parsePreferenceValue(value) {
+  function parsePreferenceValue(value) {
   if (!value) return [];
 
   if (Array.isArray(value)) return value;
@@ -4281,125 +4244,56 @@ function parsePreferenceValue(value) {
     .filter(Boolean);
 }
 
-function filterPreferenceValues(values, allowedValues) {
-  const parsed = parsePreferenceValue(values);
-  return parsed.filter((item) => allowedValues.includes(item));
+function stringifyPreferenceValue(value) {
+  if (!Array.isArray(value)) return value || null;
+  return value.length > 0 ? value.join("||") : null;
 }
-
-function stringifyPreferenceValue(value, allowedValues = null) {
-  const parsed = Array.isArray(value) ? value : parsePreferenceValue(value);
-  const filtered = allowedValues
-    ? parsed.filter((item) => allowedValues.includes(item))
-    : parsed;
-
-  return filtered.length > 0 ? filtered.join("||") : null;
-}
-
-function hasPreference(member, field, keyword) {
-  return String(member?.[field] || "").includes(keyword);
-}
-
 function getPreferenceTags(member) {
   const tags = [];
 
-  const add = (tag) => {
-    if (!tags.includes(tag)) tags.push(tag);
-  };
-
-  const hasAny = (field, keywords) =>
-    keywords.some((keyword) => hasPreference(member, field, keyword));
-
-  if (
-    hasAny("preference_motivation_style", ["장난", "편하게 장난", "조금 밀어", "강하게"]) ||
-    hasAny("preference_class_mood", ["밝고", "재밌", "활기"])
-  ) {
-    add("활발형");
-  }
+  const motivation = String(member?.preference_motivation_style || "");
+  const communication = String(member?.preference_communication_style || "");
+  const touch = String(member?.preference_touch_style || "");
+  const management = String(member?.preference_management_style || "");
+  const mood = String(member?.preference_class_mood || "");
 
   if (
-    hasAny("preference_intensity", ["부드럽", "천천히", "부담 없이"]) ||
-    hasAny("preference_motivation_style", ["담백", "차분", "과한 리액션"]) ||
-    hasAny("preference_communication_style", ["필요한 말만", "운동에 집중", "최소한", "개인"]) ||
-    hasAny("preference_class_mood", ["차분", "편한 분위기"])
+    motivation.includes("장난 섞어서") ||
+    mood.includes("밝고 재밌게")
   ) {
-    add("차분형");
-  }
-
-  if (hasAny("preference_touch_style", ["괜찮아요"])) {
-    add("터치가능");
-  }
-
-  if (hasAny("preference_touch_style", ["최소한", "미리 설명"])) {
-    add("터치최소");
-  }
-
-  if (hasAny("preference_touch_style", ["불편", "터치 없이"])) {
-    add("터치없이");
+    tags.push("친근형");
   }
 
   if (
-    hasAny("preference_class_mood", ["컨디션", "조절"]) ||
-    hasAny("preference_communication_style", ["먼저 물어", "컨디션"])
+    motivation.includes("담백하게") ||
+    communication.includes("운동에 집중") ||
+    communication.includes("개인 얘기는 조심")
   ) {
-    add("컨디션체크");
+    tags.push("차분형");
   }
 
-  if (hasAny("preference_management_style", ["세세", "꼼꼼", "식단", "생활습관"])) {
-    add("꼼꼼관리");
+  if (
+    touch.includes("설명으로만") ||
+    touch.includes("꼭 필요할 때만") ||
+    touch.includes("민감한 부위")
+  ) {
+    tags.push("터치주의");
   }
 
-  if (hasAny("preference_management_style", ["적당히", "필요한 부분만"])) {
-    add("적당관리");
+  if (
+    communication.includes("컨디션은 자주") ||
+    mood.includes("그날 컨디션")
+  ) {
+    tags.push("컨디션체크");
   }
 
-  if (hasAny("preference_management_style", ["운동에만", "간섭은 최소", "최소한"])) {
-    add("운동집중");
+  if (
+    management.includes("꼼꼼하게 챙겨")
+  ) {
+    tags.push("꼼꼼관리");
   }
 
-  return tags;
-}
-
-function renderPreferenceTagRow(memberOrMembers) {
-  const members = Array.isArray(memberOrMembers)
-    ? memberOrMembers.filter(Boolean)
-    : memberOrMembers
-      ? [memberOrMembers]
-      : [];
-
-  const tags = members.flatMap((member) => getPreferenceTags(member));
-  const uniqueTags = [...new Set(tags)];
-
-  if (uniqueTags.length === 0) return null;
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 6,
-        marginTop: 7,
-        marginBottom: 6,
-      }}
-    >
-      {uniqueTags.map((tag) => (
-        <span
-          key={tag}
-          style={{
-            background: "#f3f4f6",
-            color: "#111827",
-            border: "1px solid #e5e7eb",
-            padding: "5px 9px",
-            borderRadius: 999,
-            fontSize: 11,
-            fontWeight: 800,
-            lineHeight: 1,
-          }}
-        >
-          {tag}
-        </span>
-      ))}
-    </div>
-  );
+  return [...new Set(tags)];
 }
 
 function togglePreferenceValue(currentValues, nextValue) {
@@ -4413,12 +4307,12 @@ function togglePreferenceValue(currentValues, nextValue) {
 }
 
 function fillPreferenceForm(member) {
-  setPrefIntensity(filterPreferenceValues(member?.preference_intensity, preferenceOptionGroups.intensity));
-  setPrefManagementStyle(filterPreferenceValues(member?.preference_management_style, preferenceOptionGroups.management));
-  setPrefMotivationStyle(filterPreferenceValues(member?.preference_motivation_style, preferenceOptionGroups.motivation));
-  setPrefTouchStyle(filterPreferenceValues(member?.preference_touch_style, preferenceOptionGroups.touch));
-  setPrefCommunicationStyle(filterPreferenceValues(member?.preference_communication_style, preferenceOptionGroups.communication));
-  setPrefClassMood(filterPreferenceValues(member?.preference_class_mood, preferenceOptionGroups.mood));
+  setPrefIntensity(parsePreferenceValue(member?.preference_intensity));
+  setPrefManagementStyle(parsePreferenceValue(member?.preference_management_style));
+  setPrefMotivationStyle(parsePreferenceValue(member?.preference_motivation_style));
+  setPrefTouchStyle(parsePreferenceValue(member?.preference_touch_style));
+  setPrefCommunicationStyle(parsePreferenceValue(member?.preference_communication_style));
+  setPrefClassMood(parsePreferenceValue(member?.preference_class_mood));
   setPrefRequestNote(member?.preference_request_note || "");
 }
 
@@ -4426,12 +4320,12 @@ async function saveMemberPreference() {
   if (!selectedMember) return;
 
   const payload = {
-    preference_intensity: stringifyPreferenceValue(prefIntensity, preferenceOptionGroups.intensity),
-    preference_management_style: stringifyPreferenceValue(prefManagementStyle, preferenceOptionGroups.management),
-    preference_motivation_style: stringifyPreferenceValue(prefMotivationStyle, preferenceOptionGroups.motivation),
-    preference_touch_style: stringifyPreferenceValue(prefTouchStyle, preferenceOptionGroups.touch),
-    preference_communication_style: stringifyPreferenceValue(prefCommunicationStyle, preferenceOptionGroups.communication),
-    preference_class_mood: stringifyPreferenceValue(prefClassMood, preferenceOptionGroups.mood),
+    preference_intensity: stringifyPreferenceValue(prefIntensity),
+    preference_management_style: stringifyPreferenceValue(prefManagementStyle),
+    preference_motivation_style: stringifyPreferenceValue(prefMotivationStyle),
+    preference_touch_style: stringifyPreferenceValue(prefTouchStyle),
+    preference_communication_style: stringifyPreferenceValue(prefCommunicationStyle),
+    preference_class_mood: stringifyPreferenceValue(prefClassMood),
     preference_request_note: prefRequestNote.trim() || null,
     preference_updated_at: new Date().toISOString(),
   };
@@ -4448,20 +4342,16 @@ async function saveMemberPreference() {
     return;
   }
 
-  const nextMember = data || { ...selectedMember, ...payload };
-
-  setSelectedMember(nextMember);
-
+  setSelectedMember(data || { ...selectedMember, ...payload });
   setMembers((prev) =>
     prev.map((member) =>
-      member.id === selectedMember.id ? { ...member, ...nextMember } : member
+      member.id === selectedMember.id ? { ...member, ...(data || payload) } : member
     )
   );
 
   alert("성향 메모가 저장되었어요.");
   setDetailMode("menu");
 }
-
   async function openDetail(member, mode = "menu") {
     setSelectedMember(member);
     fillPreferenceForm(member);
@@ -6497,8 +6387,6 @@ async function saveMemberPreference() {
               <span>{member.phone || "전화번호 없음"}</span>
             </div>
 
-            {renderPreferenceTagRow(member)}
-
             <div style={styles.compactInfoRow}>
               <span>출석 {formatDate(member.latest_visit)}</span>
               <span>PT {formatDate(member.latest_pt)}</span>
@@ -7098,8 +6986,6 @@ async function saveMemberPreference() {
                         {getScheduleTypeText(schedule.type)} · {getScheduleMemberNames(schedule)}
                         {getScheduleMemberPtText(schedule) ? ` (${getScheduleMemberPtText(schedule)})` : ""}
                       </strong>
-
-                      {renderPreferenceTagRow(getScheduleMembers(schedule))}
 
                       {getReRegisterAlert(member) && (
                         <div style={styles.reRegisterInlineAlertDark}>
@@ -8478,7 +8364,33 @@ async function saveMemberPreference() {
                     + 이용권
                   </button>
                 </div>
-{renderPreferenceTagRow(selectedMember)}
+                      {getPreferenceTags(selectedMember).length > 0 && (
+  <div
+    style={{
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 6,
+      marginTop: 8,
+      marginBottom: 8,
+    }}
+  >
+    {getPreferenceTags(selectedMember).map((tag) => (
+      <div
+        key={tag}
+        style={{
+          background: "#f3f4f6",
+          color: "#111",
+          padding: "6px 10px",
+          borderRadius: 999,
+          fontSize: 12,
+          fontWeight: 600,
+        }}
+      >
+        {tag}
+      </div>
+    ))}
+  </div>
+)}
                 <p style={styles.muted}>
                   {selectedMember.age ? `${selectedMember.age}세 · ` : ""}
                   {selectedMember.height ? `${selectedMember.height}cm · ` : ""}
@@ -8504,6 +8416,29 @@ async function saveMemberPreference() {
                   </button>
                   <button onClick={() => setDetailMode("preference")} style={styles.menuButton}>
                     성향 메모
+                  </button>
+                  <button
+                    type="button"
+                    style={styles.menuButton}
+                    onClick={() => {
+                      if (!selectedMember?.phone) {
+                        alert("회원 전화번호가 없어요.");
+                        return;
+                      }
+
+                      const link = `${window.location.origin}/preference/${selectedMember.id}`;
+                      const message = `안녕하세요 스포테이너 피트니스 팀장 김선수입니다😊
+
+회원님의 운동 스타일과 목표를 이해하고 보다 효율적인 수업 방향을 설계하기 위해 간단한 체크리스트 작성 부탁드려요🙂‍↕️
+
+작성해주신 내용은 회원님 운동 스타일과 성향을 파악하고 앞으로 수업 방향을 잡는 데 도움이 됩니다 :)
+
+${link}`;
+                      const phone = String(selectedMember.phone).replace(/[^0-9]/g, "");
+                      window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
+                    }}
+                  >
+                    성향체크 문자
                   </button>
                   <button onClick={() => setDetailMode("pt")} style={styles.menuButton}>
                     PT 사용 기록
