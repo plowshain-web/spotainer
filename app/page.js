@@ -2500,6 +2500,17 @@ const [workoutExercises, setWorkoutExercises] = useState([
     return scheduleMembers.map((member) => `${member.name} PT ${member.pt_remaining || 0}회`).join(" · ");
   }
 
+
+  function getSchedulePreferenceTags(schedule) {
+    const tagSet = new Set();
+
+    getScheduleMembers(schedule).forEach((member) => {
+      getPreferenceTags(member).forEach((tag) => tagSet.add(tag));
+    });
+
+    return [...tagSet];
+  }
+
   async function scheduleCheckAttendance(schedule) {
     const member = getScheduleMember(schedule);
     if (!member) return alert("연결된 회원 정보를 찾을 수 없습니다.");
@@ -6440,6 +6451,26 @@ async function saveMemberPreference() {
               <span>{member.phone || "전화번호 없음"}</span>
             </div>
 
+            {getPreferenceTags(member).length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                {getPreferenceTags(member).map((tag) => (
+                  <span
+                    key={tag}
+                    style={{
+                      background: "#f3f4f6",
+                      color: "#111",
+                      padding: "5px 9px",
+                      borderRadius: 999,
+                      fontSize: 11,
+                      fontWeight: 800,
+                    }}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
             <div style={styles.compactInfoRow}>
               <span>출석 {formatDate(member.latest_visit)}</span>
               <span>PT {formatDate(member.latest_pt)}</span>
@@ -7039,6 +7070,27 @@ async function saveMemberPreference() {
                         {getScheduleTypeText(schedule.type)} · {getScheduleMemberNames(schedule)}
                         {getScheduleMemberPtText(schedule) ? ` (${getScheduleMemberPtText(schedule)})` : ""}
                       </strong>
+
+                      {getSchedulePreferenceTags(schedule).length > 0 && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                          {getSchedulePreferenceTags(schedule).map((tag) => (
+                            <span
+                              key={tag}
+                              style={{
+                                background: "rgba(255,255,255,0.14)",
+                                color: "#f9fafb",
+                                border: "1px solid rgba(255,255,255,0.18)",
+                                padding: "4px 8px",
+                                borderRadius: 999,
+                                fontSize: 11,
+                                fontWeight: 800,
+                              }}
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
                       {getReRegisterAlert(member) && (
                         <div style={styles.reRegisterInlineAlertDark}>
@@ -8680,7 +8732,7 @@ ${link}`;
         {[
           "밝고 편한 분위기가 좋아요",
           "차분하게 운동하는 분위기가 좋아요",
-          "컨디션에 맞춰 조절해주세요",
+          "컨디션에 맞춰 조절해주시면 좋아요",
         ].map((label) => (
           <button
             key={label}
