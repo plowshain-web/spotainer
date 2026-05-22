@@ -302,12 +302,11 @@ export default function Page() {
   const [selectedMember, setSelectedMember] = useState(null);
   const [detailMode, setDetailMode] = useState(null);
 
-  const [prefIntensity, setPrefIntensity] = useState("");
-const [prefManagementStyle, setPrefManagementStyle] = useState("");
-const [prefMotivationStyle, setPrefMotivationStyle] = useState("");
-const [prefTouchStyle, setPrefTouchStyle] = useState("");
-const [prefCommunicationStyle, setPrefCommunicationStyle] = useState("");
-const [prefClassMood, setPrefClassMood] = useState("");
+  const [prefIntensity, setPrefIntensity] = useState([]);
+const [prefManagementStyle, setPrefManagementStyle] = useState([]);
+const [prefTouchStyle, setPrefTouchStyle] = useState([]);
+const [prefCommunicationStyle, setPrefCommunicationStyle] = useState([]);
+const [prefClassMood, setPrefClassMood] = useState([]);
   const [prefRequestNote, setPrefRequestNote] = useState("");
 
   const [attendanceList, setAttendanceList] = useState([]);
@@ -4252,103 +4251,64 @@ function getPreferenceTags(member) {
   const tags = [];
 
   const intensity = String(member?.preference_intensity || "");
-  const motivation = String(member?.preference_motivation_style || "");
   const communication = String(member?.preference_communication_style || "");
   const touch = String(member?.preference_touch_style || "");
   const management = String(member?.preference_management_style || "");
   const mood = String(member?.preference_class_mood || "");
 
-  const allText = [
-    intensity,
-    motivation,
-    communication,
-    touch,
-    management,
-    mood,
-  ].join(" ");
+  const allText = [intensity, communication, touch, management, mood].join(" ");
 
-  // 밝고 편한 분위기 / 대화 선호
+  // 운동 강도/리드 방식
+  if (allText.includes("강하게") || allText.includes("확실하게")) {
+    tags.push("강도선호");
+  }
+
+  // 전체 분위기/대화 성향
   if (
-    allText.includes("편한 분위기") ||
     allText.includes("밝고 편") ||
-    allText.includes("밝고 재밌") ||
-    allText.includes("재미있게") ||
+    allText.includes("편한 분위기") ||
     allText.includes("가볍게 대화")
   ) {
     tags.push("활발형");
   }
 
-  // 담백하고 조용한 수업 선호
   if (
-    allText.includes("담백하게") ||
     allText.includes("차분하게") ||
     allText.includes("운동에 집중") ||
-    allText.includes("필요한 설명") ||
-    allText.includes("필요한 말만") ||
-    allText.includes("과한 리액션")
+    allText.includes("필요한 설명")
   ) {
     tags.push("차분형");
   }
 
-  // 터치는 문제가 없는 경우는 굳이 표시하지 않음.
-  // 운영상 주의가 필요한 경우만 태그로 표시.
-  if (
-    touch.includes("가능하지만 최소한") ||
-    touch.includes("최소한으로")
-  ) {
+  if (allText.includes("먼저 물어")) {
+    tags.push("먼저체크");
+  }
+
+  // 터치는 괜찮은 경우는 표시하지 않고 주의가 필요한 경우만 표시
+  if (touch.includes("최소한") || touch.includes("미리 설명")) {
     tags.push("터치최소");
   }
 
-  if (
-    touch.includes("조금 불편") ||
-    touch.includes("터치 없이") ||
-    touch.includes("설명으로만")
-  ) {
+  if (touch.includes("불편") || touch.includes("터치 없이")) {
     tags.push("터치금지");
   }
 
-  // 컨디션 확인을 먼저 해주면 좋은 타입
-  if (
-    allText.includes("컨디션에 맞춰") ||
-    allText.includes("상황(컨디션)") ||
-    allText.includes("먼저 물어") ||
-    allText.includes("먼저 말")
-  ) {
-    tags.push("컨디션체크");
-  }
-
   // 관리 스타일
-  if (
-    management.includes("꼼꼼하게") ||
-    management.includes("세세하게") ||
-    management.includes("식단") ||
-    management.includes("생활습관")
-  ) {
+  if (management.includes("꼼꼼") || management.includes("식단") || management.includes("생활습관")) {
     tags.push("꼼꼼관리");
   }
 
-  if (
-    management.includes("적당히") ||
-    management.includes("필요한 부분만")
-  ) {
+  if (management.includes("적당히") || management.includes("필요한 부분")) {
     tags.push("적당관리");
   }
 
-  if (
-    management.includes("운동에만 집중") ||
-    communication.includes("운동에 집중") ||
-    communication.includes("필요한 설명 위주")
-  ) {
+  if (management.includes("운동에만 집중") || management.includes("간섭")) {
     tags.push("운동집중");
   }
 
-  // 강도 선호
-  if (
-    intensity.includes("강하게") ||
-    motivation.includes("밀어줘도") ||
-    motivation.includes("끌어주는")
-  ) {
-    tags.push("강도선호");
+  // 컨디션 기반 수업 조절
+  if (mood.includes("컨디션") || mood.includes("조절")) {
+    tags.push("컨디션체크");
   }
 
   return [...new Set(tags)];
@@ -4365,11 +4325,6 @@ function getAllowedPreferenceValues(key) {
       "꼼꼼하게 관리해주세요 (식단, 생활습관도 같이 체크받고 싶어요)",
       "적당히 체크만 해주세요 (필요한 부분만 편하게 관리받고 싶어요)",
       "운동에만 집중하고 싶어요 (간섭은 최소한이 좋아요)",
-    ],
-    preference_motivation_style: [
-      "편한 분위기가 좋아요 (너무 딱딱한 분위기는 부담스러워요)",
-      "담백하게 알려주세요 (과한 리액션은 부담스러워요)",
-      "운동할 땐 조금 밀어줘도 괜찮아요 (힘들어도 끌어주는 스타일 좋아요)",
     ],
     preference_touch_style: [
       "괜찮아요 (자세 잡을 때 필요한 터치는 괜찮아요)",
@@ -4408,7 +4363,6 @@ function fillPreferenceForm(member) {
 
   setPrefIntensity(onlyCurrentOptions("preference_intensity", member?.preference_intensity));
   setPrefManagementStyle(onlyCurrentOptions("preference_management_style", member?.preference_management_style));
-  setPrefMotivationStyle(onlyCurrentOptions("preference_motivation_style", member?.preference_motivation_style));
   setPrefTouchStyle(onlyCurrentOptions("preference_touch_style", member?.preference_touch_style));
   setPrefCommunicationStyle(onlyCurrentOptions("preference_communication_style", member?.preference_communication_style));
   setPrefClassMood(onlyCurrentOptions("preference_class_mood", member?.preference_class_mood));
@@ -4421,7 +4375,7 @@ async function saveMemberPreference() {
   const payload = {
     preference_intensity: stringifyPreferenceValue(prefIntensity),
     preference_management_style: stringifyPreferenceValue(prefManagementStyle),
-    preference_motivation_style: stringifyPreferenceValue(prefMotivationStyle),
+    preference_motivation_style: null,
     preference_touch_style: stringifyPreferenceValue(prefTouchStyle),
     preference_communication_style: stringifyPreferenceValue(prefCommunicationStyle),
     preference_class_mood: stringifyPreferenceValue(prefClassMood),
@@ -8663,30 +8617,6 @@ ${link}`;
             style={{
               ...preferenceStyles.optionButton,
               ...(prefManagementStyle.includes(label) ? preferenceStyles.activeButton : {}),
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-    </div>
-
-    <div style={preferenceStyles.section}>
-      <div style={preferenceStyles.label}>응원 스타일</div>
-      <div style={preferenceStyles.helper}>운동 중 어떤 말투와 분위기가 편한지 체크해요.</div>
-      <div style={preferenceStyles.grid3}>
-        {[
-          "편한 분위기가 좋아요 (너무 딱딱한 분위기는 부담스러워요)",
-          "담백하게 알려주세요 (과한 리액션은 부담스러워요)",
-          "운동할 땐 조금 밀어줘도 괜찮아요 (힘들어도 끌어주는 스타일 좋아요)",
-        ].map((label) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => setPrefMotivationStyle((prev) => togglePreferenceValue(prev, label))}
-            style={{
-              ...preferenceStyles.optionButton,
-              ...(prefMotivationStyle.includes(label) ? preferenceStyles.activeButton : {}),
             }}
           >
             {label}
