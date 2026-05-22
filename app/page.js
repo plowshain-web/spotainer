@@ -1158,8 +1158,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
             )}
           </div>
 
-          {renderSchedulePreferenceTags(schedule)}
-
           {schedule.memo && (
             <p style={styles.scheduleCheckMemoCompact}>{schedule.memo}</p>
           )}
@@ -4235,7 +4233,44 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
   }
 
 
-  function parsePreferenceValue(value) {
+  const preferenceOptionGroups = {
+  intensity: [
+    "강하게 밀어주세요! (도전적이고 고강도 트레이닝 선호)",
+    "적당히 꾸준하게! (꾸준하고 부담 없는 강도)",
+    "가볍게 천천히! (부드럽고 천천히 진행)",
+    "자세 꼼꼼하게! (정확하게 배우고 싶어요)",
+    "힘들어도 끝까지! (포기하지 않게 해주세요)",
+  ],
+  management: [
+    "세세한 관리가 좋아요 (운동, 식단, 생활습관도 같이 봐주세요)",
+    "적당히 체크만 해주세요 (필요한 부분만 피드백 해주세요)",
+    "운동에만 집중하고 싶어요 (간섭은 최소한이 좋아요)",
+  ],
+  motivation: [
+    "적극적이고 강하게! (밀어붙이는 스타일 선호)",
+    "부드럽고 긍정적으로! (칭찬과 격려가 좋아요)",
+    "조용히 혼자 할게요. (필요한 가이드만 제공)",
+  ],
+  touch: [
+    "괜찮아요 (자세 잡을 때 필요한 터치는 괜찮아요)",
+    "가능하지만 최소한으로 해주세요. (필요한 경우에만 요청해주세요)",
+    "조금 불편해요. (터치 없이 설명으로만 진행해주세요)",
+  ],
+  communication: [
+    "재미있게 대화 나누면서 운동하고 싶어요. (수업 분위기가 편한 게 좋아요)",
+    "최소한으로 대화하고 싶어요. (운동에 집중하는게 좋아요)",
+    "개인적인 이야기는 나누고 싶지 않아요 (프라이버시 존중)",
+    "먼저 물어봐주면 편해요 (제가 먼저 말하는 건 어려워요)",
+  ],
+  mood: [
+    "활기차고 에너지 넘치는 분위기가 좋아요",
+    "선생님과 조용하게 수업하고 싶어요",
+    "컨디션에 맞춰 조절해주세요 (몸 상태에 따라 조절하고 싶어요)",
+    "운동할 땐 확실하게 해주세요 (할 땐 제대로 하고 싶어요)",
+  ],
+};
+
+function parsePreferenceValue(value) {
   if (!value) return [];
 
   if (Array.isArray(value)) return value;
@@ -4246,146 +4281,82 @@ ${member.name || "회원"}님, 수업 잘 따라오고 계세요 😊
     .filter(Boolean);
 }
 
-function stringifyPreferenceValue(value) {
-  if (!Array.isArray(value)) return value || null;
-  return value.length > 0 ? value.join("||") : null;
+function filterPreferenceValues(values, allowedValues) {
+  const parsed = parsePreferenceValue(values);
+  return parsed.filter((item) => allowedValues.includes(item));
 }
+
+function stringifyPreferenceValue(value, allowedValues = null) {
+  const parsed = Array.isArray(value) ? value : parsePreferenceValue(value);
+  const filtered = allowedValues
+    ? parsed.filter((item) => allowedValues.includes(item))
+    : parsed;
+
+  return filtered.length > 0 ? filtered.join("||") : null;
+}
+
+function hasPreference(member, field, keyword) {
+  return String(member?.[field] || "").includes(keyword);
+}
+
 function getPreferenceTags(member) {
   const tags = [];
 
-  const intensity = String(member?.preference_intensity || "");
-  const management = String(member?.preference_management_style || "");
-  const motivation = String(member?.preference_motivation_style || "");
-  const touch = String(member?.preference_touch_style || "");
-  const communication = String(member?.preference_communication_style || "");
-  const mood = String(member?.preference_class_mood || "");
-  const all = [intensity, management, motivation, touch, communication, mood].join(" || ");
+  const add = (tag) => {
+    if (!tags.includes(tag)) tags.push(tag);
+  };
 
   if (
-    all.includes("편하게 장난") ||
-    all.includes("밝고 재밌") ||
-    all.includes("장난")
+    hasPreference(member, "preference_motivation_style", "적극적이고 강하게") ||
+    hasPreference(member, "preference_class_mood", "활기차고") ||
+    hasPreference(member, "preference_communication_style", "재미있게 대화")
   ) {
-    tags.push("활발형");
+    add("활발형");
   }
 
   if (
-    all.includes("담백하게") ||
-    all.includes("차분") ||
-    all.includes("과한 리액션") ||
-    all.includes("필요한 말만") ||
-    all.includes("운동에 집중")
+    hasPreference(member, "preference_intensity", "가볍게 천천히") ||
+    hasPreference(member, "preference_motivation_style", "부드럽고 긍정") ||
+    hasPreference(member, "preference_motivation_style", "조용히 혼자") ||
+    hasPreference(member, "preference_communication_style", "최소한으로 대화") ||
+    hasPreference(member, "preference_communication_style", "개인적인 이야기는") ||
+    hasPreference(member, "preference_class_mood", "조용하게")
   ) {
-    tags.push("차분형");
+    add("차분형");
+  }
+
+  if (hasPreference(member, "preference_touch_style", "괜찮아요")) {
+    add("터치가능");
+  }
+
+  if (hasPreference(member, "preference_touch_style", "가능하지만 최소한")) {
+    add("터치최소");
+  }
+
+  if (hasPreference(member, "preference_touch_style", "조금 불편")) {
+    add("터치금지");
   }
 
   if (
-    all.includes("세세하게 관리") ||
-    all.includes("식단, 생활습관")
+    hasPreference(member, "preference_class_mood", "컨디션에 맞춰") ||
+    hasPreference(member, "preference_communication_style", "먼저 물어봐")
   ) {
-    tags.push("세세관리");
+    add("컨디션체크");
   }
 
-  if (
-    all.includes("적당히 체크") ||
-    all.includes("필요한 부분만")
-  ) {
-    tags.push("적당관리");
+  if (hasPreference(member, "preference_management_style", "세세한 관리")) {
+    add("세세관리");
   }
 
-  if (
-    all.includes("운동에만 집중") ||
-    all.includes("간섭은 최소")
-  ) {
-    tags.push("운동집중");
+  if (hasPreference(member, "preference_management_style", "적당히 체크")) {
+    add("적당관리");
   }
 
-  if (
-    all.includes("터치 없이") ||
-    all.includes("조금 불편")
-  ) {
-    tags.push("터치금지");
-  } else if (
-    all.includes("최소한") ||
-    all.includes("미리 설명")
-  ) {
-    tags.push("터치최소");
+  if (hasPreference(member, "preference_management_style", "운동에만 집중")) {
+    add("운동집중");
   }
 
-  if (
-    all.includes("컨디션") ||
-    all.includes("먼저 물어")
-  ) {
-    tags.push("컨디션체크");
-  }
-
-  return [...new Set(tags)];
-}
-
-function renderPreferenceTags(member, compact = false) {
-  const tags = getPreferenceTags(member);
-  if (tags.length === 0) return null;
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: compact ? 4 : 6,
-        marginTop: compact ? 6 : 8,
-        marginBottom: compact ? 4 : 8,
-      }}
-    >
-      {tags.slice(0, compact ? 4 : 6).map((tag) => (
-        <span
-          key={tag}
-          style={{
-            background: tag.includes("터치") ? "#fff7ed" : tag === "활발형" ? "#fef3c7" : "#f3f4f6",
-            color: tag.includes("터치") ? "#9a3412" : "#111827",
-            border: tag.includes("터치") ? "1px solid #fed7aa" : "1px solid #e5e7eb",
-            padding: compact ? "4px 7px" : "6px 10px",
-            borderRadius: 999,
-            fontSize: compact ? 11 : 12,
-            fontWeight: 700,
-            lineHeight: 1,
-          }}
-        >
-          {tag}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function renderSchedulePreferenceTags(schedule) {
-  const scheduleMembers = getScheduleMembers(schedule);
-  const tags = [
-    ...new Set(scheduleMembers.flatMap((member) => getPreferenceTags(member)))
-  ];
-
-  if (tags.length === 0) return null;
-
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
-      {tags.slice(0, 5).map((tag) => (
-        <span
-          key={tag}
-          style={{
-            background: tag.includes("터치") ? "#fff7ed" : tag === "활발형" ? "#fef3c7" : "#f3f4f6",
-            color: tag.includes("터치") ? "#9a3412" : "#111827",
-            border: tag.includes("터치") ? "1px solid #fed7aa" : "1px solid #e5e7eb",
-            padding: "4px 7px",
-            borderRadius: 999,
-            fontSize: 11,
-            fontWeight: 700,
-            lineHeight: 1,
-          }}
-        >
-          {tag}
-        </span>
-      ))}
-    </div>
-  );
+  return tags;
 }
 
 function togglePreferenceValue(currentValues, nextValue) {
@@ -4399,12 +4370,12 @@ function togglePreferenceValue(currentValues, nextValue) {
 }
 
 function fillPreferenceForm(member) {
-  setPrefIntensity(parsePreferenceValue(member?.preference_intensity));
-  setPrefManagementStyle(parsePreferenceValue(member?.preference_management_style));
-  setPrefMotivationStyle(parsePreferenceValue(member?.preference_motivation_style));
-  setPrefTouchStyle(parsePreferenceValue(member?.preference_touch_style));
-  setPrefCommunicationStyle(parsePreferenceValue(member?.preference_communication_style));
-  setPrefClassMood(parsePreferenceValue(member?.preference_class_mood));
+  setPrefIntensity(filterPreferenceValues(member?.preference_intensity, preferenceOptionGroups.intensity));
+  setPrefManagementStyle(filterPreferenceValues(member?.preference_management_style, preferenceOptionGroups.management));
+  setPrefMotivationStyle(filterPreferenceValues(member?.preference_motivation_style, preferenceOptionGroups.motivation));
+  setPrefTouchStyle(filterPreferenceValues(member?.preference_touch_style, preferenceOptionGroups.touch));
+  setPrefCommunicationStyle(filterPreferenceValues(member?.preference_communication_style, preferenceOptionGroups.communication));
+  setPrefClassMood(filterPreferenceValues(member?.preference_class_mood, preferenceOptionGroups.mood));
   setPrefRequestNote(member?.preference_request_note || "");
 }
 
@@ -4412,12 +4383,12 @@ async function saveMemberPreference() {
   if (!selectedMember) return;
 
   const payload = {
-    preference_intensity: stringifyPreferenceValue(prefIntensity),
-    preference_management_style: stringifyPreferenceValue(prefManagementStyle),
-    preference_motivation_style: stringifyPreferenceValue(prefMotivationStyle),
-    preference_touch_style: stringifyPreferenceValue(prefTouchStyle),
-    preference_communication_style: stringifyPreferenceValue(prefCommunicationStyle),
-    preference_class_mood: stringifyPreferenceValue(prefClassMood),
+    preference_intensity: stringifyPreferenceValue(prefIntensity, preferenceOptionGroups.intensity),
+    preference_management_style: stringifyPreferenceValue(prefManagementStyle, preferenceOptionGroups.management),
+    preference_motivation_style: stringifyPreferenceValue(prefMotivationStyle, preferenceOptionGroups.motivation),
+    preference_touch_style: stringifyPreferenceValue(prefTouchStyle, preferenceOptionGroups.touch),
+    preference_communication_style: stringifyPreferenceValue(prefCommunicationStyle, preferenceOptionGroups.communication),
+    preference_class_mood: stringifyPreferenceValue(prefClassMood, preferenceOptionGroups.mood),
     preference_request_note: prefRequestNote.trim() || null,
     preference_updated_at: new Date().toISOString(),
   };
@@ -4434,16 +4405,20 @@ async function saveMemberPreference() {
     return;
   }
 
-  setSelectedMember(data || { ...selectedMember, ...payload });
+  const nextMember = data || { ...selectedMember, ...payload };
+
+  setSelectedMember(nextMember);
+
   setMembers((prev) =>
     prev.map((member) =>
-      member.id === selectedMember.id ? { ...member, ...(data || payload) } : member
+      member.id === selectedMember.id ? { ...member, ...nextMember } : member
     )
   );
 
   alert("성향 메모가 저장되었어요.");
   setDetailMode("menu");
 }
+
   async function openDetail(member, mode = "menu") {
     setSelectedMember(member);
     fillPreferenceForm(member);
@@ -6479,8 +6454,6 @@ async function saveMemberPreference() {
               <span>{member.phone || "전화번호 없음"}</span>
             </div>
 
-            {renderPreferenceTags(member, true)}
-
             <div style={styles.compactInfoRow}>
               <span>출석 {formatDate(member.latest_visit)}</span>
               <span>PT {formatDate(member.latest_pt)}</span>
@@ -7080,8 +7053,6 @@ async function saveMemberPreference() {
                         {getScheduleTypeText(schedule.type)} · {getScheduleMemberNames(schedule)}
                         {getScheduleMemberPtText(schedule) ? ` (${getScheduleMemberPtText(schedule)})` : ""}
                       </strong>
-
-                      {renderSchedulePreferenceTags(schedule)}
 
                       {getReRegisterAlert(member) && (
                         <div style={styles.reRegisterInlineAlertDark}>
@@ -8460,7 +8431,33 @@ async function saveMemberPreference() {
                     + 이용권
                   </button>
                 </div>
-                {renderPreferenceTags(selectedMember)}
+                      {getPreferenceTags(selectedMember).length > 0 && (
+  <div
+    style={{
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 6,
+      marginTop: 8,
+      marginBottom: 8,
+    }}
+  >
+    {getPreferenceTags(selectedMember).map((tag) => (
+      <div
+        key={tag}
+        style={{
+          background: "#f3f4f6",
+          color: "#111",
+          padding: "6px 10px",
+          borderRadius: 999,
+          fontSize: 12,
+          fontWeight: 600,
+        }}
+      >
+        {tag}
+      </div>
+    ))}
+  </div>
+)}
                 <p style={styles.muted}>
                   {selectedMember.age ? `${selectedMember.age}세 · ` : ""}
                   {selectedMember.height ? `${selectedMember.height}cm · ` : ""}
