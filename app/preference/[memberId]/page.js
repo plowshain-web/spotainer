@@ -13,7 +13,7 @@ const preferenceGroups = [
   {
     key: "preference_intensity",
     title: "트레이닝 스타일",
-    desc: "운동할 때 어떤 방식이 편한지 체크해주세요.",
+    desc: "운동할 때 어떤 방식이 편한지 체크해주세요.(중복선택 가능)",
     options: [
       "강하게 밀어주세요 (운동할 땐 확실하게 하는 게 좋아요)",
       "부드럽고 편하게 해주세요 (칭찬과 격려가 편해요)",
@@ -22,8 +22,8 @@ const preferenceGroups = [
   },
   {
     key: "preference_management_style",
-    title: "관리 스타일",
-    desc: "운동 외에 식단, 생활습관, 컨디션 관리를 어느 정도 원하시는지 체크해주세요.",
+    title: "응원 스타일",
+    desc: "운동 외에 식단, 생활습관, 컨디션 관리를 어느 정도 원하시는지 체크해주세요.(중복선택 가능)",
     options: [
       "꼼꼼하게 관리해주세요 (식단, 생활습관도 같이 체크받고 싶어요)",
       "적당히 체크만 해주세요 (필요한 부분만 편하게 관리받고 싶어요)",
@@ -33,7 +33,7 @@ const preferenceGroups = [
   {
     key: "preference_motivation_style",
     title: "관리 스타일",
-    desc: "운동 중 어떤 말투와 분위기가 편한지 체크해주세요.",
+    desc: "운동 중 어떤 말투와 분위기가 편한지 체크해주세요.(중복선택 가능)",
     options: [
       "편한 분위기가 좋아요 (너무 딱딱한 분위기는 싫어요)",
       "담백하게 알려주세요 (과한 리액션은 부담스러워요)",
@@ -43,7 +43,7 @@ const preferenceGroups = [
   {
     key: "preference_touch_style",
     title: "자세 잡을 때 터치",
-    desc: "자세를 봐드릴 때 터치에 대한 생각을 체크해주세요.",
+    desc: "자세를 봐드릴 때 터치에 대한 생각을 체크해주세요.(중복선택 가능)",
     options: [
       "괜찮아요 (자세 잡을 때 필요한 터치는 괜찮아요)",
       "가능하지만 최소한으로 해주세요 (미리 설명해주면 좋아요)",
@@ -53,7 +53,7 @@ const preferenceGroups = [
   {
     key: "preference_communication_style",
     title: "대화 스타일",
-    desc: "수업 중 대화 방식에 대해 편한 쪽을 체크해주세요.",
+    desc: "수업 중 대화 방식에 대해 편한 쪽을 체크해주세요.(중복선택 가능)",
     options: [
       "재미있게 대화 나누면서 운동하고 싶어요. (수업 분위기가 편한 게 좋아요)",
       "필요한 말만 해주세요. (운동에 집중하는 편이 좋아요)",
@@ -64,7 +64,7 @@ const preferenceGroups = [
   {
     key: "preference_class_mood",
     title: "수업 분위기",
-    desc: "원하시는 수업 분위기에 가까운 항목을 체크해주세요.",
+    desc: "원하시는 수업 분위기에 가까운 항목을 체크해주세요.(중복선택 가능)",
     options: [
       "밝고 재밌는 분위기가 좋아요",
       "차분하게 운동하는 분위기가 좋아요",
