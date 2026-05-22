@@ -8511,11 +8511,11 @@ async function saveMemberPreference() {
       <div style={preferenceStyles.helper}>회원님이 운동할 때 어떤 방식이 편한지 체크해요. 중복 선택 가능해요.</div>
       <div style={preferenceStyles.grid3}>
         {[
-          "강하게 밀어주세요 (혼자 하면 잘 안해서 끌어주는 게 좋아요)",
-          "부드럽고 긍정적으로 해주세요 (칭찬과 격려가 좋아요)",
-          "천천히 맞춰주세요 (처음이라 부담이 적었으면 좋겠어요)",
-          "자세를 꼼꼼하게 봐주세요 (정확하게 배우고 싶어요)",
-          "힘들어도 끝까지 하게 도와주세요 (포기하지 않게 해주세요)",
+          "강하게 밀어주세요! (도전적이고 고강도 트레이닝 선호)",
+          "적당히 꾸준하게! (꾸준하고 부담 없는 강도)",
+          "가볍게 천천히! (부드럽고 천천히 진행)",
+          "자세 꼼꼼하게! (정확하게 배우고 싶어요)",
+          "힘들어도 끝까지! (포기하지 않게 해주세요)",
         ].map((label) => (
           <button
             key={label}
@@ -8533,14 +8533,13 @@ async function saveMemberPreference() {
     </div>
 
     <div style={preferenceStyles.section}>
-      <div style={preferenceStyles.label}>관리받는 방식</div>
+      <div style={preferenceStyles.label}>관리 스타일</div>
       <div style={preferenceStyles.helper}>운동 외에 식단, 생활습관, 컨디션을 어느 정도 챙기면 좋을지 기록해요.</div>
       <div style={preferenceStyles.grid3}>
         {[
-          "꼼꼼하게 챙겨주세요 (식단, 생활습관도 같이 봐주세요)",
-          "필요한 부분만 체크해주세요 (너무 과한 관리는 부담스러워요)",
-          "운동 위주로 봐주세요 (운동에 집중하고 싶어요)",
-          "제가 물어볼 때 알려주세요 (필요할 때만 도움받고 싶어요)",
+          "세세한 관리가 좋아요 (운동, 식단, 생활습관도 같이 봐주세요)",
+          "적당히 체크만 해주세요 (필요한 부분만 피드백 해주세요)",
+          "운동에만 집중하고 싶어요 (간섭은 최소한이 좋아요)",
         ].map((label) => (
           <button
             key={label}
@@ -8558,15 +8557,13 @@ async function saveMemberPreference() {
     </div>
 
     <div style={preferenceStyles.section}>
-      <div style={preferenceStyles.label}>응원 방식</div>
+      <div style={preferenceStyles.label}>동기부여 스타일</div>
       <div style={preferenceStyles.helper}>힘들 때 어떤 말투가 편한지 남겨둬요.</div>
       <div style={preferenceStyles.grid3}>
         {[
-          "장난 섞어서 편하게 해주세요 (친근한 분위기가 좋아요)",
-          "담백하게 말해주세요 (과한 표현은 부담스러워요)",
-          "칭찬 많이 해주세요 (잘하고 있다는 말이 힘이 돼요)",
-          "차분하게 알려주세요 (혼나거나 압박받는 느낌은 싫어요)",
-          "조금 강하게 말해도 괜찮아요 (운동할 때는 밀어줘도 좋아요)",
+          "적극적이고 강하게! (밀어붙이는 스타일 선호)",
+          "부드럽고 긍정적으로! (칭찬과 격려가 좋아요)",
+          "조용히 혼자 할게요. (필요한 가이드만 제공)",
         ].map((label) => (
           <button
             key={label}
@@ -8589,9 +8586,8 @@ async function saveMemberPreference() {
       <div style={preferenceStyles.grid3}>
         {[
           "괜찮아요 (자세 잡을 때 필요한 터치는 괜찮아요)",
-          "꼭 필요할 때만 해주세요 (말로 먼저 설명해주면 좋아요)",
-          "설명으로만 해주세요 (터치 없이 알려주세요)",
-          "부위에 따라 조심해주세요 (어깨, 허리, 골반 등 민감한 부위는 조심해주세요)",
+          "가능하지만 최소한으로 해주세요. (필요한 경우에만 요청해주세요)",
+          "조금 불편해요. (터치 없이 설명으로만 진행해주세요)",
         ].map((label) => (
           <button
             key={label}
@@ -8613,11 +8609,10 @@ async function saveMemberPreference() {
       <div style={preferenceStyles.helper}>수업 중 대화와 피드백 톤을 맞추기 위한 기록이에요.</div>
       <div style={preferenceStyles.grid3}>
         {[
-          "편하게 대화하면서 하고 싶어요 (수다도 괜찮아요)",
-          "운동에 집중하고 싶어요 (말은 필요한 만큼만 좋아요)",
-          "개인 얘기는 조심스럽게 해주세요 (사적인 질문은 부담스러워요)",
-          "컨디션은 자주 물어봐주세요 (몸 상태 체크가 좋아요)",
-          "먼저 말 걸어주면 좋아요 (제가 먼저 말하는 게 어려워요)",
+          "재미있게 대화 나누면서 운동하고 싶어요. (수업 분위기가 편한 게 좋아요)",
+          "최소한으로 대화하고 싶어요. (운동에 집중하는게 좋아요)",
+          "개인적인 이야기는 나누고 싶지 않아요 (프라이버시 존중)",
+          "먼저 물어봐주면 편해요 (제가 먼저 말하는 건 어려워요)",
         ].map((label) => (
           <button
             key={label}
@@ -8639,9 +8634,9 @@ async function saveMemberPreference() {
       <div style={preferenceStyles.helper}>밝게 갈지, 차분하게 갈지, 그날 컨디션에 맞출지 기록해요.</div>
       <div style={preferenceStyles.grid3}>
         {[
-          "밝고 재밌게 해주세요 (운동이 덜 부담스러웠으면 좋겠어요)",
-          "차분하게 해주세요 (조용하고 안정적인 분위기가 좋아요)",
-          "그날 컨디션에 맞춰주세요 (몸 상태에 따라 조절하고 싶어요)",
+          "활기차고 에너지 넘치는 분위기가 좋아요",
+          "선생님과 조용하게 수업하고 싶어요",
+          "컨디션에 맞춰 조절해주세요 (몸 상태에 따라 조절하고 싶어요)",
           "운동할 땐 확실하게 해주세요 (할 땐 제대로 하고 싶어요)",
         ].map((label) => (
           <button
