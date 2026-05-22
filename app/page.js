@@ -1158,6 +1158,8 @@ const [workoutExercises, setWorkoutExercises] = useState([
             )}
           </div>
 
+          {renderSchedulePreferenceTags(schedule)}
+
           {schedule.memo && (
             <p style={styles.scheduleCheckMemoCompact}>{schedule.memo}</p>
           )}
@@ -4251,49 +4253,139 @@ function stringifyPreferenceValue(value) {
 function getPreferenceTags(member) {
   const tags = [];
 
-  const motivation = String(member?.preference_motivation_style || "");
-  const communication = String(member?.preference_communication_style || "");
-  const touch = String(member?.preference_touch_style || "");
+  const intensity = String(member?.preference_intensity || "");
   const management = String(member?.preference_management_style || "");
+  const motivation = String(member?.preference_motivation_style || "");
+  const touch = String(member?.preference_touch_style || "");
+  const communication = String(member?.preference_communication_style || "");
   const mood = String(member?.preference_class_mood || "");
+  const all = [intensity, management, motivation, touch, communication, mood].join(" || ");
 
   if (
-    motivation.includes("장난 섞어서") ||
-    mood.includes("밝고 재밌게")
+    all.includes("편하게 장난") ||
+    all.includes("밝고 재밌") ||
+    all.includes("장난")
   ) {
-    tags.push("친근형");
+    tags.push("활발형");
   }
 
   if (
-    motivation.includes("담백하게") ||
-    communication.includes("운동에 집중") ||
-    communication.includes("개인 얘기는 조심")
+    all.includes("담백하게") ||
+    all.includes("차분") ||
+    all.includes("과한 리액션") ||
+    all.includes("필요한 말만") ||
+    all.includes("운동에 집중")
   ) {
     tags.push("차분형");
   }
 
   if (
-    touch.includes("설명으로만") ||
-    touch.includes("꼭 필요할 때만") ||
-    touch.includes("민감한 부위")
+    all.includes("세세하게 관리") ||
+    all.includes("식단, 생활습관")
   ) {
-    tags.push("터치주의");
+    tags.push("세세관리");
   }
 
   if (
-    communication.includes("컨디션은 자주") ||
-    mood.includes("그날 컨디션")
+    all.includes("적당히 체크") ||
+    all.includes("필요한 부분만")
+  ) {
+    tags.push("적당관리");
+  }
+
+  if (
+    all.includes("운동에만 집중") ||
+    all.includes("간섭은 최소")
+  ) {
+    tags.push("운동집중");
+  }
+
+  if (
+    all.includes("터치 없이") ||
+    all.includes("조금 불편")
+  ) {
+    tags.push("터치금지");
+  } else if (
+    all.includes("최소한") ||
+    all.includes("미리 설명")
+  ) {
+    tags.push("터치최소");
+  }
+
+  if (
+    all.includes("컨디션") ||
+    all.includes("먼저 물어")
   ) {
     tags.push("컨디션체크");
   }
 
-  if (
-    management.includes("꼼꼼하게 챙겨")
-  ) {
-    tags.push("꼼꼼관리");
-  }
-
   return [...new Set(tags)];
+}
+
+function renderPreferenceTags(member, compact = false) {
+  const tags = getPreferenceTags(member);
+  if (tags.length === 0) return null;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: compact ? 4 : 6,
+        marginTop: compact ? 6 : 8,
+        marginBottom: compact ? 4 : 8,
+      }}
+    >
+      {tags.slice(0, compact ? 4 : 6).map((tag) => (
+        <span
+          key={tag}
+          style={{
+            background: tag.includes("터치") ? "#fff7ed" : tag === "활발형" ? "#fef3c7" : "#f3f4f6",
+            color: tag.includes("터치") ? "#9a3412" : "#111827",
+            border: tag.includes("터치") ? "1px solid #fed7aa" : "1px solid #e5e7eb",
+            padding: compact ? "4px 7px" : "6px 10px",
+            borderRadius: 999,
+            fontSize: compact ? 11 : 12,
+            fontWeight: 700,
+            lineHeight: 1,
+          }}
+        >
+          {tag}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function renderSchedulePreferenceTags(schedule) {
+  const scheduleMembers = getScheduleMembers(schedule);
+  const tags = [
+    ...new Set(scheduleMembers.flatMap((member) => getPreferenceTags(member)))
+  ];
+
+  if (tags.length === 0) return null;
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+      {tags.slice(0, 5).map((tag) => (
+        <span
+          key={tag}
+          style={{
+            background: tag.includes("터치") ? "#fff7ed" : tag === "활발형" ? "#fef3c7" : "#f3f4f6",
+            color: tag.includes("터치") ? "#9a3412" : "#111827",
+            border: tag.includes("터치") ? "1px solid #fed7aa" : "1px solid #e5e7eb",
+            padding: "4px 7px",
+            borderRadius: 999,
+            fontSize: 11,
+            fontWeight: 700,
+            lineHeight: 1,
+          }}
+        >
+          {tag}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function togglePreferenceValue(currentValues, nextValue) {
@@ -6387,6 +6479,8 @@ async function saveMemberPreference() {
               <span>{member.phone || "전화번호 없음"}</span>
             </div>
 
+            {renderPreferenceTags(member, true)}
+
             <div style={styles.compactInfoRow}>
               <span>출석 {formatDate(member.latest_visit)}</span>
               <span>PT {formatDate(member.latest_pt)}</span>
@@ -6986,6 +7080,8 @@ async function saveMemberPreference() {
                         {getScheduleTypeText(schedule.type)} · {getScheduleMemberNames(schedule)}
                         {getScheduleMemberPtText(schedule) ? ` (${getScheduleMemberPtText(schedule)})` : ""}
                       </strong>
+
+                      {renderSchedulePreferenceTags(schedule)}
 
                       {getReRegisterAlert(member) && (
                         <div style={styles.reRegisterInlineAlertDark}>
@@ -8364,33 +8460,7 @@ async function saveMemberPreference() {
                     + 이용권
                   </button>
                 </div>
-                      {getPreferenceTags(selectedMember).length > 0 && (
-  <div
-    style={{
-      display: "flex",
-      flexWrap: "wrap",
-      gap: 6,
-      marginTop: 8,
-      marginBottom: 8,
-    }}
-  >
-    {getPreferenceTags(selectedMember).map((tag) => (
-      <div
-        key={tag}
-        style={{
-          background: "#f3f4f6",
-          color: "#111",
-          padding: "6px 10px",
-          borderRadius: 999,
-          fontSize: 12,
-          fontWeight: 600,
-        }}
-      >
-        {tag}
-      </div>
-    ))}
-  </div>
-)}
+                {renderPreferenceTags(selectedMember)}
                 <p style={styles.muted}>
                   {selectedMember.age ? `${selectedMember.age}세 · ` : ""}
                   {selectedMember.height ? `${selectedMember.height}cm · ` : ""}
