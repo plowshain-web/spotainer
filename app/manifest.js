@@ -3,7 +3,7 @@ export default function manifest() {
     name: "Spotainer",
     short_name: "Spotainer",
     description: "여성전용 PT 회원관리",
-    start_url: "/?v=20260522",
+    start_url: "/mobile-schedule?v=20260522",
     scope: "/",
     display: "standalone",
     orientation: "any",
