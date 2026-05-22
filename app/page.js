@@ -219,28 +219,6 @@ const circuitPrograms = [
 const SPOTAINER_PATCH_VERSION = "2026-05-07-stable-feedback-modal-restored";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
-const commonExercises = [
-  "스쿼트",
-  "런지",
-  "레그프레스",
-  "레그익스텐션",
-  "레그컬",
-  "힙쓰러스트",
-  "힙어브덕션",
-  "랫풀다운",
-  "시티드로우",
-  "체스트프레스",
-  "숄더프레스",
-  "사이드레터럴레이즈",
-  "케이블푸쉬다운",
-  "바이셉스컬",
-  "플랭크",
-  "크런치",
-  "데드버그",
-  "버드독",
-  "힙브릿지",
-  "스트레칭",
-];
 
 const weightBodyPartOptions = ["가슴", "어깨", "등", "하체", "팔", "복부"];
 const workoutPatternOptions = [...weightBodyPartOptions, "전신"];
