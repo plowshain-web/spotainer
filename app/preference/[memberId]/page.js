@@ -31,16 +31,6 @@ const preferenceGroups = [
     ],
   },
   {
-    key: "preference_motivation_style",
-    title: "응원 스타일",
-    desc: "운동 중 어떤 말투와 분위기가 편한지 체크해주세요. (중복 선택 가능)",
-    options: [
-      "편한 분위기가 좋아요 (너무 딱딱한 분위기는 부담스러워요)",
-      "담백하게 알려주세요 (과한 리액션은 부담스러워요)",
-      "운동할 땐 조금 밀어줘도 괜찮아요 (힘들어도 끌어주는 스타일 좋아요)",
-    ],
-  },
-  {
     key: "preference_touch_style",
     title: "자세 잡을 때 터치",
     desc: "자세를 봐드릴 때 터치에 대한 생각을 체크해주세요. (중복 선택 가능)",
@@ -67,7 +57,7 @@ const preferenceGroups = [
     options: [
       "밝고 편한 분위기가 좋아요",
       "차분하게 운동하는 분위기가 좋아요",
-      "컨디션에 맞춰 조절해주시면 좋아요",
+      "컨디션에 맞춰 조절해주세요",
     ],
   },
 ];
@@ -126,7 +116,7 @@ export default function PreferenceCheckPage() {
     const { data, error } = await supabase
       .from("members")
       .select(
-        "id,name,preference_intensity,preference_management_style,preference_motivation_style,preference_touch_style,preference_communication_style,preference_class_mood,preference_request_note"
+        "id,name,preference_intensity,preference_management_style,preference_touch_style,preference_communication_style,preference_class_mood,preference_request_note"
       )
       .eq("id", memberId)
       .single();
@@ -139,6 +129,7 @@ export default function PreferenceCheckPage() {
     }
 
     const nextForm = emptyForm();
+
     preferenceGroups.forEach((group) => {
       const currentValues = parseValue(data[group.key]);
       nextForm[group.key] = currentValues.filter((value) =>
@@ -167,7 +158,7 @@ export default function PreferenceCheckPage() {
     const payload = {
       preference_intensity: stringifyValue(form.preference_intensity),
       preference_management_style: stringifyValue(form.preference_management_style),
-      preference_motivation_style: stringifyValue(form.preference_motivation_style),
+      preference_motivation_style: null,
       preference_touch_style: stringifyValue(form.preference_touch_style),
       preference_communication_style: stringifyValue(form.preference_communication_style),
       preference_class_mood: stringifyValue(form.preference_class_mood),
@@ -190,15 +181,6 @@ export default function PreferenceCheckPage() {
 
     setDone(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function handleClose() {
-    try {
-      window.close();
-    } catch (error) {
-      console.warn(error);
-    }
-    alert("작성이 완료되었어요. 창을 닫아주시면 됩니다 😊");
   }
 
   if (loading) {
@@ -232,7 +214,15 @@ export default function PreferenceCheckPage() {
             참고하여 수업 진행하겠습니다 :)
           </p>
           <p style={styles.completeThanks}>작성 감사합니다😊</p>
-          <button type="button" onClick={handleClose} style={styles.completeButton}>
+
+          <button
+            type="button"
+            style={styles.closeButton}
+            onClick={() => {
+              window.close();
+              alert("창을 닫아주시면 됩니다 :)");
+            }}
+          >
             닫기
           </button>
         </section>
@@ -474,6 +464,17 @@ const styles = {
     fontSize: "17px",
     fontWeight: "900",
   },
+  closeButton: {
+    marginTop: "22px",
+    width: "100%",
+    height: "50px",
+    border: "none",
+    borderRadius: "16px",
+    background: "#111827",
+    color: "#ffffff",
+    fontSize: "16px",
+    fontWeight: "900",
+  },
   completeCard: {
     background: "#ffffff",
     borderRadius: "26px",
@@ -503,17 +504,6 @@ const styles = {
     fontWeight: "800",
     marginTop: "18px",
     color: "#7a4f38",
-  },
-  completeButton: {
-    marginTop: "22px",
-    width: "100%",
-    height: "52px",
-    border: "none",
-    borderRadius: "16px",
-    background: "#111827",
-    color: "#ffffff",
-    fontSize: "17px",
-    fontWeight: "900",
   },
   errorTitle: {
     fontSize: "22px",
