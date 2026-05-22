@@ -4339,7 +4339,7 @@ function getAllowedPreferenceValues(key) {
     preference_class_mood: [
       "밝고 편한 분위기가 좋아요",
       "차분하게 운동하는 분위기가 좋아요",
-      "컨디션에 맞춰 조절해주시면 좋아요",
+      "컨디션에 맞춰 조절해주세요",
     ],
   };
 
