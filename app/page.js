@@ -4258,26 +4258,44 @@ function getPreferenceTags(member) {
   const management = String(member?.preference_management_style || "");
   const mood = String(member?.preference_class_mood || "");
 
+  const allText = [
+    intensity,
+    motivation,
+    communication,
+    touch,
+    management,
+    mood,
+  ].join(" ");
+
+  // 밝고 편한 분위기 / 대화 선호
   if (
-    motivation.includes("편한 분위기") ||
-    communication.includes("편한 분위기") ||
-    mood.includes("밝고 편한") ||
-    mood.includes("밝고 재밌")
+    allText.includes("편한 분위기") ||
+    allText.includes("밝고 편") ||
+    allText.includes("밝고 재밌") ||
+    allText.includes("재미있게") ||
+    allText.includes("가볍게 대화")
   ) {
     tags.push("활발형");
   }
 
+  // 담백하고 조용한 수업 선호
   if (
-    motivation.includes("담백하게") ||
-    mood.includes("차분하게") ||
-    communication.includes("운동에 집중") ||
-    communication.includes("필요한 설명") ||
-    communication.includes("최소한으로 대화")
+    allText.includes("담백하게") ||
+    allText.includes("차분하게") ||
+    allText.includes("운동에 집중") ||
+    allText.includes("필요한 설명") ||
+    allText.includes("필요한 말만") ||
+    allText.includes("과한 리액션")
   ) {
     tags.push("차분형");
   }
 
-  if (touch.includes("최소한")) {
+  // 터치는 문제가 없는 경우는 굳이 표시하지 않음.
+  // 운영상 주의가 필요한 경우만 태그로 표시.
+  if (
+    touch.includes("가능하지만 최소한") ||
+    touch.includes("최소한으로")
+  ) {
     tags.push("터치최소");
   }
 
@@ -4289,34 +4307,46 @@ function getPreferenceTags(member) {
     tags.push("터치금지");
   }
 
+  // 컨디션 확인을 먼저 해주면 좋은 타입
   if (
-    mood.includes("컨디션에 맞춰") ||
-    communication.includes("먼저 물어")
+    allText.includes("컨디션에 맞춰") ||
+    allText.includes("상황(컨디션)") ||
+    allText.includes("먼저 물어") ||
+    allText.includes("먼저 말")
   ) {
     tags.push("컨디션체크");
   }
 
+  // 관리 스타일
   if (
     management.includes("꼼꼼하게") ||
-    management.includes("세세")
+    management.includes("세세하게") ||
+    management.includes("식단") ||
+    management.includes("생활습관")
   ) {
     tags.push("꼼꼼관리");
   }
 
-  if (management.includes("적당히")) {
+  if (
+    management.includes("적당히") ||
+    management.includes("필요한 부분만")
+  ) {
     tags.push("적당관리");
   }
 
   if (
     management.includes("운동에만 집중") ||
-    communication.includes("운동에 집중")
+    communication.includes("운동에 집중") ||
+    communication.includes("필요한 설명 위주")
   ) {
     tags.push("운동집중");
   }
 
+  // 강도 선호
   if (
     intensity.includes("강하게") ||
-    motivation.includes("밀어줘도")
+    motivation.includes("밀어줘도") ||
+    motivation.includes("끌어주는")
   ) {
     tags.push("강도선호");
   }
