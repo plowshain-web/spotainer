@@ -435,6 +435,14 @@ const [workoutExercises, setWorkoutExercises] = useState([
     loadScheduleSMSLogs(getTodayDateString());
     loadSales();
     loadCenterInfo();
+
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => {
+          registration.update();
+        });
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -8732,7 +8740,7 @@ ${link}`;
         {[
           "밝고 편한 분위기가 좋아요",
           "차분하게 운동하는 분위기가 좋아요",
-          "컨디션에 맞춰 조절해주시면 좋아요",
+          "컨디션에 맞춰 조절해주세요",
         ].map((label) => (
           <button
             key={label}
