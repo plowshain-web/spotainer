@@ -216,7 +216,7 @@ const circuitPrograms = [
   },
 ];
 
-const SPOTAINER_PATCH_VERSION = "2026-05-25-force-desktop-mobile-render-removed";
+const SPOTAINER_PATCH_VERSION = "2026-05-07-stable-feedback-modal-restored";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 
@@ -421,7 +421,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [smsMode, setSmsMode] = useState(false);
   const [smsSentMap, setSmsSentMap] = useState({});
   const [smsSentLogList, setSmsSentLogList] = useState([]);
-  const [isMobileEmergencyMode, setIsMobileEmergencyMode] = useState(false);
+  const isMobileEmergencyMode = false;
   const scheduleCalendarTouchStartXRef = useRef(null);
   const hasOpenModalRef = useRef(false);
   const modalBackGuardArmedRef = useRef(false);
@@ -436,13 +436,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
     loadScheduleSMSLogs(getTodayDateString());
     loadSales();
     loadCenterInfo();
-  }, []);
-
-  useEffect(() => {
-    // 2026-05-25 FIX:
-    // Android 태블릿/PWA가 휴대폰 긴급모드로 오인식되는 문제 때문에
-    // 모바일 긴급모드 자동 전환을 완전히 비활성화합니다.
-    setIsMobileEmergencyMode(false);
   }, []);
 
   useEffect(() => {
@@ -6606,8 +6599,6 @@ async function saveMemberPreference() {
 
     return !schedule.attendance_checked || !schedule.pt_used;
   });
-
-  // 모바일 긴급모드 렌더링 제거: 태블릿/PWA는 항상 전체 Spotainer 화면을 사용합니다.
 
   return (
     <main style={styles.page}>
