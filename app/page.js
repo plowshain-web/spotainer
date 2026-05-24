@@ -6753,13 +6753,14 @@ async function saveMemberPreference() {
 
             <div style={styles.memberActionLineCompact}>
               <div style={styles.memberLeftActionsCompact}>
+                {/* member-card-v2: 컨디션 / 문자 / 피드백 / 더보기 버튼을 카드에 직접 노출 */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    sendConditionCheckSMS(member);
+                    openConditionCheckModal(member);
                   }}
                   style={styles.conditionSmsButton}
-                  title="수업 전 컨디션 확인 문자"
+                  title="컨디션 기록"
                 >
                   컨디션
                 </button>
@@ -6773,6 +6774,17 @@ async function saveMemberPreference() {
                   title="일반 문자 직접 작성"
                 >
                   문자
+                </button>
+
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await openMemberCardFeedback(member);
+                  }}
+                  style={shouldRecommendFeedback(member) ? styles.feedbackRecommendButtonMini : styles.feedbackButtonMini}
+                  title="피드백 추천"
+                >
+                  {shouldRecommendFeedback(member) ? "추천" : "피드백"}
                 </button>
 
                 <button
@@ -10080,25 +10092,13 @@ ${link}`;
             <div style={styles.memberActionMenuGrid}>
               <button
                 type="button"
-                onClick={async () => {
-                  const targetMember = memberActionMenuMember;
-                  await openMemberCardFeedback(targetMember);
-                  closeMemberActionMenu();
-                }}
-                style={shouldRecommendFeedback(memberActionMenuMember) ? styles.memberActionMenuButtonHot : styles.memberActionMenuButton}
-              >
-                {shouldRecommendFeedback(memberActionMenuMember) ? "피드백 추천" : "피드백"}
-              </button>
-
-              <button
-                type="button"
                 onClick={() => {
-                  openConditionCheckModal(memberActionMenuMember);
+                  sendConditionCheckSMS(memberActionMenuMember);
                   closeMemberActionMenu();
                 }}
                 style={styles.memberActionMenuButton}
               >
-                컨디션 기록
+                컨디션 문자
               </button>
 
               {memberActionMenuMember.member_stage === "ot" && (
@@ -14416,27 +14416,30 @@ textarea: {
     color: "#111827",
     border: "1px solid #d1d5db",
     borderRadius: 999,
-    padding: "7px 10px",
-    fontSize: 12,
+    padding: "5px 8px",
+    fontSize: 10,
     fontWeight: 1000,
+    whiteSpace: "nowrap",
   },
   feedbackButtonMini: {
     background: "#ffffff",
     color: "#111827",
     border: "1px solid #111827",
     borderRadius: 999,
-    padding: "7px 10px",
-    fontSize: 12,
+    padding: "5px 8px",
+    fontSize: 10,
     fontWeight: 1000,
+    whiteSpace: "nowrap",
   },
   feedbackRecommendButtonMini: {
     background: "#fef3c7",
     color: "#92400e",
     border: "1px solid #f59e0b",
     borderRadius: 999,
-    padding: "7px 10px",
-    fontSize: 12,
+    padding: "5px 8px",
+    fontSize: 10,
     fontWeight: 1000,
+    whiteSpace: "nowrap",
   },
   cardDeactivateButtonMini: {
     background: "#3f1111",
