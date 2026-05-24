@@ -422,6 +422,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [smsSentMap, setSmsSentMap] = useState({});
   const [smsSentLogList, setSmsSentLogList] = useState([]);
   const [isMobileEmergencyMode, setIsMobileEmergencyMode] = useState(false);
+  const [isClientReady, setIsClientReady] = useState(false);
   const scheduleCalendarTouchStartXRef = useRef(null);
   const hasOpenModalRef = useRef(false);
   const modalBackGuardArmedRef = useRef(false);
@@ -430,13 +431,18 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const isSearching = search.trim().length > 0;
 
   useEffect(() => {
+    setIsClientReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClientReady) return;
     console.log("Spotainer patch version:", SPOTAINER_PATCH_VERSION);
     loadMembers();
     loadSchedules(getTodayDateString());
     loadScheduleSMSLogs(getTodayDateString());
     loadSales();
     loadCenterInfo();
-  }, []);
+  }, [isClientReady]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -6625,6 +6631,14 @@ async function saveMemberPreference() {
         console.error("앱 종료 시도 실패", error);
       }
     }, 80);
+  }
+
+  if (!isClientReady) {
+    return (
+      <main style={{ minHeight: "100vh", background: "#f7f7f7" }} suppressHydrationWarning>
+        <div style={{ padding: 24, fontWeight: 800 }}>Spotainer 로딩중...</div>
+      </main>
+    );
   }
 
   const incompleteSchedules = schedules.filter((schedule) => {
