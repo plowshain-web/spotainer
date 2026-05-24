@@ -302,11 +302,12 @@ export default function Page() {
   const [selectedMember, setSelectedMember] = useState(null);
   const [detailMode, setDetailMode] = useState(null);
 
-  const [prefIntensity, setPrefIntensity] = useState([]);
-const [prefManagementStyle, setPrefManagementStyle] = useState([]);
-const [prefTouchStyle, setPrefTouchStyle] = useState([]);
-const [prefCommunicationStyle, setPrefCommunicationStyle] = useState([]);
-const [prefClassMood, setPrefClassMood] = useState([]);
+  const [prefIntensity, setPrefIntensity] = useState("");
+const [prefManagementStyle, setPrefManagementStyle] = useState("");
+const [prefMotivationStyle, setPrefMotivationStyle] = useState("");
+const [prefTouchStyle, setPrefTouchStyle] = useState("");
+const [prefCommunicationStyle, setPrefCommunicationStyle] = useState("");
+const [prefClassMood, setPrefClassMood] = useState("");
   const [prefRequestNote, setPrefRequestNote] = useState("");
 
   const [attendanceList, setAttendanceList] = useState([]);
@@ -435,14 +436,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
     loadScheduleSMSLogs(getTodayDateString());
     loadSales();
     loadCenterInfo();
-
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        registrations.forEach((registration) => {
-          registration.update();
-        });
-      });
-    }
   }, []);
 
   useEffect(() => {
@@ -2508,17 +2501,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
     return scheduleMembers.map((member) => `${member.name} PT ${member.pt_remaining || 0}회`).join(" · ");
   }
 
-
-  function getSchedulePreferenceTags(schedule) {
-    const tagSet = new Set();
-
-    getScheduleMembers(schedule).forEach((member) => {
-      getPreferenceTags(member).forEach((tag) => tagSet.add(tag));
-    });
-
-    return [...tagSet];
-  }
-
   async function scheduleCheckAttendance(schedule) {
     const member = getScheduleMember(schedule);
     if (!member) return alert("연결된 회원 정보를 찾을 수 없습니다.");
@@ -4269,101 +4251,51 @@ function stringifyPreferenceValue(value) {
 function getPreferenceTags(member) {
   const tags = [];
 
-  const intensity = String(member?.preference_intensity || "");
+  const motivation = String(member?.preference_motivation_style || "");
   const communication = String(member?.preference_communication_style || "");
   const touch = String(member?.preference_touch_style || "");
   const management = String(member?.preference_management_style || "");
   const mood = String(member?.preference_class_mood || "");
 
-  const allText = [intensity, communication, touch, management, mood].join(" ");
-
-  // 운동 강도/리드 방식
-  if (allText.includes("강하게") || allText.includes("확실하게")) {
-    tags.push("강도선호");
-  }
-
-  // 전체 분위기/대화 성향
   if (
-    allText.includes("밝고 편") ||
-    allText.includes("편한 분위기") ||
-    allText.includes("가볍게 대화")
+    motivation.includes("장난 섞어서") ||
+    mood.includes("밝고 재밌게")
   ) {
-    tags.push("활발형");
+    tags.push("친근형");
   }
 
   if (
-    allText.includes("차분하게") ||
-    allText.includes("운동에 집중") ||
-    allText.includes("필요한 설명")
+    motivation.includes("담백하게") ||
+    communication.includes("운동에 집중") ||
+    communication.includes("개인 얘기는 조심")
   ) {
     tags.push("차분형");
   }
 
-  if (allText.includes("먼저 물어")) {
-    tags.push("먼저체크");
+  if (
+    touch.includes("설명으로만") ||
+    touch.includes("꼭 필요할 때만") ||
+    touch.includes("민감한 부위")
+  ) {
+    tags.push("터치주의");
   }
 
-  // 터치는 괜찮은 경우는 표시하지 않고 주의가 필요한 경우만 표시
-  if (touch.includes("최소한") || touch.includes("미리 설명")) {
-    tags.push("터치최소");
-  }
-
-  if (touch.includes("불편") || touch.includes("터치 없이")) {
-    tags.push("터치금지");
-  }
-
-  // 관리 스타일
-  if (management.includes("꼼꼼") || management.includes("식단") || management.includes("생활습관")) {
-    tags.push("꼼꼼관리");
-  }
-
-  if (management.includes("적당히") || management.includes("필요한 부분")) {
-    tags.push("적당관리");
-  }
-
-  if (management.includes("운동에만 집중") || management.includes("간섭")) {
-    tags.push("운동집중");
-  }
-
-  // 컨디션 기반 수업 조절
-  if (mood.includes("컨디션") || mood.includes("조절")) {
+  if (
+    communication.includes("컨디션은 자주") ||
+    mood.includes("그날 컨디션")
+  ) {
     tags.push("컨디션체크");
+  }
+
+  if (
+    management.includes("꼼꼼하게 챙겨")
+  ) {
+    tags.push("꼼꼼관리");
   }
 
   return [...new Set(tags)];
 }
 
-function getAllowedPreferenceValues(key) {
-  const map = {
-    preference_intensity: [
-      "강하게 밀어주세요 (운동할 땐 확실하게 하는 게 좋아요)",
-      "부드럽고 편하게 해주세요 (칭찬과 격려가 편해요)",
-      "천천히 맞춰주세요 (부담 없이 운동하고 싶어요)",
-    ],
-    preference_management_style: [
-      "꼼꼼하게 관리해주세요 (식단, 생활습관도 같이 체크받고 싶어요)",
-      "적당히 체크만 해주세요 (필요한 부분만 편하게 관리받고 싶어요)",
-      "운동에만 집중하고 싶어요 (간섭은 최소한이 좋아요)",
-    ],
-    preference_touch_style: [
-      "괜찮아요 (자세 잡을 때 필요한 터치는 괜찮아요)",
-      "가능하지만 최소한으로 해주세요 (미리 설명해주면 좋아요)",
-      "조금 불편해요 (터치 없이 설명해주세요)",
-    ],
-    preference_communication_style: [
-      "편한 분위기로 운동하고 싶어요 (가볍게 대화하는 건 괜찮아요)",
-      "운동에 집중하는 분위기가 좋아요 (필요한 설명 위주가 편해요)",
-      "먼저 물어봐주시면 편해요 (제가 먼저 말하는 건 조금 어려워요)",
-    ],
-    preference_class_mood: [
-      "밝고 편한 분위기가 좋아요",
-      "차분하게 운동하는 분위기가 좋아요",
-      "컨디션에 맞춰 조절해주세요",
-    ],
-  };
-
-  return map[key] || [];
-}
 function togglePreferenceValue(currentValues, nextValue) {
   if (!Array.isArray(currentValues)) currentValues = parsePreferenceValue(currentValues);
 
@@ -4375,16 +4307,12 @@ function togglePreferenceValue(currentValues, nextValue) {
 }
 
 function fillPreferenceForm(member) {
-  const onlyCurrentOptions = (key, value) => {
-    const allowed = getAllowedPreferenceValues(key);
-    return parsePreferenceValue(value).filter((item) => allowed.includes(item));
-  };
-
-  setPrefIntensity(onlyCurrentOptions("preference_intensity", member?.preference_intensity));
-  setPrefManagementStyle(onlyCurrentOptions("preference_management_style", member?.preference_management_style));
-  setPrefTouchStyle(onlyCurrentOptions("preference_touch_style", member?.preference_touch_style));
-  setPrefCommunicationStyle(onlyCurrentOptions("preference_communication_style", member?.preference_communication_style));
-  setPrefClassMood(onlyCurrentOptions("preference_class_mood", member?.preference_class_mood));
+  setPrefIntensity(parsePreferenceValue(member?.preference_intensity));
+  setPrefManagementStyle(parsePreferenceValue(member?.preference_management_style));
+  setPrefMotivationStyle(parsePreferenceValue(member?.preference_motivation_style));
+  setPrefTouchStyle(parsePreferenceValue(member?.preference_touch_style));
+  setPrefCommunicationStyle(parsePreferenceValue(member?.preference_communication_style));
+  setPrefClassMood(parsePreferenceValue(member?.preference_class_mood));
   setPrefRequestNote(member?.preference_request_note || "");
 }
 
@@ -4394,7 +4322,7 @@ async function saveMemberPreference() {
   const payload = {
     preference_intensity: stringifyPreferenceValue(prefIntensity),
     preference_management_style: stringifyPreferenceValue(prefManagementStyle),
-    preference_motivation_style: null,
+    preference_motivation_style: stringifyPreferenceValue(prefMotivationStyle),
     preference_touch_style: stringifyPreferenceValue(prefTouchStyle),
     preference_communication_style: stringifyPreferenceValue(prefCommunicationStyle),
     preference_class_mood: stringifyPreferenceValue(prefClassMood),
@@ -6459,26 +6387,6 @@ async function saveMemberPreference() {
               <span>{member.phone || "전화번호 없음"}</span>
             </div>
 
-            {getPreferenceTags(member).length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-                {getPreferenceTags(member).map((tag) => (
-                  <span
-                    key={tag}
-                    style={{
-                      background: "#f3f4f6",
-                      color: "#111",
-                      padding: "5px 9px",
-                      borderRadius: 999,
-                      fontSize: 11,
-                      fontWeight: 800,
-                    }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-
             <div style={styles.compactInfoRow}>
               <span>출석 {formatDate(member.latest_visit)}</span>
               <span>PT {formatDate(member.latest_pt)}</span>
@@ -7078,27 +6986,6 @@ async function saveMemberPreference() {
                         {getScheduleTypeText(schedule.type)} · {getScheduleMemberNames(schedule)}
                         {getScheduleMemberPtText(schedule) ? ` (${getScheduleMemberPtText(schedule)})` : ""}
                       </strong>
-
-                      {getSchedulePreferenceTags(schedule).length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                          {getSchedulePreferenceTags(schedule).map((tag) => (
-                            <span
-                              key={tag}
-                              style={{
-                                background: "rgba(255,255,255,0.14)",
-                                color: "#f9fafb",
-                                border: "1px solid rgba(255,255,255,0.18)",
-                                padding: "4px 8px",
-                                borderRadius: 999,
-                                fontSize: 11,
-                                fontWeight: 800,
-                              }}
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
 
                       {getReRegisterAlert(member) && (
                         <div style={styles.reRegisterInlineAlertDark}>
@@ -8476,20 +8363,6 @@ async function saveMemberPreference() {
                   >
                     + 이용권
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!selectedMember?.phone) {
-                        alert("회원 전화번호가 없어요.");
-                        return;
-                      }
-                      const phone = String(selectedMember.phone).replace(/[^0-9]/g, "");
-                      window.location.href = `sms:${phone}`;
-                    }}
-                    style={styles.detailHeaderPassButton}
-                  >
-                    문자
-                  </button>
                 </div>
                       {getPreferenceTags(selectedMember).length > 0 && (
   <div
@@ -8541,37 +8414,14 @@ async function saveMemberPreference() {
                   <button onClick={() => setDetailMode("info")} style={styles.menuButton}>
                     회원 정보
                   </button>
-                  <button onClick={() => openContactModal(selectedMember, "pending")} style={styles.menuButton}>
-                    상담기록
-                  </button>
                   <button onClick={() => setDetailMode("preference")} style={styles.menuButton}>
                     성향 메모
                   </button>
-                  <button
-                    type="button"
-                    style={styles.menuButton}
-                    onClick={() => {
-                      if (!selectedMember?.phone) {
-                        alert("회원 전화번호가 없어요.");
-                        return;
-                      }
-
-                      const link = `${window.location.origin}/preference/${selectedMember.id}`;
-                      const message = `안녕하세요 스포테이너 피트니스 팀장 김선수입니다😊
-
-회원님의 운동 스타일과 목표를 이해하고 보다 효율적인 수업 방향을 설계하기 위해 간단한 체크리스트 작성 부탁드려요🙂‍↕️
-
-작성해주신 내용은 회원님 운동 스타일과 성향을 파악하고 앞으로 수업 방향을 잡는 데 도움이 됩니다 :)
-
-${link}`;
-                      const phone = String(selectedMember.phone).replace(/[^0-9]/g, "");
-                      window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
-                    }}
-                  >
-                    성향체크 문자
-                  </button>
                   <button onClick={() => setDetailMode("pt")} style={styles.menuButton}>
                     PT 사용 기록
+                  </button>
+                  <button onClick={() => setDetailMode("attendance")} style={styles.menuButton}>
+                    출석 기록
                   </button>
                   <button
                     onClick={() => {
@@ -8583,9 +8433,6 @@ ${link}`;
                   </button>
                   <button onClick={() => setDetailMode("inbody")} style={styles.menuButton}>
                     인바디 기록
-                  </button>
-                  <button onClick={() => openMemberScheduleSearch(selectedMember)} style={styles.menuButton}>
-                    스케줄 확인
                   </button>
                 </div>
               </>
@@ -8642,9 +8489,11 @@ ${link}`;
       <div style={preferenceStyles.helper}>회원님이 운동할 때 어떤 방식이 편한지 체크해요. 중복 선택 가능해요.</div>
       <div style={preferenceStyles.grid3}>
         {[
-          "강하게 밀어주세요 (운동할 땐 확실하게 하는 게 좋아요)",
-          "부드럽고 편하게 해주세요 (칭찬과 격려가 편해요)",
-          "천천히 맞춰주세요 (부담 없이 운동하고 싶어요)",
+          "강하게 밀어주세요! (도전적이고 고강도 트레이닝 선호)",
+          "적당히 꾸준하게! (꾸준하고 부담 없는 강도)",
+          "가볍게 천천히! (부드럽고 천천히 진행)",
+          "자세 꼼꼼하게! (정확하게 배우고 싶어요)",
+          "힘들어도 끝까지! (포기하지 않게 해주세요)",
         ].map((label) => (
           <button
             key={label}
@@ -8666,8 +8515,8 @@ ${link}`;
       <div style={preferenceStyles.helper}>운동 외에 식단, 생활습관, 컨디션을 어느 정도 챙기면 좋을지 기록해요.</div>
       <div style={preferenceStyles.grid3}>
         {[
-          "꼼꼼하게 관리해주세요 (식단, 생활습관도 같이 체크받고 싶어요)",
-          "적당히 체크만 해주세요 (필요한 부분만 편하게 관리받고 싶어요)",
+          "세세한 관리가 좋아요 (운동, 식단, 생활습관도 같이 봐주세요)",
+          "적당히 체크만 해주세요 (필요한 부분만 피드백 해주세요)",
           "운동에만 집중하고 싶어요 (간섭은 최소한이 좋아요)",
         ].map((label) => (
           <button
@@ -8686,13 +8535,37 @@ ${link}`;
     </div>
 
     <div style={preferenceStyles.section}>
+      <div style={preferenceStyles.label}>동기부여 스타일</div>
+      <div style={preferenceStyles.helper}>힘들 때 어떤 말투가 편한지 남겨둬요.</div>
+      <div style={preferenceStyles.grid3}>
+        {[
+          "적극적이고 강하게! (밀어붙이는 스타일 선호)",
+          "부드럽고 긍정적으로! (칭찬과 격려가 좋아요)",
+          "조용히 혼자 할게요. (필요한 가이드만 제공)",
+        ].map((label) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => setPrefMotivationStyle((prev) => togglePreferenceValue(prev, label))}
+            style={{
+              ...preferenceStyles.optionButton,
+              ...(prefMotivationStyle.includes(label) ? preferenceStyles.activeButton : {}),
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    <div style={preferenceStyles.section}>
       <div style={preferenceStyles.label}>자세 잡을 때 터치</div>
       <div style={preferenceStyles.helper}>여성전용 수업에서 꼭 확인해두면 좋은 부분이에요.</div>
       <div style={preferenceStyles.grid3}>
         {[
           "괜찮아요 (자세 잡을 때 필요한 터치는 괜찮아요)",
-          "가능하지만 최소한으로 해주세요 (미리 설명해주면 좋아요)",
-          "조금 불편해요 (터치 없이 설명해주세요)",
+          "가능하지만 최소한으로 해주세요. (필요한 경우에만 요청해주세요)",
+          "조금 불편해요. (터치 없이 설명으로만 진행해주세요)",
         ].map((label) => (
           <button
             key={label}
@@ -8711,12 +8584,13 @@ ${link}`;
 
     <div style={preferenceStyles.section}>
       <div style={preferenceStyles.label}>대화 스타일</div>
-      <div style={preferenceStyles.helper}>수업 중 대화 방식에 대해 편한 쪽을 체크해요.</div>
+      <div style={preferenceStyles.helper}>수업 중 대화와 피드백 톤을 맞추기 위한 기록이에요.</div>
       <div style={preferenceStyles.grid3}>
         {[
-          "편한 분위기로 운동하고 싶어요 (가볍게 대화하는 건 괜찮아요)",
-          "운동에 집중하는 분위기가 좋아요 (필요한 설명 위주가 편해요)",
-          "먼저 물어봐주시면 편해요 (제가 먼저 말하는 건 조금 어려워요)",
+          "재미있게 대화 나누면서 운동하고 싶어요. (수업 분위기가 편한 게 좋아요)",
+          "최소한으로 대화하고 싶어요. (운동에 집중하는게 좋아요)",
+          "개인적인 이야기는 나누고 싶지 않아요 (프라이버시 존중)",
+          "먼저 물어봐주면 편해요 (제가 먼저 말하는 건 어려워요)",
         ].map((label) => (
           <button
             key={label}
@@ -8735,12 +8609,13 @@ ${link}`;
 
     <div style={preferenceStyles.section}>
       <div style={preferenceStyles.label}>수업 분위기</div>
-      <div style={preferenceStyles.helper}>원하시는 수업 분위기에 가까운 항목을 체크해요.</div>
+      <div style={preferenceStyles.helper}>밝게 갈지, 차분하게 갈지, 그날 컨디션에 맞출지 기록해요.</div>
       <div style={preferenceStyles.grid3}>
         {[
-          "밝고 편한 분위기가 좋아요",
-          "차분하게 운동하는 분위기가 좋아요",
-          "컨디션에 맞춰 조절해주세요",
+          "활기차고 에너지 넘치는 분위기가 좋아요",
+          "선생님과 조용하게 수업하고 싶어요",
+          "컨디션에 맞춰 조절해주세요 (몸 상태에 따라 조절하고 싶어요)",
+          "운동할 땐 확실하게 해주세요 (할 땐 제대로 하고 싶어요)",
         ].map((label) => (
           <button
             key={label}
@@ -12312,7 +12187,6 @@ const styles = {
   },
   menuGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
     gap: 12,
   },
   menuButton: {
@@ -12323,7 +12197,7 @@ const styles = {
     padding: 18,
     fontSize: 18,
     fontWeight: 900,
-    marginBottom: 0,
+    marginBottom: 12,
   },
   recordHeader: {
     display: "flex",
@@ -15426,7 +15300,7 @@ textarea: {
     padding: 18,
     fontSize: 18,
     fontWeight: 1000,
-    marginBottom: 0,
+    marginBottom: 12,
     boxShadow: "0 4px 12px rgba(0,0,0,.04)",
   },
   infoBlock: {
