@@ -216,7 +216,7 @@ const circuitPrograms = [
   },
 ];
 
-const SPOTAINER_PATCH_VERSION = "2026-05-25-member-stage-condition-check-v4-safe-persist";
+const SPOTAINER_PATCH_VERSION = "2026-05-25-member-stage-condition-check-v1";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const memberStageOptions = [
@@ -362,15 +362,6 @@ const [prefClassMood, setPrefClassMood] = useState([]);
   const [detailWorkoutSessions, setDetailWorkoutSessions] = useState([]);
   const [lastWorkoutMap, setLastWorkoutMap] = useState({});
   const [latestConditionMap, setLatestConditionMap] = useState({});
-
-  useEffect(() => {
-    if (!Array.isArray(members) || members.length === 0) {
-      setLatestConditionMap({});
-      return;
-    }
-
-    loadLatestConditionChecksForMembers(members);
-  }, [members.length]);
   const [workoutMode, setWorkoutMode] = useState("list");
   const [workoutTrainingType, setWorkoutTrainingType] = useState("weight");
   const [workoutBodyParts, setWorkoutBodyParts] = useState([]);
@@ -728,45 +719,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
       ...prev,
       ...nextMap,
     }));
-  }
-
-
-  async function loadLatestConditionChecksForMembers(memberList = []) {
-    try {
-      const memberIds = Array.from(
-        new Set(
-          (memberList || [])
-            .map((member) => member?.id)
-            .filter(Boolean)
-        )
-      );
-
-      if (memberIds.length === 0) {
-        setLatestConditionMap({});
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("member_condition_checks")
-        .select("*")
-        .in("member_id", memberIds)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("회원 최근 컨디션 체크 불러오기 실패:", error.message);
-        return;
-      }
-
-      const nextMap = {};
-      (data || []).forEach((row) => {
-        if (!row.member_id || nextMap[row.member_id]) return;
-        nextMap[row.member_id] = row;
-      });
-
-      setLatestConditionMap(nextMap);
-    } catch (error) {
-      console.error("회원 최근 컨디션 체크 처리 실패:", error);
-    }
   }
 
   function getLatestConditionForMember(member) {
