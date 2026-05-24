@@ -442,13 +442,11 @@ const [workoutExercises, setWorkoutExercises] = useState([
     if (typeof window === "undefined") return;
 
     function checkMobileEmergencyMode() {
-      const userAgent = navigator.userAgent || "";
-      const isPhoneUserAgent = /iPhone|iPod|Android.*Mobile/i.test(userAgent);
-      // 핵심 기준:
-      // - 실제 휴대폰만 모바일 일정등록 화면 사용
-      // - Android 태블릿/PWA는 기존 전체 관리 화면 유지
-      // 화면 크기 기준을 쓰면 태블릿 PWA가 휴대폰으로 오인식될 수 있어서 제외합니다.
-      setIsMobileEmergencyMode(Boolean(isPhoneUserAgent));
+      // 긴급 복구 기준:
+      // 태블릿/PWA가 휴대폰으로 오인식되어 모바일 일정등록 화면이 뜨는 문제를 막기 위해
+      // 일단 모바일 긴급모드를 완전히 끕니다.
+      // 실제 휴대폰 전용 화면은 안정화 후 별도 조건으로 다시 분리합니다.
+      setIsMobileEmergencyMode(false);
     }
 
     checkMobileEmergencyMode();
