@@ -438,6 +438,10 @@ const [workoutExercises, setWorkoutExercises] = useState([
     loadCenterInfo();
   }, []);
 
+  // 모바일 긴급모드는 태블릿/PWA 오인식 문제 때문에 완전히 비활성화했습니다.
+
+  // 모바일 긴급모드용 자동 로드는 제거했습니다.
+
   useEffect(() => {
     if (!exitToast) return;
 
@@ -6599,6 +6603,8 @@ async function saveMemberPreference() {
 
     return !schedule.attendance_checked || !schedule.pt_used;
   });
+
+  // 모바일 긴급모드 렌더링 제거: 항상 전체 Spotainer 화면을 표시합니다.
 
   return (
     <main style={styles.page}>
