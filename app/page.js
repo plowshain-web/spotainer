@@ -171,7 +171,6 @@ const exerciseCatalog = [
 ];
 
 const exerciseList = exerciseCatalog.map((exercise) => exercise.name);
-const commonExercises = exerciseList;
 
 const CIRCUIT_FIXED_SET_COUNT = 3;
 const WEIGHT_DEFAULT_SET_COUNT = 4;
@@ -440,23 +439,11 @@ const [workoutExercises, setWorkoutExercises] = useState([
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    function checkMobileEmergencyMode() {
-      // 태블릿/PWA 오인식 방지를 위해 모바일 긴급모드는 완전히 끕니다.
-      setIsMobileEmergencyMode(false);
-    }
-
-    checkMobileEmergencyMode();
-    window.addEventListener("resize", checkMobileEmergencyMode);
-    window.addEventListener("orientationchange", checkMobileEmergencyMode);
-
-    return () => {
-      window.removeEventListener("resize", checkMobileEmergencyMode);
-      window.removeEventListener("orientationchange", checkMobileEmergencyMode);
-    };
+    // 2026-05-25 FIX:
+    // Android 태블릿/PWA가 휴대폰 긴급모드로 오인식되는 문제 때문에
+    // 모바일 긴급모드 자동 전환을 완전히 비활성화합니다.
+    setIsMobileEmergencyMode(false);
   }, []);
-
 
   useEffect(() => {
     if (!exitToast) return;
@@ -6620,8 +6607,7 @@ async function saveMemberPreference() {
     return !schedule.attendance_checked || !schedule.pt_used;
   });
 
-  // 모바일 긴급모드는 태블릿/PWA 오인식 문제 때문에 완전히 비활성화했습니다.
-  // 항상 기존 전체 Spotainer 화면을 렌더링합니다.
+  // 모바일 긴급모드 렌더링 제거: 태블릿/PWA는 항상 전체 Spotainer 화면을 사용합니다.
 
   return (
     <main style={styles.page}>
