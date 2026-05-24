@@ -604,6 +604,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
     });
 
     setMembers(formatted);
+    await loadLatestConditionChecksForMembers(formatted);
   }
 
   function getTodayDateString() {
@@ -706,6 +707,44 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     if (error) {
       console.error("최근 컨디션 체크 불러오기 실패:", error.message);
+      return;
+    }
+
+    const nextMap = {};
+    (data || []).forEach((row) => {
+      if (!row.member_id || nextMap[row.member_id]) return;
+      nextMap[row.member_id] = row;
+    });
+
+    setLatestConditionMap((prev) => ({
+      ...prev,
+      ...nextMap,
+    }));
+  }
+
+
+  async function loadLatestConditionChecksForMembers(memberList = []) {
+    const memberIds = Array.from(
+      new Set(
+        (memberList || [])
+          .map((member) => member?.id)
+          .filter(Boolean)
+      )
+    );
+
+    if (memberIds.length === 0) {
+      setLatestConditionMap({});
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("member_condition_checks")
+      .select("*")
+      .in("member_id", memberIds)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("회원 최근 컨디션 체크 불러오기 실패:", error.message);
       return;
     }
 
