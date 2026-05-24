@@ -8,7 +8,18 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-
+const commonExercises = [
+  "랫풀다운",
+  "레그프레스",
+  "스쿼트",
+  "벤치프레스",
+  "데드리프트",
+  "힙쓰러스트",
+  "숄더프레스",
+  "시티드로우",
+  "런지",
+  "플랭크",
+];
 
 
 /*
@@ -249,9 +260,14 @@ function createEmptyWorkoutExercise(trainingType = "weight") {
 }
 
 export default function Page() {
+  const [mounted, setMounted] = useState(false);
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");
   const [summaryModal, setSummaryModal] = useState(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [memberActionMenuMember, setMemberActionMenuMember] = useState(null);
   const [showContactListModal, setShowContactListModal] = useState(false);
   const [showCenterModal, setShowCenterModal] = useState(false);
@@ -7154,6 +7170,8 @@ async function saveMemberPreference() {
       </main>
     );
   }
+
+  if (!mounted) return null;
 
   return (
     <main style={styles.page}>
