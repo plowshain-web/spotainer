@@ -217,7 +217,7 @@ const circuitPrograms = [
   },
 ];
 
-const SPOTAINER_PATCH_VERSION = "2026-05-07-stable-feedback-modal-restored";
+const SPOTAINER_PATCH_VERSION = "2026-05-25-stable-preference-sms-restore";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 
@@ -3731,10 +3731,11 @@ const [workoutExercises, setWorkoutExercises] = useState([
     return `[스포테이너]
 ${dateText} ${timeText} ${typeText} 수업 예약되어 있습니다.
 
-오늘 몸상태나 컨디션 어떠세요?
-불편한 부위 있으면 미리 알려주세요.
+오늘 몸 상태 괜찮으셨어요? 😊
+불편한 부분이나 피곤한 곳 있으면 편하게 말씀해주세요.
+수업 때 참고해서 무리없이 진행할게요.
 
-늦지 않게 방문해주세요 😊`;
+늦지 않게 방문해주세요.`;
   }
 
   function makeSMSQueueItemsFromSchedule(schedule, onlyUnsent = true) {
@@ -4095,7 +4096,7 @@ function generateMemberCardFeedbackMessage(member, session) {
       return;
     }
 
-    const message = `${member.name || "회원"}님 오늘 몸상태나 컨디션 어떠세요? 😊\n불편한 부위나 컨디션 있으면 미리 알려주세요!`;
+    const message = `${member.name || "회원"}님 오늘 몸 상태 괜찮으셨어요? 😊\n불편한 부분이나 피곤한 곳 있으면 편하게 말씀해주세요.\n수업 때 참고해서 무리없이 진행할게요.`;
 
     if (!confirm(`${member.name || "회원"} 회원에게 컨디션 확인 문자를 보낼까요?\n\n확인을 누르면 문자앱이 열리고, 직접 전송 버튼을 눌러야 발송됩니다.`)) {
       return;
@@ -6387,6 +6388,34 @@ async function saveMemberPreference() {
               {member.height && <span>{member.height}cm</span>}
               <span>{member.phone || "전화번호 없음"}</span>
             </div>
+
+            {getPreferenceTags(member).length > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 5,
+                  marginTop: 6,
+                  marginBottom: 6,
+                }}
+              >
+                {getPreferenceTags(member).map((tag) => (
+                  <span
+                    key={`${member.id}-pref-${tag}`}
+                    style={{
+                      background: "#f3f4f6",
+                      color: "#111",
+                      padding: "4px 8px",
+                      borderRadius: 999,
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
 
             <div style={styles.compactInfoRow}>
               <span>출석 {formatDate(member.latest_visit)}</span>
