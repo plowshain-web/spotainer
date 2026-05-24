@@ -171,6 +171,7 @@ const exerciseCatalog = [
 ];
 
 const exerciseList = exerciseCatalog.map((exercise) => exercise.name);
+const commonExercises = exerciseList;
 
 const CIRCUIT_FIXED_SET_COUNT = 3;
 const WEIGHT_DEFAULT_SET_COUNT = 4;
@@ -216,20 +217,8 @@ const circuitPrograms = [
   },
 ];
 
-const SPOTAINER_PATCH_VERSION = "2026-05-25-member-stage-condition-check-v4-safe-persist";
+const SPOTAINER_PATCH_VERSION = "2026-05-07-stable-feedback-modal-restored";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
-
-const memberStageOptions = [
-  { value: "ot", label: "OT회원" },
-  { value: "pt", label: "PT회원" },
-  { value: "inactive", label: "비활성" },
-];
-
-const conditionLevelOptions = ["좋음", "보통", "안좋음"];
-const sleepStatusOptions = ["충분", "보통", "부족", "매우부족"];
-const painAreaOptions = ["없음", "목/승모", "어깨", "허리", "무릎", "손목", "골반/고관절", "기타"];
-const muscleSorenessOptions = ["없음", "약간", "심함"];
-const workoutBurdenOptions = ["괜찮음", "조금 부담", "많이 부담"];
 
 
 const weightBodyPartOptions = ["가슴", "어깨", "등", "하체", "팔", "복부"];
@@ -249,6 +238,22 @@ function createEmptyWorkoutExercise(trainingType = "weight") {
 }
 
 export default function Page() {
+  const [isClientReady, setIsClientReady] = useState(false);
+
+  useEffect(() => {
+    setIsClientReady(true);
+  }, []);
+
+  if (!isClientReady) {
+    return (
+      <main style={{ minHeight: "100vh", background: "#f4f4f5" }} />
+    );
+  }
+
+  return <SpotainerApp />;
+}
+
+function SpotainerApp() {
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");
   const [summaryModal, setSummaryModal] = useState(null);
@@ -288,13 +293,6 @@ export default function Page() {
   const [contactModalMember, setContactModalMember] = useState(null);
   const [contactResult, setContactResult] = useState("pending");
   const [contactNote, setContactNote] = useState("");
-  const [conditionModalMember, setConditionModalMember] = useState(null);
-  const [conditionLevel, setConditionLevel] = useState("보통");
-  const [conditionSleepStatus, setConditionSleepStatus] = useState("보통");
-  const [conditionPainArea, setConditionPainArea] = useState("없음");
-  const [conditionMuscleSoreness, setConditionMuscleSoreness] = useState("없음");
-  const [conditionWorkoutBurden, setConditionWorkoutBurden] = useState("괜찮음");
-  const [conditionMemo, setConditionMemo] = useState("");
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [name, setName] = useState("");
@@ -305,7 +303,6 @@ export default function Page() {
   const [note, setNote] = useState("");
   const [memo, setMemo] = useState("");
   const [memberType, setMemberType] = useState("general");
-  const [memberStage, setMemberStage] = useState("pt");
 
   const [editingId, setEditingId] = useState(null);
   const [editModalMember, setEditModalMember] = useState(null);
@@ -318,16 +315,16 @@ export default function Page() {
   const [editNote, setEditNote] = useState("");
   const [editMemo, setEditMemo] = useState("");
   const [editMemberType, setEditMemberType] = useState("general");
-  const [editMemberStage, setEditMemberStage] = useState("pt");
 
   const [selectedMember, setSelectedMember] = useState(null);
   const [detailMode, setDetailMode] = useState(null);
 
-  const [prefIntensity, setPrefIntensity] = useState([]);
-const [prefManagementStyle, setPrefManagementStyle] = useState([]);
-const [prefTouchStyle, setPrefTouchStyle] = useState([]);
-const [prefCommunicationStyle, setPrefCommunicationStyle] = useState([]);
-const [prefClassMood, setPrefClassMood] = useState([]);
+  const [prefIntensity, setPrefIntensity] = useState("");
+const [prefManagementStyle, setPrefManagementStyle] = useState("");
+const [prefMotivationStyle, setPrefMotivationStyle] = useState("");
+const [prefTouchStyle, setPrefTouchStyle] = useState("");
+const [prefCommunicationStyle, setPrefCommunicationStyle] = useState("");
+const [prefClassMood, setPrefClassMood] = useState("");
   const [prefRequestNote, setPrefRequestNote] = useState("");
 
   const [attendanceList, setAttendanceList] = useState([]);
@@ -361,16 +358,6 @@ const [prefClassMood, setPrefClassMood] = useState([]);
   const [workoutSessions, setWorkoutSessions] = useState([]);
   const [detailWorkoutSessions, setDetailWorkoutSessions] = useState([]);
   const [lastWorkoutMap, setLastWorkoutMap] = useState({});
-  const [latestConditionMap, setLatestConditionMap] = useState({});
-
-  useEffect(() => {
-    if (!Array.isArray(members) || members.length === 0) {
-      setLatestConditionMap({});
-      return;
-    }
-
-    loadLatestConditionChecksForMembers(members);
-  }, [members.length]);
   const [workoutMode, setWorkoutMode] = useState("list");
   const [workoutTrainingType, setWorkoutTrainingType] = useState("weight");
   const [workoutBodyParts, setWorkoutBodyParts] = useState([]);
@@ -466,14 +453,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
     loadScheduleSMSLogs(getTodayDateString());
     loadSales();
     loadCenterInfo();
-
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        registrations.forEach((registration) => {
-          registration.update();
-        });
-      });
-    }
   }, []);
 
   useEffect(() => {
@@ -605,7 +584,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
         pt_total: (m.pt_remaining || 0) + used,
         is_active: m.is_active !== false,
         member_type: m.member_type || ((m.pt_remaining || 0) > 0 ? "pt" : "general"),
-        member_stage: m.member_stage || (m.is_active === false ? "inactive" : "pt"),
         total_paid: totalPaid,
         payment_count: paymentCount,
         is_vip: totalPaid >= 1000000,
@@ -637,7 +615,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     setSchedules(data || []);
     await loadLastWorkoutsForSchedules(data || []);
-    await loadLatestConditionChecksForSchedules(data || []);
   }
 
   async function loadLastWorkoutsForSchedules(scheduleList = []) {
@@ -695,243 +672,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
     }));
   }
 
-
-  async function loadLatestConditionChecksForSchedules(scheduleList = []) {
-    const memberIds = Array.from(
-      new Set(
-        (scheduleList || [])
-          .flatMap((schedule) => getScheduleMembers(schedule).map((member) => member?.id))
-          .filter(Boolean)
-      )
-    );
-
-    if (memberIds.length === 0) return;
-
-    const { data, error } = await supabase
-      .from("member_condition_checks")
-      .select("*")
-      .in("member_id", memberIds)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("최근 컨디션 체크 불러오기 실패:", error.message);
-      return;
-    }
-
-    const nextMap = {};
-    (data || []).forEach((row) => {
-      if (!row.member_id || nextMap[row.member_id]) return;
-      nextMap[row.member_id] = row;
-    });
-
-    setLatestConditionMap((prev) => ({
-      ...prev,
-      ...nextMap,
-    }));
-  }
-
-
-  async function loadLatestConditionChecksForMembers(memberList = []) {
-    try {
-      const memberIds = Array.from(
-        new Set(
-          (memberList || [])
-            .map((member) => member?.id)
-            .filter(Boolean)
-        )
-      );
-
-      if (memberIds.length === 0) {
-        setLatestConditionMap({});
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("member_condition_checks")
-        .select("*")
-        .in("member_id", memberIds)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("회원 최근 컨디션 체크 불러오기 실패:", error.message);
-        return;
-      }
-
-      const nextMap = {};
-      (data || []).forEach((row) => {
-        if (!row.member_id || nextMap[row.member_id]) return;
-        nextMap[row.member_id] = row;
-      });
-
-      setLatestConditionMap(nextMap);
-    } catch (error) {
-      console.error("회원 최근 컨디션 체크 처리 실패:", error);
-    }
-  }
-
-  function getLatestConditionForMember(member) {
-    if (!member?.id) return null;
-    return latestConditionMap[member.id] || null;
-  }
-
-  function getMemberStageText(stage) {
-    if (stage === "ot") return "OT회원";
-    if (stage === "inactive") return "비활성";
-    return "PT회원";
-  }
-
-  function getMemberStageBadgeStyle(stage) {
-    if (stage === "ot") {
-      return { ...styles.compactStatusBadge, background: "#fef3c7", color: "#92400e" };
-    }
-    if (stage === "inactive") {
-      return { ...styles.compactStatusBadge, background: "#e5e7eb", color: "#374151" };
-    }
-    return { ...styles.compactStatusBadge, background: "#dcfce7", color: "#166534" };
-  }
-
-  function getConditionPreviewText(condition) {
-    if (!condition) return "";
-    const parts = [
-      condition.condition_level ? `컨디션 ${condition.condition_level}` : "",
-      condition.pain_area && condition.pain_area !== "없음" ? `불편 ${condition.pain_area}` : "",
-      condition.sleep_status ? `수면 ${condition.sleep_status}` : "",
-      condition.muscle_soreness && condition.muscle_soreness !== "없음" ? `근육통 ${condition.muscle_soreness}` : "",
-      condition.workout_burden && condition.workout_burden !== "괜찮음" ? `부담 ${condition.workout_burden}` : "",
-    ].filter(Boolean);
-
-    return parts.join(" · ");
-  }
-
-  function resetConditionForm() {
-    setConditionLevel("보통");
-    setConditionSleepStatus("보통");
-    setConditionPainArea("없음");
-    setConditionMuscleSoreness("없음");
-    setConditionWorkoutBurden("괜찮음");
-    setConditionMemo("");
-  }
-
-  function openConditionCheckModal(member) {
-    if (!member) return;
-    const latest = getLatestConditionForMember(member);
-    setConditionModalMember(member);
-    setConditionLevel(latest?.condition_level || "보통");
-    setConditionSleepStatus(latest?.sleep_status || "보통");
-    setConditionPainArea(latest?.pain_area || "없음");
-    setConditionMuscleSoreness(latest?.muscle_soreness || "없음");
-    setConditionWorkoutBurden(latest?.workout_burden || "괜찮음");
-    setConditionMemo(latest?.memo || "");
-  }
-
-  function closeConditionCheckModal() {
-    setConditionModalMember(null);
-    resetConditionForm();
-  }
-
-  async function saveConditionCheck() {
-    if (!conditionModalMember?.id) {
-      alert("회원 정보를 찾을 수 없습니다.");
-      return;
-    }
-
-    const row = {
-      member_id: conditionModalMember.id,
-      check_stage: conditionModalMember.member_stage === "ot" ? "ot" : "pt",
-      condition_level: conditionLevel,
-      sleep_status: conditionSleepStatus,
-      pain_area: conditionPainArea,
-      muscle_soreness: conditionMuscleSoreness,
-      workout_burden: conditionWorkoutBurden,
-      memo: conditionMemo.trim(),
-    };
-
-    const { data, error } = await supabase
-      .from("member_condition_checks")
-      .insert(row)
-      .select()
-      .single();
-
-    if (error) {
-      alert("컨디션 체크 저장 실패: " + error.message);
-      return;
-    }
-
-    setLatestConditionMap((prev) => ({
-      ...prev,
-      [conditionModalMember.id]: data || row,
-    }));
-
-    closeConditionCheckModal();
-    alert("컨디션 체크가 저장되었습니다.");
-  }
-
-  async function convertOtMemberToPt(member) {
-    if (!member?.id) return;
-
-    if (!confirm(`${member.name || "회원"} 회원을 PT회원으로 전환할까요?\n기존 성향체크 문항과 결과는 그대로 유지됩니다.`)) {
-      return;
-    }
-
-    const { error } = await supabase
-      .from("members")
-      .update({
-        member_stage: "pt",
-        member_type:
-          member.member_type === "vip" || member.member_type === "group"
-            ? member.member_type
-            : "pt",
-        is_active: true,
-      })
-      .eq("id", member.id);
-
-    if (error) {
-      alert("PT 전환 실패: " + error.message);
-      return;
-    }
-
-    const { data: latestOtRecord, error: lookupError } = await supabase
-      .from("ot_records")
-      .select("id")
-      .eq("member_id", member.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!lookupError && latestOtRecord?.id) {
-      await supabase
-        .from("ot_records")
-        .update({
-          converted_to_pt: true,
-          converted_at: new Date().toISOString(),
-        })
-        .eq("id", latestOtRecord.id);
-    } else {
-      await supabase.from("ot_records").insert({
-        member_id: member.id,
-        converted_to_pt: true,
-        converted_at: new Date().toISOString(),
-        trainer_memo: "OT 회원 PT 전환",
-      });
-    }
-
-    if (selectedMember?.id === member.id) {
-      setSelectedMember({
-        ...selectedMember,
-        member_stage: "pt",
-        member_type:
-          member.member_type === "vip" || member.member_type === "group"
-            ? member.member_type
-            : "pt",
-        is_active: true,
-      });
-    }
-
-    closeMemberActionMenu();
-    await loadMembers();
-    alert(`${member.name || "회원"} 회원이 PT회원으로 전환되었습니다.`);
-  }
-
   async function loadSelectedDateSchedules(date = scheduleDate) {
     if (!date) {
       setSelectedDateSchedules([]);
@@ -971,7 +711,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     setScheduleCheckList(data || []);
     await loadLastWorkoutsForSchedules(data || []);
-    await loadLatestConditionChecksForSchedules(data || []);
   }
 
   function getMonthRange(dateText = getTodayDateString()) {
@@ -1465,19 +1204,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
               {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).noteLine && (
                 <span style={styles.lastWorkoutPreviewText}>
                   {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).noteLine}
-                </span>
-              )}
-            </div>
-          )}
-
-          {member && getLatestConditionForMember(member) && (
-            <div style={styles.lastWorkoutPreviewCompact}>
-              <span style={styles.lastWorkoutPreviewStrong}>
-                최근컨디션: {getConditionPreviewText(getLatestConditionForMember(member))}
-              </span>
-              {getLatestConditionForMember(member)?.memo && (
-                <span style={styles.lastWorkoutPreviewText}>
-                  {getLatestConditionForMember(member).memo}
                 </span>
               )}
             </div>
@@ -2792,17 +2518,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
     return scheduleMembers.map((member) => `${member.name} PT ${member.pt_remaining || 0}회`).join(" · ");
   }
 
-
-  function getSchedulePreferenceTags(schedule) {
-    const tagSet = new Set();
-
-    getScheduleMembers(schedule).forEach((member) => {
-      getPreferenceTags(member).forEach((tag) => tagSet.add(tag));
-    });
-
-    return [...tagSet];
-  }
-
   async function scheduleCheckAttendance(schedule) {
     const member = getScheduleMember(schedule);
     if (!member) return alert("연결된 회원 정보를 찾을 수 없습니다.");
@@ -3552,7 +3267,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
       note: note.trim(),
       memo: memo.trim(),
       member_type: memberType,
-      member_stage: memberStage,
       pt_remaining: 0,
       is_active: true,
     });
@@ -3565,7 +3279,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setNote("");
     setMemo("");
     setMemberType("general");
-    setMemberStage("pt");
     setSearch("");
     setShowAddModal(false);
     loadMembers();
@@ -3583,7 +3296,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setEditNote(member.note || "");
     setEditMemo(member.memo || "");
     setEditMemberType(member.member_type || ((member.pt_remaining || 0) > 0 ? "pt" : "general"));
-    setEditMemberStage(member.member_stage || (member.is_active === false ? "inactive" : "pt"));
   }
 
   function closeEditModal() {
@@ -3598,7 +3310,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setEditNote("");
     setEditMemo("");
     setEditMemberType("general");
-    setEditMemberStage("pt");
   }
 
   async function saveEdit(id) {
@@ -3619,7 +3330,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
         note: editNote.trim(),
         memo: editMemo.trim(),
         member_type: editMemberType,
-        member_stage: editMemberStage,
       })
       .eq("id", id);
 
@@ -3637,7 +3347,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
         note: editNote.trim(),
         memo: editMemo.trim(),
         member_type: editMemberType,
-        member_stage: editMemberStage,
       });
     }
 
@@ -3656,7 +3365,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     const { error } = await supabase
       .from("members")
-      .update({ is_active: false, member_stage: "inactive" })
+      .update({ is_active: false })
       .eq("id", member.id);
 
     if (error) {
@@ -3679,7 +3388,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     const { error } = await supabase
       .from("members")
-      .update({ is_active: true, member_stage: member.member_stage === "inactive" ? "pt" : (member.member_stage || "pt") })
+      .update({ is_active: true })
       .eq("id", member.id);
 
     if (error) {
@@ -4559,101 +4268,51 @@ function stringifyPreferenceValue(value) {
 function getPreferenceTags(member) {
   const tags = [];
 
-  const intensity = String(member?.preference_intensity || "");
+  const motivation = String(member?.preference_motivation_style || "");
   const communication = String(member?.preference_communication_style || "");
   const touch = String(member?.preference_touch_style || "");
   const management = String(member?.preference_management_style || "");
   const mood = String(member?.preference_class_mood || "");
 
-  const allText = [intensity, communication, touch, management, mood].join(" ");
-
-  // 운동 강도/리드 방식
-  if (allText.includes("강하게") || allText.includes("확실하게")) {
-    tags.push("강도선호");
-  }
-
-  // 전체 분위기/대화 성향
   if (
-    allText.includes("밝고 편") ||
-    allText.includes("편한 분위기") ||
-    allText.includes("가볍게 대화")
+    motivation.includes("장난 섞어서") ||
+    mood.includes("밝고 재밌게")
   ) {
-    tags.push("활발형");
+    tags.push("친근형");
   }
 
   if (
-    allText.includes("차분하게") ||
-    allText.includes("운동에 집중") ||
-    allText.includes("필요한 설명")
+    motivation.includes("담백하게") ||
+    communication.includes("운동에 집중") ||
+    communication.includes("개인 얘기는 조심")
   ) {
     tags.push("차분형");
   }
 
-  if (allText.includes("먼저 물어")) {
-    tags.push("먼저체크");
+  if (
+    touch.includes("설명으로만") ||
+    touch.includes("꼭 필요할 때만") ||
+    touch.includes("민감한 부위")
+  ) {
+    tags.push("터치주의");
   }
 
-  // 터치는 괜찮은 경우는 표시하지 않고 주의가 필요한 경우만 표시
-  if (touch.includes("최소한") || touch.includes("미리 설명")) {
-    tags.push("터치최소");
-  }
-
-  if (touch.includes("불편") || touch.includes("터치 없이")) {
-    tags.push("터치금지");
-  }
-
-  // 관리 스타일
-  if (management.includes("꼼꼼") || management.includes("식단") || management.includes("생활습관")) {
-    tags.push("꼼꼼관리");
-  }
-
-  if (management.includes("적당히") || management.includes("필요한 부분")) {
-    tags.push("적당관리");
-  }
-
-  if (management.includes("운동에만 집중") || management.includes("간섭")) {
-    tags.push("운동집중");
-  }
-
-  // 컨디션 기반 수업 조절
-  if (mood.includes("컨디션") || mood.includes("조절")) {
+  if (
+    communication.includes("컨디션은 자주") ||
+    mood.includes("그날 컨디션")
+  ) {
     tags.push("컨디션체크");
+  }
+
+  if (
+    management.includes("꼼꼼하게 챙겨")
+  ) {
+    tags.push("꼼꼼관리");
   }
 
   return [...new Set(tags)];
 }
 
-function getAllowedPreferenceValues(key) {
-  const map = {
-    preference_intensity: [
-      "강하게 밀어주세요 (운동할 땐 확실하게 하는 게 좋아요)",
-      "부드럽고 편하게 해주세요 (칭찬과 격려가 편해요)",
-      "천천히 맞춰주세요 (부담 없이 운동하고 싶어요)",
-    ],
-    preference_management_style: [
-      "꼼꼼하게 관리해주세요 (식단, 생활습관도 같이 체크받고 싶어요)",
-      "적당히 체크만 해주세요 (필요한 부분만 편하게 관리받고 싶어요)",
-      "운동에만 집중하고 싶어요 (간섭은 최소한이 좋아요)",
-    ],
-    preference_touch_style: [
-      "괜찮아요 (자세 잡을 때 필요한 터치는 괜찮아요)",
-      "가능하지만 최소한으로 해주세요 (미리 설명해주면 좋아요)",
-      "조금 불편해요 (터치 없이 설명해주세요)",
-    ],
-    preference_communication_style: [
-      "편한 분위기로 운동하고 싶어요 (가볍게 대화하는 건 괜찮아요)",
-      "운동에 집중하는 분위기가 좋아요 (필요한 설명 위주가 편해요)",
-      "먼저 물어봐주시면 편해요 (제가 먼저 말하는 건 조금 어려워요)",
-    ],
-    preference_class_mood: [
-      "밝고 편한 분위기가 좋아요",
-      "차분하게 운동하는 분위기가 좋아요",
-      "컨디션에 맞춰 조절해주세요",
-    ],
-  };
-
-  return map[key] || [];
-}
 function togglePreferenceValue(currentValues, nextValue) {
   if (!Array.isArray(currentValues)) currentValues = parsePreferenceValue(currentValues);
 
@@ -4665,16 +4324,12 @@ function togglePreferenceValue(currentValues, nextValue) {
 }
 
 function fillPreferenceForm(member) {
-  const onlyCurrentOptions = (key, value) => {
-    const allowed = getAllowedPreferenceValues(key);
-    return parsePreferenceValue(value).filter((item) => allowed.includes(item));
-  };
-
-  setPrefIntensity(onlyCurrentOptions("preference_intensity", member?.preference_intensity));
-  setPrefManagementStyle(onlyCurrentOptions("preference_management_style", member?.preference_management_style));
-  setPrefTouchStyle(onlyCurrentOptions("preference_touch_style", member?.preference_touch_style));
-  setPrefCommunicationStyle(onlyCurrentOptions("preference_communication_style", member?.preference_communication_style));
-  setPrefClassMood(onlyCurrentOptions("preference_class_mood", member?.preference_class_mood));
+  setPrefIntensity(parsePreferenceValue(member?.preference_intensity));
+  setPrefManagementStyle(parsePreferenceValue(member?.preference_management_style));
+  setPrefMotivationStyle(parsePreferenceValue(member?.preference_motivation_style));
+  setPrefTouchStyle(parsePreferenceValue(member?.preference_touch_style));
+  setPrefCommunicationStyle(parsePreferenceValue(member?.preference_communication_style));
+  setPrefClassMood(parsePreferenceValue(member?.preference_class_mood));
   setPrefRequestNote(member?.preference_request_note || "");
 }
 
@@ -4684,7 +4339,7 @@ async function saveMemberPreference() {
   const payload = {
     preference_intensity: stringifyPreferenceValue(prefIntensity),
     preference_management_style: stringifyPreferenceValue(prefManagementStyle),
-    preference_motivation_style: null,
+    preference_motivation_style: stringifyPreferenceValue(prefMotivationStyle),
     preference_touch_style: stringifyPreferenceValue(prefTouchStyle),
     preference_communication_style: stringifyPreferenceValue(prefCommunicationStyle),
     preference_class_mood: stringifyPreferenceValue(prefClassMood),
@@ -6681,17 +6336,6 @@ async function saveMemberPreference() {
             <label style={styles.label}>전화번호</label>
             <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} style={styles.input} />
 
-            <label style={styles.label}>회원 단계</label>
-            <select
-              value={editMemberStage}
-              onChange={(e) => setEditMemberStage(e.target.value)}
-              style={styles.input}
-            >
-              {memberStageOptions.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-
             <label style={styles.label}>나이</label>
             <input value={editAge} onChange={(e) => setEditAge(e.target.value)} type="number" style={styles.input} />
 
@@ -6754,45 +6398,11 @@ async function saveMemberPreference() {
               <span style={getMemberTypeStyle(member.member_type)}>
                 {getMemberTypeText(member.member_type)}
               </span>
-              <span style={getMemberStageBadgeStyle(member.member_stage)}>{getMemberStageText(member.member_stage)}</span>
               {member.is_vip && member.member_type !== "vip" && <span style={styles.vipBadge}>VIP</span>}
               <span>{member.age ? `${member.age}세` : "나이 없음"}</span>
               {member.height && <span>{member.height}cm</span>}
               <span>{member.phone || "전화번호 없음"}</span>
             </div>
-
-            {getPreferenceTags(member).length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-                {getPreferenceTags(member).map((tag) => (
-                  <span
-                    key={tag}
-                    style={{
-                      background: "#f3f4f6",
-                      color: "#111",
-                      padding: "5px 9px",
-                      borderRadius: 999,
-                      fontSize: 11,
-                      fontWeight: 800,
-                    }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {getLatestConditionForMember(member) && (
-              <div style={styles.lastWorkoutPreviewCompact}>
-                <span style={styles.lastWorkoutPreviewStrong}>
-                  최근컨디션: {getConditionPreviewText(getLatestConditionForMember(member))}
-                </span>
-                {getLatestConditionForMember(member)?.memo && (
-                  <span style={styles.lastWorkoutPreviewText}>
-                    {getLatestConditionForMember(member).memo}
-                  </span>
-                )}
-              </div>
-            )}
 
             <div style={styles.compactInfoRow}>
               <span>출석 {formatDate(member.latest_visit)}</span>
@@ -6801,14 +6411,13 @@ async function saveMemberPreference() {
 
             <div style={styles.memberActionLineCompact}>
               <div style={styles.memberLeftActionsCompact}>
-                {/* member-card-v2: 컨디션 / 문자 / 피드백 / 더보기 버튼을 카드에 직접 노출 */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    openConditionCheckModal(member);
+                    sendConditionCheckSMS(member);
                   }}
                   style={styles.conditionSmsButton}
-                  title="컨디션 기록"
+                  title="수업 전 컨디션 확인 문자"
                 >
                   컨디션
                 </button>
@@ -6822,17 +6431,6 @@ async function saveMemberPreference() {
                   title="일반 문자 직접 작성"
                 >
                   문자
-                </button>
-
-                <button
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    await openMemberCardFeedback(member);
-                  }}
-                  style={shouldRecommendFeedback(member) ? styles.feedbackRecommendButtonMini : styles.feedbackButtonMini}
-                  title="피드백 추천"
-                >
-                  {shouldRecommendFeedback(member) ? "추천" : "피드백"}
                 </button>
 
                 <button
@@ -6896,7 +6494,6 @@ async function saveMemberPreference() {
     freeSmsModalMember ||
     feedbackModalMember ||
     contactModalMember ||
-    conditionModalMember ||
     summaryModal;
 
   useEffect(() => {
@@ -7407,27 +7004,6 @@ async function saveMemberPreference() {
                         {getScheduleMemberPtText(schedule) ? ` (${getScheduleMemberPtText(schedule)})` : ""}
                       </strong>
 
-                      {getSchedulePreferenceTags(schedule).length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                          {getSchedulePreferenceTags(schedule).map((tag) => (
-                            <span
-                              key={tag}
-                              style={{
-                                background: "rgba(255,255,255,0.14)",
-                                color: "#f9fafb",
-                                border: "1px solid rgba(255,255,255,0.18)",
-                                padding: "4px 8px",
-                                borderRadius: 999,
-                                fontSize: 11,
-                                fontWeight: 800,
-                              }}
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
                       {getReRegisterAlert(member) && (
                         <div style={styles.reRegisterInlineAlertDark}>
                           <strong>{getReRegisterAlert(member).title}</strong>
@@ -7446,15 +7022,6 @@ async function saveMemberPreference() {
                           )}
                           {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).noteLine && (
                             <span>{getLastWorkoutSummary(lastWorkoutMap[schedule.id]).noteLine}</span>
-                          )}
-                        </div>
-                      )}
-
-                      {member && getLatestConditionForMember(member) && (
-                        <div style={styles.lastWorkoutPreviewDark}>
-                          <span>최근컨디션: {getConditionPreviewText(getLatestConditionForMember(member))}</span>
-                          {getLatestConditionForMember(member)?.memo && (
-                            <span>{getLatestConditionForMember(member).memo}</span>
                           )}
                         </div>
                       )}
@@ -8659,17 +8226,6 @@ async function saveMemberPreference() {
               <option value="vip">VIP</option>
             </select>
 
-            <label style={styles.label}>회원 단계</label>
-            <select
-              value={memberStage}
-              onChange={(e) => setMemberStage(e.target.value)}
-              style={styles.input}
-            >
-              {memberStageOptions.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-
             <label style={styles.label}>나이</label>
             <input value={age} onChange={(e) => setAge(e.target.value)} placeholder="예: 32" type="number" style={styles.input} />
 
@@ -8733,17 +8289,6 @@ async function saveMemberPreference() {
               <option value="pt">PT회원</option>
               <option value="group">그룹PT회원</option>
               <option value="vip">VIP</option>
-            </select>
-
-            <label style={styles.whiteLabel}>회원 단계</label>
-            <select
-              value={editMemberStage}
-              onChange={(e) => setEditMemberStage(e.target.value)}
-              style={styles.whiteInput}
-            >
-              {memberStageOptions.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
             </select>
 
             <div style={styles.whiteTwoColumn}>
@@ -8828,27 +8373,12 @@ async function saveMemberPreference() {
                   <span style={getDetailPtPillStyle(selectedMember.pt_remaining || 0)}>
                     PT {selectedMember.pt_remaining || 0}회 남음
                   </span>
-                  <span style={getMemberStageBadgeStyle(selectedMember.member_stage)}>{getMemberStageText(selectedMember.member_stage)}</span>
                   <button
                     type="button"
                     onClick={() => openPtModal(selectedMember)}
                     style={styles.detailHeaderPassButton}
                   >
                     + 이용권
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!selectedMember?.phone) {
-                        alert("회원 전화번호가 없어요.");
-                        return;
-                      }
-                      const phone = String(selectedMember.phone).replace(/[^0-9]/g, "");
-                      window.location.href = `sms:${phone}`;
-                    }}
-                    style={styles.detailHeaderPassButton}
-                  >
-                    문자
                   </button>
                 </div>
                       {getPreferenceTags(selectedMember).length > 0 && (
@@ -8901,37 +8431,14 @@ async function saveMemberPreference() {
                   <button onClick={() => setDetailMode("info")} style={styles.menuButton}>
                     회원 정보
                   </button>
-                  <button onClick={() => openContactModal(selectedMember, "pending")} style={styles.menuButton}>
-                    상담기록
-                  </button>
                   <button onClick={() => setDetailMode("preference")} style={styles.menuButton}>
                     성향 메모
                   </button>
-                  <button
-                    type="button"
-                    style={styles.menuButton}
-                    onClick={() => {
-                      if (!selectedMember?.phone) {
-                        alert("회원 전화번호가 없어요.");
-                        return;
-                      }
-
-                      const link = `${window.location.origin}/preference/${selectedMember.id}`;
-                      const message = `안녕하세요 스포테이너 피트니스 팀장 김선수입니다😊
-
-회원님의 운동 스타일과 목표를 이해하고 보다 효율적인 수업 방향을 설계하기 위해 간단한 체크리스트 작성 부탁드려요🙂‍↕️
-
-작성해주신 내용은 회원님 운동 스타일과 성향을 파악하고 앞으로 수업 방향을 잡는 데 도움이 됩니다 :)
-
-${link}`;
-                      const phone = String(selectedMember.phone).replace(/[^0-9]/g, "");
-                      window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
-                    }}
-                  >
-                    성향체크 문자
-                  </button>
                   <button onClick={() => setDetailMode("pt")} style={styles.menuButton}>
                     PT 사용 기록
+                  </button>
+                  <button onClick={() => setDetailMode("attendance")} style={styles.menuButton}>
+                    출석 기록
                   </button>
                   <button
                     onClick={() => {
@@ -8943,9 +8450,6 @@ ${link}`;
                   </button>
                   <button onClick={() => setDetailMode("inbody")} style={styles.menuButton}>
                     인바디 기록
-                  </button>
-                  <button onClick={() => openMemberScheduleSearch(selectedMember)} style={styles.menuButton}>
-                    스케줄 확인
                   </button>
                 </div>
               </>
@@ -9002,9 +8506,11 @@ ${link}`;
       <div style={preferenceStyles.helper}>회원님이 운동할 때 어떤 방식이 편한지 체크해요. 중복 선택 가능해요.</div>
       <div style={preferenceStyles.grid3}>
         {[
-          "강하게 밀어주세요 (운동할 땐 확실하게 하는 게 좋아요)",
-          "부드럽고 편하게 해주세요 (칭찬과 격려가 편해요)",
-          "천천히 맞춰주세요 (부담 없이 운동하고 싶어요)",
+          "강하게 밀어주세요! (도전적이고 고강도 트레이닝 선호)",
+          "적당히 꾸준하게! (꾸준하고 부담 없는 강도)",
+          "가볍게 천천히! (부드럽고 천천히 진행)",
+          "자세 꼼꼼하게! (정확하게 배우고 싶어요)",
+          "힘들어도 끝까지! (포기하지 않게 해주세요)",
         ].map((label) => (
           <button
             key={label}
@@ -9026,8 +8532,8 @@ ${link}`;
       <div style={preferenceStyles.helper}>운동 외에 식단, 생활습관, 컨디션을 어느 정도 챙기면 좋을지 기록해요.</div>
       <div style={preferenceStyles.grid3}>
         {[
-          "꼼꼼하게 관리해주세요 (식단, 생활습관도 같이 체크받고 싶어요)",
-          "적당히 체크만 해주세요 (필요한 부분만 편하게 관리받고 싶어요)",
+          "세세한 관리가 좋아요 (운동, 식단, 생활습관도 같이 봐주세요)",
+          "적당히 체크만 해주세요 (필요한 부분만 피드백 해주세요)",
           "운동에만 집중하고 싶어요 (간섭은 최소한이 좋아요)",
         ].map((label) => (
           <button
@@ -9046,13 +8552,37 @@ ${link}`;
     </div>
 
     <div style={preferenceStyles.section}>
+      <div style={preferenceStyles.label}>동기부여 스타일</div>
+      <div style={preferenceStyles.helper}>힘들 때 어떤 말투가 편한지 남겨둬요.</div>
+      <div style={preferenceStyles.grid3}>
+        {[
+          "적극적이고 강하게! (밀어붙이는 스타일 선호)",
+          "부드럽고 긍정적으로! (칭찬과 격려가 좋아요)",
+          "조용히 혼자 할게요. (필요한 가이드만 제공)",
+        ].map((label) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => setPrefMotivationStyle((prev) => togglePreferenceValue(prev, label))}
+            style={{
+              ...preferenceStyles.optionButton,
+              ...(prefMotivationStyle.includes(label) ? preferenceStyles.activeButton : {}),
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    <div style={preferenceStyles.section}>
       <div style={preferenceStyles.label}>자세 잡을 때 터치</div>
       <div style={preferenceStyles.helper}>여성전용 수업에서 꼭 확인해두면 좋은 부분이에요.</div>
       <div style={preferenceStyles.grid3}>
         {[
           "괜찮아요 (자세 잡을 때 필요한 터치는 괜찮아요)",
-          "가능하지만 최소한으로 해주세요 (미리 설명해주면 좋아요)",
-          "조금 불편해요 (터치 없이 설명해주세요)",
+          "가능하지만 최소한으로 해주세요. (필요한 경우에만 요청해주세요)",
+          "조금 불편해요. (터치 없이 설명으로만 진행해주세요)",
         ].map((label) => (
           <button
             key={label}
@@ -9071,12 +8601,13 @@ ${link}`;
 
     <div style={preferenceStyles.section}>
       <div style={preferenceStyles.label}>대화 스타일</div>
-      <div style={preferenceStyles.helper}>수업 중 대화 방식에 대해 편한 쪽을 체크해요.</div>
+      <div style={preferenceStyles.helper}>수업 중 대화와 피드백 톤을 맞추기 위한 기록이에요.</div>
       <div style={preferenceStyles.grid3}>
         {[
-          "편한 분위기로 운동하고 싶어요 (가볍게 대화하는 건 괜찮아요)",
-          "운동에 집중하는 분위기가 좋아요 (필요한 설명 위주가 편해요)",
-          "먼저 물어봐주시면 편해요 (제가 먼저 말하는 건 조금 어려워요)",
+          "재미있게 대화 나누면서 운동하고 싶어요. (수업 분위기가 편한 게 좋아요)",
+          "최소한으로 대화하고 싶어요. (운동에 집중하는게 좋아요)",
+          "개인적인 이야기는 나누고 싶지 않아요 (프라이버시 존중)",
+          "먼저 물어봐주면 편해요 (제가 먼저 말하는 건 어려워요)",
         ].map((label) => (
           <button
             key={label}
@@ -9095,12 +8626,13 @@ ${link}`;
 
     <div style={preferenceStyles.section}>
       <div style={preferenceStyles.label}>수업 분위기</div>
-      <div style={preferenceStyles.helper}>원하시는 수업 분위기에 가까운 항목을 체크해요.</div>
+      <div style={preferenceStyles.helper}>밝게 갈지, 차분하게 갈지, 그날 컨디션에 맞출지 기록해요.</div>
       <div style={preferenceStyles.grid3}>
         {[
-          "밝고 편한 분위기가 좋아요",
-          "차분하게 운동하는 분위기가 좋아요",
-          "컨디션에 맞춰 조절해주세요",
+          "활기차고 에너지 넘치는 분위기가 좋아요",
+          "선생님과 조용하게 수업하고 싶어요",
+          "컨디션에 맞춰 조절해주세요 (몸 상태에 따라 조절하고 싶어요)",
+          "운동할 땐 확실하게 해주세요 (할 땐 제대로 하고 싶어요)",
         ].map((label) => (
           <button
             key={label}
@@ -10140,24 +9672,15 @@ ${link}`;
             <div style={styles.memberActionMenuGrid}>
               <button
                 type="button"
-                onClick={() => {
-                  sendConditionCheckSMS(memberActionMenuMember);
+                onClick={async () => {
+                  const targetMember = memberActionMenuMember;
+                  await openMemberCardFeedback(targetMember);
                   closeMemberActionMenu();
                 }}
-                style={styles.memberActionMenuButton}
+                style={shouldRecommendFeedback(memberActionMenuMember) ? styles.memberActionMenuButtonHot : styles.memberActionMenuButton}
               >
-                컨디션 문자
+                {shouldRecommendFeedback(memberActionMenuMember) ? "피드백 추천" : "피드백"}
               </button>
-
-              {memberActionMenuMember.member_stage === "ot" && (
-                <button
-                  type="button"
-                  onClick={() => convertOtMemberToPt(memberActionMenuMember)}
-                  style={styles.memberActionMenuButtonHot}
-                >
-                  PT 전환
-                </button>
-              )}
 
               <button
                 type="button"
@@ -10201,80 +9724,6 @@ ${link}`;
                   비활성
                 </button>
               )}
-            </div>
-          </section>
-        </div>
-      )}
-
-
-      {conditionModalMember && (
-        <div style={styles.messageModalOverlay}>
-          <section style={styles.messageModalBox}>
-            <div style={styles.whiteModalTop}>
-              <div>
-                <h2 style={styles.whiteModalTitle}>{conditionModalMember.name} 컨디션 체크</h2>
-                <p style={styles.whiteMuted}>
-                  기존 성향체크 문장은 건드리지 않고, 오늘 몸상태만 별도로 저장합니다.
-                </p>
-              </div>
-
-              <button type="button" onClick={closeConditionCheckModal} style={styles.whiteCloseButton}>
-                닫기
-              </button>
-            </div>
-
-            <div style={styles.whiteTwoColumn}>
-              <div>
-                <label style={styles.whiteLabel}>오늘 컨디션</label>
-                <select value={conditionLevel} onChange={(e) => setConditionLevel(e.target.value)} style={styles.whiteInput}>
-                  {conditionLevelOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label style={styles.whiteLabel}>수면 상태</label>
-                <select value={conditionSleepStatus} onChange={(e) => setConditionSleepStatus(e.target.value)} style={styles.whiteInput}>
-                  {sleepStatusOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                </select>
-              </div>
-            </div>
-
-            <div style={styles.whiteTwoColumn}>
-              <div>
-                <label style={styles.whiteLabel}>불편 부위</label>
-                <select value={conditionPainArea} onChange={(e) => setConditionPainArea(e.target.value)} style={styles.whiteInput}>
-                  {painAreaOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label style={styles.whiteLabel}>근육통</label>
-                <select value={conditionMuscleSoreness} onChange={(e) => setConditionMuscleSoreness(e.target.value)} style={styles.whiteInput}>
-                  {muscleSorenessOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                </select>
-              </div>
-            </div>
-
-            <label style={styles.whiteLabel}>운동 부담감</label>
-            <select value={conditionWorkoutBurden} onChange={(e) => setConditionWorkoutBurden(e.target.value)} style={styles.whiteInput}>
-              {workoutBurdenOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-
-            <label style={styles.whiteLabel}>메모</label>
-            <textarea
-              value={conditionMemo}
-              onChange={(e) => setConditionMemo(e.target.value)}
-              placeholder="예: 왼쪽 어깨 뻐근함, 잠 부족, 하체 근육통"
-              style={styles.whiteTextarea}
-            />
-
-            <div style={styles.whiteActionRowFull}>
-              <button type="button" onClick={saveConditionCheck} style={styles.whiteSaveLargeButton}>
-                저장
-              </button>
-              <button type="button" onClick={closeConditionCheckModal} style={styles.whiteCancelLargeButton}>
-                취소
-              </button>
             </div>
           </section>
         </div>
@@ -12755,7 +12204,6 @@ const styles = {
   },
   menuGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
     gap: 12,
   },
   menuButton: {
@@ -12766,7 +12214,7 @@ const styles = {
     padding: 18,
     fontSize: 18,
     fontWeight: 900,
-    marginBottom: 0,
+    marginBottom: 12,
   },
   recordHeader: {
     display: "flex",
@@ -14464,30 +13912,27 @@ textarea: {
     color: "#111827",
     border: "1px solid #d1d5db",
     borderRadius: 999,
-    padding: "5px 8px",
-    fontSize: 10,
+    padding: "7px 10px",
+    fontSize: 12,
     fontWeight: 1000,
-    whiteSpace: "nowrap",
   },
   feedbackButtonMini: {
     background: "#ffffff",
     color: "#111827",
     border: "1px solid #111827",
     borderRadius: 999,
-    padding: "5px 8px",
-    fontSize: 10,
+    padding: "7px 10px",
+    fontSize: 12,
     fontWeight: 1000,
-    whiteSpace: "nowrap",
   },
   feedbackRecommendButtonMini: {
     background: "#fef3c7",
     color: "#92400e",
     border: "1px solid #f59e0b",
     borderRadius: 999,
-    padding: "5px 8px",
-    fontSize: 10,
+    padding: "7px 10px",
+    fontSize: 12,
     fontWeight: 1000,
-    whiteSpace: "nowrap",
   },
   cardDeactivateButtonMini: {
     background: "#3f1111",
@@ -15872,7 +15317,7 @@ textarea: {
     padding: 18,
     fontSize: 18,
     fontWeight: 1000,
-    marginBottom: 0,
+    marginBottom: 12,
     boxShadow: "0 4px 12px rgba(0,0,0,.04)",
   },
   infoBlock: {
