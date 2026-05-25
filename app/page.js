@@ -227,7 +227,7 @@ const circuitPrograms = [
   },
 ];
 
-const SPOTAINER_PATCH_VERSION = "2026-05-25-tablet-phone-separation-v6-tablet-first";
+const SPOTAINER_PATCH_VERSION = "2026-05-25-v8-realtime-memo-sanitize";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const memberStageOptions = [
@@ -491,6 +491,73 @@ const [workoutExercises, setWorkoutExercises] = useState([
       });
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const refreshScheduleScreens = async (changedDate = getTodayDateString()) => {
+      const today = getTodayDateString();
+
+      await loadSchedules(today);
+
+      if (showScheduleModal) {
+        await loadSelectedDateSchedules(scheduleDate);
+      }
+
+      if (showScheduleCheckModal || isMobileEmergencyMode) {
+        const targetDate = scheduleCheckDate || changedDate || today;
+        await loadScheduleCheckList(targetDate);
+        await loadScheduleCheckMonthList(targetDate);
+        await loadScheduleSMSLogs(targetDate);
+      } else {
+        await loadScheduleSMSLogs(today);
+      }
+    };
+
+    const channel = supabase
+      .channel("spotainer-live-schedule-sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "schedules" },
+        (payload) => {
+          const changedDate =
+            payload?.new?.schedule_date ||
+            payload?.old?.schedule_date ||
+            scheduleCheckDate ||
+            getTodayDateString();
+
+          refreshScheduleScreens(changedDate);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "schedule_sms_logs" },
+        (payload) => {
+          const changedDate =
+            payload?.new?.sent_date ||
+            payload?.old?.sent_date ||
+            scheduleCheckDate ||
+            getTodayDateString();
+
+          if (showScheduleCheckModal || isMobileEmergencyMode) {
+            loadScheduleSMSLogs(scheduleCheckDate || changedDate);
+          } else {
+            loadScheduleSMSLogs(getTodayDateString());
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [
+    scheduleCheckDate,
+    scheduleDate,
+    showScheduleModal,
+    showScheduleCheckModal,
+    isMobileEmergencyMode,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1214,7 +1281,19 @@ const [workoutExercises, setWorkoutExercises] = useState([
     return membersForSMS.every((member) => isScheduleMemberSMSSent(schedule, member));
   }
 
-  
+
+  function cleanScheduleMemoText(value = "") {
+    return String(value || "")
+      .replace(/\s*\[?\s*문자\s*완료\s*\]?\s*/g, " ")
+      .replace(/\s*\[?\s*문자완료\s*\]?\s*/g, " ")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  }
+
+  function getScheduleDisplayMemo(schedule) {
+    return cleanScheduleMemoText(schedule?.memo || "");
+  }
+
   function filterScheduleList(list = [], keyword = "") {
     const q = String(keyword || "").trim().toLowerCase();
 
@@ -1238,7 +1317,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
       return (
         memberMatched ||
         getScheduleTypeText(schedule.type).toLowerCase().includes(q) ||
-        String(schedule.memo || "").toLowerCase().includes(q)
+        getScheduleDisplayMemo(schedule).toLowerCase().includes(q)
       );
     });
   }
@@ -1507,8 +1586,8 @@ const [workoutExercises, setWorkoutExercises] = useState([
             )}
           </div>
 
-          {schedule.memo && (
-            <p style={styles.scheduleCheckMemoCompact}>{schedule.memo}</p>
+          {getScheduleDisplayMemo(schedule) && (
+            <p style={styles.scheduleCheckMemoCompact}>{getScheduleDisplayMemo(schedule)}</p>
           )}
 
           {getReRegisterAlert(member) && (
@@ -2115,7 +2194,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
         : addMinutesToTime(schedule.start_time, 60)
     );
     setScheduleType(schedule.type || "pt");
-    setScheduleMemo(schedule.memo || "");
+    setScheduleMemo(getScheduleDisplayMemo(schedule));
     setReturnToScheduleCheckAfterAdd(showScheduleCheckModal);
     setShowScheduleCheckModal(false);
     setShowScheduleModal(true);
@@ -2437,7 +2516,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
       start_time: scheduleStartTime,
       end_time: endTime,
       type: scheduleType,
-      memo: scheduleMemo.trim(),
+      memo: cleanScheduleMemoText(scheduleMemo),
       allow_over_capacity: false,
     };
 
@@ -2570,8 +2649,9 @@ const [workoutExercises, setWorkoutExercises] = useState([
     if (showScheduleModal) {
       await loadSelectedDateSchedules(scheduleDate);
     }
-    if (showScheduleCheckModal) {
-      await loadScheduleCheckList(scheduleCheckDate);
+    if (showScheduleCheckModal || isMobileEmergencyMode) {
+      await loadScheduleCheckList(scheduleCheckDate || schedule.schedule_date || getTodayDateString());
+      await loadScheduleCheckMonthList(scheduleCheckDate || schedule.schedule_date || getTodayDateString());
     }
   }
 
@@ -2674,7 +2754,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
       `Spotainer 스케줄`,
       memberNames ? `회원: ${memberNames}` : "",
       memberPtText ? `PT 잔여: ${memberPtText}` : "",
-      schedule.memo ? `메모: ${schedule.memo}` : "",
+      getScheduleDisplayMemo(schedule) ? `메모: ${getScheduleDisplayMemo(schedule)}` : "",
     ]
       .filter(Boolean)
       .join("\n");
@@ -2714,7 +2794,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
       "Spotainer 스케줄",
       memberNames ? `회원: ${memberNames}` : "",
       memberPtText ? `PT 잔여: ${memberPtText}` : "",
-      schedule.memo ? `메모: ${schedule.memo}` : "",
+      getScheduleDisplayMemo(schedule) ? `메모: ${getScheduleDisplayMemo(schedule)}` : "",
     ]
       .filter(Boolean)
       .join("\n");
@@ -7218,7 +7298,7 @@ async function saveMemberPreference() {
                     {sent ? " · 문자 완료" : ""}
                   </div>
 
-                  {schedule.memo && <p style={styles.mobileEmergencyMemo}>{schedule.memo}</p>}
+                  {getScheduleDisplayMemo(schedule) && <p style={styles.mobileEmergencyMemo}>{getScheduleDisplayMemo(schedule)}</p>}
 
                   <div style={styles.mobileEmergencyButtonRow}>
                     {scheduleMembers.length <= 1 ? (
