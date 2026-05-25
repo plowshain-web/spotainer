@@ -227,7 +227,7 @@ const circuitPrograms = [
   },
 ];
 
-const SPOTAINER_PATCH_VERSION = "2026-05-25-tablet-phone-hard-separation-v4";
+const SPOTAINER_PATCH_VERSION = "2026-05-25-tablet-phone-separation-v5-real-apply";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const memberStageOptions = [
@@ -486,10 +486,8 @@ const [workoutExercises, setWorkoutExercises] = useState([
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
       navigator.serviceWorker.getRegistrations().then((registrations) => {
         registrations.forEach((registration) => {
-          registration.unregister();
+          registration.update();
         });
-      }).catch((error) => {
-        console.error("serviceWorker unregister 실패", error);
       });
     }
   }, []);
@@ -500,20 +498,30 @@ const [workoutExercises, setWorkoutExercises] = useState([
     function checkMobileEmergencyMode() {
       const userAgent = navigator.userAgent || "";
       const params = new URLSearchParams(window.location.search);
+      const viewParam = params.get("view");
       const savedViewMode = window.localStorage?.getItem("spotainerViewMode") || "";
 
-      // 수동 고정값이 있으면 자동판정보다 우선합니다.
-      // 태블릿에서 혹시라도 휴대폰 화면으로 들어가면 주소 뒤에 ?view=tablet 을 붙이거나,
-      // 휴대폰 화면 안의 '태블릿 화면' 버튼을 한 번 누르면 이후 계속 태블릿 화면으로 열립니다.
-      const forceTablet = params.get("view") === "tablet" || savedViewMode === "tablet";
-      const forcePhone = params.get("view") === "phone" || savedViewMode === "phone";
-
-      if (forceTablet) {
+      // 수동 고정값이 있으면 자동 판정보다 우선합니다.
+      // 중요: PWA 설치 앱은 ?view=tablet 값을 start_url에서 잃을 수 있으므로
+      // 브라우저에서 한 번 ?view=tablet 으로 열면 localStorage에 태블릿 모드를 저장합니다.
+      if (viewParam === "tablet") {
+        window.localStorage?.setItem("spotainerViewMode", "tablet");
         setIsMobileEmergencyMode(false);
         return;
       }
 
-      if (forcePhone) {
+      if (viewParam === "phone") {
+        window.localStorage?.setItem("spotainerViewMode", "phone");
+        setIsMobileEmergencyMode(true);
+        return;
+      }
+
+      if (savedViewMode === "tablet") {
+        setIsMobileEmergencyMode(false);
+        return;
+      }
+
+      if (savedViewMode === "phone") {
         setIsMobileEmergencyMode(true);
         return;
       }
@@ -525,33 +533,25 @@ const [workoutExercises, setWorkoutExercises] = useState([
       const visualWidth = window.visualViewport?.width || innerWidth || 0;
       const visualHeight = window.visualViewport?.height || innerHeight || 0;
 
-      const candidates = [screenWidth, screenHeight, innerWidth, innerHeight, visualWidth, visualHeight]
-        .map((value) => Number(value) || 0)
-        .filter((value) => value > 0);
-
-      const shortSide = candidates.length ? Math.min(...candidates) : 0;
-      const longSide = candidates.length ? Math.max(...candidates) : 0;
       const viewportShortSide = Math.min(innerWidth || visualWidth || screenWidth || 0, innerHeight || visualHeight || screenHeight || 0);
       const viewportLongSide = Math.max(innerWidth || visualWidth || screenWidth || 0, innerHeight || visualHeight || screenHeight || 0);
+      const screenShortSide = Math.min(screenWidth || innerWidth || 0, screenHeight || innerHeight || 0);
+      const screenLongSide = Math.max(screenWidth || innerWidth || 0, screenHeight || innerHeight || 0);
 
       const isApplePhone = /iPhone|iPod/i.test(userAgent);
       const isAndroid = /Android/i.test(userAgent);
-      const uaDataMobile = navigator.userAgentData?.mobile;
+      const uaDataMobile = navigator.userAgentData?.mobile === true;
       const hasCoarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches === true;
 
       // 핵심 기준:
-      // 1) 태블릿은 무조건 기존 전체 관리 화면입니다.
-      // 2) Android 태블릿은 userAgent에 Mobile Safari가 들어갈 수 있으므로 userAgent는 보조 자료로만 씁니다.
-      // 3) 자동 휴대폰 모드는 '실제 보이는 CSS viewport'가 휴대폰 크기일 때만 켭니다.
-      // 4) 태블릿에서 세로/가로/PWA/브라우저 상태가 바뀌어도 짧은 변 600 이상이면 태블릿으로 고정합니다.
-      const clearlyTabletByViewport = viewportShortSide >= 600 || viewportLongSide >= 1024;
-      const clearlyTabletByScreen = shortSide >= 600 || longSide >= 1024;
-      const clearlyTablet = clearlyTabletByViewport || clearlyTabletByScreen;
+      // - Android 태블릿도 userAgent에 Mobile Safari가 들어갈 수 있으므로 userAgent만으로 휴대폰 판정 금지
+      // - 태블릿은 기존 전체 관리 화면 유지
+      // - 휴대폰은 실제 보이는 화면의 짧은 변이 520 이하일 때만 긴급 확인 모드
+      const clearlyTablet = viewportShortSide >= 600 || viewportLongSide >= 1024 || screenShortSide >= 600 || screenLongSide >= 1024;
+      const clearlyPhoneSize = viewportShortSide > 0 && viewportShortSide <= 520 && viewportLongSide <= 980;
+      const phoneSignal = isApplePhone || uaDataMobile || (isAndroid && hasCoarsePointer);
 
-      const clearlyPhoneByViewport = viewportShortSide > 0 && viewportShortSide <= 520 && viewportLongSide <= 980;
-      const phoneSignal = isApplePhone || uaDataMobile === true || (isAndroid && hasCoarsePointer);
-
-      const nextMobileMode = !clearlyTablet && clearlyPhoneByViewport && phoneSignal;
+      const nextMobileMode = !clearlyTablet && clearlyPhoneSize && phoneSignal;
 
       console.log("Spotainer device check", {
         userAgent,
@@ -561,12 +561,13 @@ const [workoutExercises, setWorkoutExercises] = useState([
         innerHeight,
         visualWidth,
         visualHeight,
-        shortSide,
-        longSide,
         viewportShortSide,
         viewportLongSide,
+        screenShortSide,
+        screenLongSide,
+        savedViewMode,
         clearlyTablet,
-        clearlyPhoneByViewport,
+        clearlyPhoneSize,
         nextMobileMode,
       });
 
