@@ -227,7 +227,7 @@ const circuitPrograms = [
   },
 ];
 
-const SPOTAINER_PATCH_VERSION = "2026-05-25-tablet-phone-hard-separated-v2";
+const SPOTAINER_PATCH_VERSION = "2026-05-25-member-stage-condition-check-v4-safe-persist";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const memberStageOptions = [
@@ -497,50 +497,81 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     function checkMobileEmergencyMode() {
       const userAgent = navigator.userAgent || "";
-      const screenWidth = window.screen?.width || window.innerWidth || 0;
-      const screenHeight = window.screen?.height || window.innerHeight || 0;
+      const params = new URLSearchParams(window.location.search);
+      const savedViewMode = window.localStorage?.getItem("spotainerViewMode") || "";
+
+      // 수동 고정값이 있으면 자동판정보다 우선합니다.
+      // 태블릿에서 혹시라도 휴대폰 화면으로 들어가면 주소 뒤에 ?view=tablet 을 붙이거나,
+      // 휴대폰 화면 안의 '태블릿 화면' 버튼을 한 번 누르면 이후 계속 태블릿 화면으로 열립니다.
+      const forceTablet = params.get("view") === "tablet" || savedViewMode === "tablet";
+      const forcePhone = params.get("view") === "phone" || savedViewMode === "phone";
+
+      if (forceTablet) {
+        setIsMobileEmergencyMode(false);
+        return;
+      }
+
+      if (forcePhone) {
+        setIsMobileEmergencyMode(true);
+        return;
+      }
+
+      const screenWidth = window.screen?.width || 0;
+      const screenHeight = window.screen?.height || 0;
       const innerWidth = window.innerWidth || screenWidth || 0;
       const innerHeight = window.innerHeight || screenHeight || 0;
-      const shortSide = Math.min(screenWidth, screenHeight, innerWidth, innerHeight);
-      const longSide = Math.max(screenWidth, screenHeight, innerWidth, innerHeight);
+      const visualWidth = window.visualViewport?.width || innerWidth || 0;
+      const visualHeight = window.visualViewport?.height || innerHeight || 0;
+
+      const shortSide = Math.min(
+        screenWidth || innerWidth || visualWidth,
+        screenHeight || innerHeight || visualHeight,
+        innerWidth || screenWidth || visualWidth,
+        innerHeight || screenHeight || visualHeight,
+        visualWidth || innerWidth || screenWidth,
+        visualHeight || innerHeight || screenHeight
+      );
+      const longSide = Math.max(
+        screenWidth || innerWidth || visualWidth,
+        screenHeight || innerHeight || visualHeight,
+        innerWidth || screenWidth || visualWidth,
+        innerHeight || screenHeight || visualHeight,
+        visualWidth || innerWidth || screenWidth,
+        visualHeight || innerHeight || screenHeight
+      );
+
       const isApplePhone = /iPhone|iPod/i.test(userAgent);
       const isAndroid = /Android/i.test(userAgent);
-      const hasAndroidMobileToken = /Mobile/i.test(userAgent);
+      const uaDataMobile = navigator.userAgentData?.mobile;
 
       // 핵심 기준:
-      // - 휴대폰: 휴대폰 전용 긴급 확인 모드
-      // - 태블릿: 기존 전체 관리 화면 유지
-      // 중요:
-      // Android 태블릿 브라우저/PWA userAgent에도 "Mobile Safari" 문구가 들어가는 경우가 있어
-      // userAgent만으로 Android.*Mobile을 판정하면 태블릿이 휴대폰 화면으로 잘못 열릴 수 있습니다.
-      // 그래서 Android는 반드시 실제 화면 크기까지 같이 확인합니다.
-      // 2026-05-25 긴급 수정:
-      // Android 태블릿 PWA가 "Mobile Safari" 토큰 때문에 휴대폰 화면으로 잘못 들어가는 문제를 막습니다.
-      // 휴대폰은 CSS 픽셀 기준으로 짧은 변/긴 변이 모두 작을 때만 휴대폰 모드로 봅니다.
-      // 예: Galaxy Tab 계열은 PWA/가로모드에서도 보통 800px 이상 또는 긴 변 1100px 이상이라 태블릿으로 유지됩니다.
-      const forceDesktop = new URLSearchParams(window.location.search).get("view") === "tablet" ||
-        window.localStorage?.getItem("spotainerViewMode") === "tablet";
-      const forcePhone = new URLSearchParams(window.location.search).get("view") === "phone" ||
-        window.localStorage?.getItem("spotainerViewMode") === "phone";
+      // - 태블릿은 어떤 경우에도 기존 전체 관리 화면
+      // - 휴대폰만 휴대폰 긴급 확인 모드
+      // Android 태블릿 PWA는 userAgent에 Mobile Safari가 들어갈 수 있으므로
+      // Android.*Mobile 같은 문구만으로 휴대폰 판정하지 않습니다.
+      // 휴대폰은 CSS 픽셀 기준으로 '짧은 변이 충분히 작고 긴 변도 휴대폰 범위'일 때만 인정합니다.
+      const looksLikePhoneBySize = shortSide <= 520 && longSide <= 980;
+      const clearlyTabletBySize = shortSide >= 650 || longSide >= 1050;
 
-      const looksLikePhoneSize = shortSide <= 700 && longSide <= 1100;
-      const looksLikeTabletSize = shortSide >= 760 || longSide >= 1180;
+      const nextMobileMode = !clearlyTabletBySize && looksLikePhoneBySize && (
+        isApplePhone ||
+        uaDataMobile === true ||
+        (isAndroid && shortSide <= 520) ||
+        (!isAndroid && !isApplePhone)
+      );
 
-      const isAndroidPhone = isAndroid && hasAndroidMobileToken && looksLikePhoneSize && !looksLikeTabletSize;
-      const isApplePhoneBySize = isApplePhone && looksLikePhoneSize && !looksLikeTabletSize;
-      const isSmallUnknownPhone = !isAndroid && !isApplePhone && looksLikePhoneSize && !looksLikeTabletSize;
-
-      const nextMobileMode = forceDesktop ? false : forcePhone ? true : Boolean(isApplePhoneBySize || isAndroidPhone || isSmallUnknownPhone);
-      setIsMobileEmergencyMode(nextMobileMode);
+      setIsMobileEmergencyMode(Boolean(nextMobileMode));
     }
 
     checkMobileEmergencyMode();
     window.addEventListener("resize", checkMobileEmergencyMode);
     window.addEventListener("orientationchange", checkMobileEmergencyMode);
+    window.visualViewport?.addEventListener("resize", checkMobileEmergencyMode);
 
     return () => {
       window.removeEventListener("resize", checkMobileEmergencyMode);
       window.removeEventListener("orientationchange", checkMobileEmergencyMode);
+      window.visualViewport?.removeEventListener("resize", checkMobileEmergencyMode);
     };
   }, []);
 
@@ -7118,6 +7149,16 @@ async function saveMemberPreference() {
             style={styles.mobileEmergencyRefreshButton}
           >
             새로고침
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              window.localStorage?.setItem("spotainerViewMode", "tablet");
+              setIsMobileEmergencyMode(false);
+            }}
+            style={styles.mobileEmergencyRefreshButton}
+          >
+            태블릿 화면
           </button>
         </section>
 
