@@ -525,8 +525,14 @@ const [workoutExercises, setWorkoutExercises] = useState([
       // - 이전에 저장된 phone 값은 태블릿에서도 모바일을 강제할 수 있어 더 이상 우선 적용하지 않습니다.
       const forcedTablet = viewParam === "tablet" || savedViewMode === "tablet";
       const forcedPhone = viewParam === "phone";
-      const clearlyTablet = viewportShortSide >= 600 || screenShortSide >= 600 || viewportLongSide >= 1100 || screenLongSide >= 1100;
-      const clearlyPhoneSize = viewportShortSide > 0 && viewportShortSide <= 540 && viewportLongSide <= 980 && screenShortSide <= 540;
+      // v7 핵심 수정:
+      // 갤럭시탭/안드로이드 태블릿 PWA는 CSS 화면값이 960x540 전후로 잡히는 경우가 있습니다.
+      // 이전 기준(짧은 변 540 이하)을 쓰면 태블릿을 휴대폰으로 오인합니다.
+      // 그래서 태블릿 판정을 먼저, 더 넓게 잡습니다.
+      const landscapeTabletLike = viewportLongSide >= 850 && viewportShortSide >= 500;
+      const screenTabletLike = screenLongSide >= 850 && screenShortSide >= 500;
+      const clearlyTablet = landscapeTabletLike || screenTabletLike || viewportShortSide >= 600 || screenShortSide >= 600 || viewportLongSide >= 1100 || screenLongSide >= 1100;
+      const clearlyPhoneSize = viewportShortSide > 0 && viewportShortSide <= 499 && viewportLongSide <= 930 && screenShortSide <= 499;
       const phoneSignal = isApplePhone || uaDataMobile || (isAndroid && hasCoarsePointer);
 
       if (viewParam === "tablet") {
@@ -7121,7 +7127,10 @@ async function saveMemberPreference() {
     const shortSide = Math.min(innerW || screenW || 9999, innerH || screenH || 9999, screenW || 9999, screenH || 9999);
     const longSide = Math.max(innerW || 0, innerH || 0, screenW || 0, screenH || 0);
     // 최후 안전장치: 태블릿 크기에서는 상태값이 true여도 모바일 화면 조기 return을 막습니다.
-    return shortSide <= 540 && longSide <= 980;
+    // 갤럭시탭 PWA가 960x540 전후로 보고되어도 태블릿 화면을 유지합니다.
+    const tabletLike = (longSide >= 850 && shortSide >= 500) || shortSide >= 600 || longSide >= 1100;
+    if (tabletLike) return false;
+    return shortSide <= 499 && longSide <= 930;
   })();
 
   const incompleteSchedules = schedules.filter((schedule) => {
