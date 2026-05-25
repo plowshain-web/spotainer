@@ -227,7 +227,7 @@ const circuitPrograms = [
   },
 ];
 
-const SPOTAINER_PATCH_VERSION = "2026-05-25-member-stage-condition-check-v4-safe-persist";
+const SPOTAINER_PATCH_VERSION = "2026-05-25-tablet-mobile-separated-safe";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const memberStageOptions = [
@@ -497,19 +497,28 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     function checkMobileEmergencyMode() {
       const userAgent = navigator.userAgent || "";
-      const isPhoneUserAgent = /iPhone|iPod|Android.*Mobile/i.test(userAgent);
       const screenWidth = window.screen?.width || window.innerWidth || 0;
       const screenHeight = window.screen?.height || window.innerHeight || 0;
-      const shortSide = Math.min(screenWidth, screenHeight);
-      const longSide = Math.max(screenWidth, screenHeight);
+      const innerWidth = window.innerWidth || screenWidth || 0;
+      const innerHeight = window.innerHeight || screenHeight || 0;
+      const shortSide = Math.min(screenWidth, screenHeight, innerWidth, innerHeight);
+      const longSide = Math.max(screenWidth, screenHeight, innerWidth, innerHeight);
+      const isApplePhone = /iPhone|iPod/i.test(userAgent);
+      const isAndroid = /Android/i.test(userAgent);
+      const hasAndroidMobileToken = /Mobile/i.test(userAgent);
 
       // 핵심 기준:
-      // - 휴대폰: 긴급 확인 모드
+      // - 휴대폰: 휴대폰 전용 긴급 확인 모드
       // - 태블릿: 기존 전체 관리 화면 유지
-      // Android 태블릿은 터치 기기라 pointer 기준만 쓰면 휴대폰으로 오인될 수 있어서
-      // userAgent의 Mobile 여부와 실제 화면 크기를 같이 봅니다.
+      // 중요:
+      // Android 태블릿 브라우저/PWA userAgent에도 "Mobile Safari" 문구가 들어가는 경우가 있어
+      // userAgent만으로 Android.*Mobile을 판정하면 태블릿이 휴대폰 화면으로 잘못 열릴 수 있습니다.
+      // 그래서 Android는 반드시 실제 화면 크기까지 같이 확인합니다.
       const looksLikePhoneSize = shortSide <= 600 && longSide <= 1000;
-      setIsMobileEmergencyMode(Boolean(isPhoneUserAgent || looksLikePhoneSize));
+      const isAndroidPhone = isAndroid && hasAndroidMobileToken && looksLikePhoneSize;
+      const isSmallUnknownPhone = !isAndroid && looksLikePhoneSize;
+
+      setIsMobileEmergencyMode(Boolean(isApplePhone || isAndroidPhone || isSmallUnknownPhone));
     }
 
     checkMobileEmergencyMode();
