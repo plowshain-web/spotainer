@@ -227,7 +227,7 @@ const circuitPrograms = [
   },
 ];
 
-const SPOTAINER_PATCH_VERSION = "2026-05-25-member-stage-condition-check-v4-safe-persist";
+const SPOTAINER_PATCH_VERSION = "2026-05-25-tablet-phone-hard-separation-v4";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const memberStageOptions = [
@@ -486,8 +486,10 @@ const [workoutExercises, setWorkoutExercises] = useState([
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
       navigator.serviceWorker.getRegistrations().then((registrations) => {
         registrations.forEach((registration) => {
-          registration.update();
+          registration.unregister();
         });
+      }).catch((error) => {
+        console.error("serviceWorker unregister 실패", error);
       });
     }
   }, []);
@@ -523,42 +525,50 @@ const [workoutExercises, setWorkoutExercises] = useState([
       const visualWidth = window.visualViewport?.width || innerWidth || 0;
       const visualHeight = window.visualViewport?.height || innerHeight || 0;
 
-      const shortSide = Math.min(
-        screenWidth || innerWidth || visualWidth,
-        screenHeight || innerHeight || visualHeight,
-        innerWidth || screenWidth || visualWidth,
-        innerHeight || screenHeight || visualHeight,
-        visualWidth || innerWidth || screenWidth,
-        visualHeight || innerHeight || screenHeight
-      );
-      const longSide = Math.max(
-        screenWidth || innerWidth || visualWidth,
-        screenHeight || innerHeight || visualHeight,
-        innerWidth || screenWidth || visualWidth,
-        innerHeight || screenHeight || visualHeight,
-        visualWidth || innerWidth || screenWidth,
-        visualHeight || innerHeight || screenHeight
-      );
+      const candidates = [screenWidth, screenHeight, innerWidth, innerHeight, visualWidth, visualHeight]
+        .map((value) => Number(value) || 0)
+        .filter((value) => value > 0);
+
+      const shortSide = candidates.length ? Math.min(...candidates) : 0;
+      const longSide = candidates.length ? Math.max(...candidates) : 0;
+      const viewportShortSide = Math.min(innerWidth || visualWidth || screenWidth || 0, innerHeight || visualHeight || screenHeight || 0);
+      const viewportLongSide = Math.max(innerWidth || visualWidth || screenWidth || 0, innerHeight || visualHeight || screenHeight || 0);
 
       const isApplePhone = /iPhone|iPod/i.test(userAgent);
       const isAndroid = /Android/i.test(userAgent);
       const uaDataMobile = navigator.userAgentData?.mobile;
+      const hasCoarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches === true;
 
       // 핵심 기준:
-      // - 태블릿은 어떤 경우에도 기존 전체 관리 화면
-      // - 휴대폰만 휴대폰 긴급 확인 모드
-      // Android 태블릿 PWA는 userAgent에 Mobile Safari가 들어갈 수 있으므로
-      // Android.*Mobile 같은 문구만으로 휴대폰 판정하지 않습니다.
-      // 휴대폰은 CSS 픽셀 기준으로 '짧은 변이 충분히 작고 긴 변도 휴대폰 범위'일 때만 인정합니다.
-      const looksLikePhoneBySize = shortSide <= 520 && longSide <= 980;
-      const clearlyTabletBySize = shortSide >= 650 || longSide >= 1050;
+      // 1) 태블릿은 무조건 기존 전체 관리 화면입니다.
+      // 2) Android 태블릿은 userAgent에 Mobile Safari가 들어갈 수 있으므로 userAgent는 보조 자료로만 씁니다.
+      // 3) 자동 휴대폰 모드는 '실제 보이는 CSS viewport'가 휴대폰 크기일 때만 켭니다.
+      // 4) 태블릿에서 세로/가로/PWA/브라우저 상태가 바뀌어도 짧은 변 600 이상이면 태블릿으로 고정합니다.
+      const clearlyTabletByViewport = viewportShortSide >= 600 || viewportLongSide >= 1024;
+      const clearlyTabletByScreen = shortSide >= 600 || longSide >= 1024;
+      const clearlyTablet = clearlyTabletByViewport || clearlyTabletByScreen;
 
-      const nextMobileMode = !clearlyTabletBySize && looksLikePhoneBySize && (
-        isApplePhone ||
-        uaDataMobile === true ||
-        (isAndroid && shortSide <= 520) ||
-        (!isAndroid && !isApplePhone)
-      );
+      const clearlyPhoneByViewport = viewportShortSide > 0 && viewportShortSide <= 520 && viewportLongSide <= 980;
+      const phoneSignal = isApplePhone || uaDataMobile === true || (isAndroid && hasCoarsePointer);
+
+      const nextMobileMode = !clearlyTablet && clearlyPhoneByViewport && phoneSignal;
+
+      console.log("Spotainer device check", {
+        userAgent,
+        screenWidth,
+        screenHeight,
+        innerWidth,
+        innerHeight,
+        visualWidth,
+        visualHeight,
+        shortSide,
+        longSide,
+        viewportShortSide,
+        viewportLongSide,
+        clearlyTablet,
+        clearlyPhoneByViewport,
+        nextMobileMode,
+      });
 
       setIsMobileEmergencyMode(Boolean(nextMobileMode));
     }
