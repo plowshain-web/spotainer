@@ -227,7 +227,7 @@ const circuitPrograms = [
   },
 ];
 
-const SPOTAINER_PATCH_VERSION = "2026-05-25-tablet-phone-separation-v5-real-apply";
+const SPOTAINER_PATCH_VERSION = "2026-05-25-tablet-phone-separation-v6-tablet-first";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const memberStageOptions = [
@@ -501,31 +501,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
       const viewParam = params.get("view");
       const savedViewMode = window.localStorage?.getItem("spotainerViewMode") || "";
 
-      // 수동 고정값이 있으면 자동 판정보다 우선합니다.
-      // 중요: PWA 설치 앱은 ?view=tablet 값을 start_url에서 잃을 수 있으므로
-      // 브라우저에서 한 번 ?view=tablet 으로 열면 localStorage에 태블릿 모드를 저장합니다.
-      if (viewParam === "tablet") {
-        window.localStorage?.setItem("spotainerViewMode", "tablet");
-        setIsMobileEmergencyMode(false);
-        return;
-      }
-
-      if (viewParam === "phone") {
-        window.localStorage?.setItem("spotainerViewMode", "phone");
-        setIsMobileEmergencyMode(true);
-        return;
-      }
-
-      if (savedViewMode === "tablet") {
-        setIsMobileEmergencyMode(false);
-        return;
-      }
-
-      if (savedViewMode === "phone") {
-        setIsMobileEmergencyMode(true);
-        return;
-      }
-
       const screenWidth = window.screen?.width || 0;
       const screenHeight = window.screen?.height || 0;
       const innerWidth = window.innerWidth || screenWidth || 0;
@@ -543,15 +518,25 @@ const [workoutExercises, setWorkoutExercises] = useState([
       const uaDataMobile = navigator.userAgentData?.mobile === true;
       const hasCoarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches === true;
 
-      // 핵심 기준:
-      // - Android 태블릿도 userAgent에 Mobile Safari가 들어갈 수 있으므로 userAgent만으로 휴대폰 판정 금지
-      // - 태블릿은 기존 전체 관리 화면 유지
-      // - 휴대폰은 실제 보이는 화면의 짧은 변이 520 이하일 때만 긴급 확인 모드
-      const clearlyTablet = viewportShortSide >= 600 || viewportLongSide >= 1024 || screenShortSide >= 600 || screenLongSide >= 1024;
-      const clearlyPhoneSize = viewportShortSide > 0 && viewportShortSide <= 520 && viewportLongSide <= 980;
+      // v6 핵심 기준:
+      // - 태블릿 운영이 우선이므로 Android / Mobile Safari / userAgentData.mobile 값만으로는 절대 모바일 화면을 띄우지 않습니다.
+      // - 실제 현재 화면의 짧은 변이 540px 이하일 때만 휴대폰 모드 후보가 됩니다.
+      // - PWA 설치 앱은 manifest start_url 때문에 ?view=tablet이 사라질 수 있으므로 URL에 의존하지 않습니다.
+      // - 이전에 저장된 phone 값은 태블릿에서도 모바일을 강제할 수 있어 더 이상 우선 적용하지 않습니다.
+      const forcedTablet = viewParam === "tablet" || savedViewMode === "tablet";
+      const forcedPhone = viewParam === "phone";
+      const clearlyTablet = viewportShortSide >= 600 || screenShortSide >= 600 || viewportLongSide >= 1100 || screenLongSide >= 1100;
+      const clearlyPhoneSize = viewportShortSide > 0 && viewportShortSide <= 540 && viewportLongSide <= 980 && screenShortSide <= 540;
       const phoneSignal = isApplePhone || uaDataMobile || (isAndroid && hasCoarsePointer);
 
-      const nextMobileMode = !clearlyTablet && clearlyPhoneSize && phoneSignal;
+      if (viewParam === "tablet") {
+        window.localStorage?.setItem("spotainerViewMode", "tablet");
+      }
+      if (viewParam === "phone") {
+        window.localStorage?.setItem("spotainerViewMode", "phone");
+      }
+
+      const nextMobileMode = forcedTablet ? false : ((forcedPhone || phoneSignal) && !clearlyTablet && clearlyPhoneSize);
 
       console.log("Spotainer device check", {
         userAgent,
@@ -7127,6 +7112,18 @@ async function saveMemberPreference() {
     }, 80);
   }
 
+  const shouldRenderMobileEmergencyMode = (() => {
+    if (!isMobileEmergencyMode || typeof window === "undefined") return false;
+    const innerW = window.innerWidth || 0;
+    const innerH = window.innerHeight || 0;
+    const screenW = window.screen?.width || innerW || 0;
+    const screenH = window.screen?.height || innerH || 0;
+    const shortSide = Math.min(innerW || screenW || 9999, innerH || screenH || 9999, screenW || 9999, screenH || 9999);
+    const longSide = Math.max(innerW || 0, innerH || 0, screenW || 0, screenH || 0);
+    // 최후 안전장치: 태블릿 크기에서는 상태값이 true여도 모바일 화면 조기 return을 막습니다.
+    return shortSide <= 540 && longSide <= 980;
+  })();
+
   const incompleteSchedules = schedules.filter((schedule) => {
     if (
       schedule.status === "noshow" ||
@@ -7137,7 +7134,7 @@ async function saveMemberPreference() {
     return !schedule.attendance_checked || !schedule.pt_used;
   });
 
-  if (isMobileEmergencyMode) {
+  if (shouldRenderMobileEmergencyMode) {
     const mobileSchedules = (scheduleCheckList || []).slice().sort((a, b) => {
       const aTime = normalizeTimeValue(a.start_time || "");
       const bTime = normalizeTimeValue(b.start_time || "");
