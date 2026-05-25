@@ -227,7 +227,7 @@ const circuitPrograms = [
   },
 ];
 
-const SPOTAINER_PATCH_VERSION = "2026-05-25-v9-tablet-forced-no-phone-cache";
+const SPOTAINER_PATCH_VERSION = "2026-05-25-v10-route-separated-tablet-root-phone-mobile-schedule";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const memberStageOptions = [
@@ -562,121 +562,43 @@ const [workoutExercises, setWorkoutExercises] = useState([
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    function checkMobileEmergencyMode() {
-      const userAgent = navigator.userAgent || "";
+    function syncRouteSeparatedViewMode() {
+      const pathname = window.location.pathname || "/";
       const params = new URLSearchParams(window.location.search);
       const viewParam = params.get("view");
-      const savedViewMode = window.localStorage?.getItem("spotainerViewMode") || "";
 
-      const screenWidth = window.screen?.width || 0;
-      const screenHeight = window.screen?.height || 0;
-      const innerWidth = window.innerWidth || screenWidth || 0;
-      const innerHeight = window.innerHeight || screenHeight || 0;
-      const visualWidth = window.visualViewport?.width || innerWidth || 0;
-      const visualHeight = window.visualViewport?.height || innerHeight || 0;
+      // v10 핵심 수정:
+      // 자동 기기 판정은 완전히 제거합니다.
+      // / 또는 일반 주소는 무조건 태블릿 화면입니다.
+      // /mobile-schedule 주소 또는 ?view=phone일 때만 휴대폰 스케줄 화면을 사용합니다.
+      // 태블릿 PWA/브라우저가 viewport를 휴대폰처럼 보고해도 더 이상 모바일 화면으로 바뀌지 않습니다.
+      const routeWantsMobile = pathname.includes("/mobile-schedule") || viewParam === "phone";
+      const routeWantsTablet = viewParam === "tablet" || !routeWantsMobile;
+      const nextMobileMode = routeWantsMobile && !routeWantsTablet;
 
-      const viewportShortSide = Math.min(innerWidth || visualWidth || screenWidth || 0, innerHeight || visualHeight || screenHeight || 0);
-      const viewportLongSide = Math.max(innerWidth || visualWidth || screenWidth || 0, innerHeight || visualHeight || screenHeight || 0);
-      const screenShortSide = Math.min(screenWidth || innerWidth || 0, screenHeight || innerHeight || 0);
-      const screenLongSide = Math.max(screenWidth || innerWidth || 0, screenHeight || innerHeight || 0);
-
-      const isApplePhone = /iPhone|iPod/i.test(userAgent);
-      const isAndroid = /Android/i.test(userAgent);
-      const uaDataMobile = navigator.userAgentData?.mobile === true;
-      const hasCoarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches === true;
-
-      // v9 핵심 수정:
-      // - 태블릿처럼 보이는 화면이면 저장값/브라우저 신호/안드로이드 coarse pointer와 무관하게 무조건 태블릿 화면을 유지합니다.
-      // - 예전에 localStorage에 spotainerViewMode=phone 이 남아 있어도 태블릿에서는 즉시 tablet으로 덮어씁니다.
-      // - 휴대폰 강제 모드는 실제 휴대폰 크기일 때만 허용합니다.
-      const landscapeTabletLike = viewportLongSide >= 850 && viewportShortSide >= 500;
-      const screenTabletLike = screenLongSide >= 850 && screenShortSide >= 500;
-      const clearlyTablet =
-        landscapeTabletLike ||
-        screenTabletLike ||
-        viewportShortSide >= 600 ||
-        screenShortSide >= 600 ||
-        viewportLongSide >= 1100 ||
-        screenLongSide >= 1100;
-
-      const clearlyPhoneSize =
-        viewportShortSide > 0 &&
-        viewportShortSide <= 499 &&
-        viewportLongSide <= 930 &&
-        screenShortSide <= 499;
-
-      const phoneSignal = isApplePhone || uaDataMobile || (isAndroid && hasCoarsePointer);
-
-      if (viewParam === "tablet") {
-        window.localStorage?.setItem("spotainerViewMode", "tablet");
+      try {
+        window.localStorage?.setItem("spotainerViewMode", nextMobileMode ? "phone" : "tablet");
+      } catch (error) {
+        console.warn("Spotainer view mode 저장 실패", error);
       }
 
-      if (clearlyTablet) {
-        window.localStorage?.setItem("spotainerViewMode", "tablet");
-
-        console.log("Spotainer device check", {
-          userAgent,
-          screenWidth,
-          screenHeight,
-          innerWidth,
-          innerHeight,
-          visualWidth,
-          visualHeight,
-          viewportShortSide,
-          viewportLongSide,
-          screenShortSide,
-          screenLongSide,
-          savedViewMode,
-          clearlyTablet,
-          clearlyPhoneSize,
-          nextMobileMode: false,
-          reason: "tablet-size-forced",
-        });
-
-        setIsMobileEmergencyMode(false);
-        return;
-      }
-
-      if (viewParam === "phone" && clearlyPhoneSize) {
-        window.localStorage?.setItem("spotainerViewMode", "phone");
-      }
-
-      const currentSavedViewMode = window.localStorage?.getItem("spotainerViewMode") || savedViewMode;
-      const forcedTablet = viewParam === "tablet" || currentSavedViewMode === "tablet";
-      const forcedPhone = viewParam === "phone" && clearlyPhoneSize;
-      const nextMobileMode = forcedTablet ? false : ((forcedPhone || phoneSignal) && clearlyPhoneSize);
-
-      console.log("Spotainer device check", {
-        userAgent,
-        screenWidth,
-        screenHeight,
-        innerWidth,
-        innerHeight,
-        visualWidth,
-        visualHeight,
-        viewportShortSide,
-        viewportLongSide,
-        screenShortSide,
-        screenLongSide,
-        savedViewMode,
-        currentSavedViewMode,
-        clearlyTablet,
-        clearlyPhoneSize,
+      console.log("Spotainer route separated view", {
+        pathname,
+        viewParam,
         nextMobileMode,
+        reason: nextMobileMode ? "mobile-schedule-route" : "tablet-root-route",
       });
 
       setIsMobileEmergencyMode(Boolean(nextMobileMode));
     }
 
-    checkMobileEmergencyMode();
-    window.addEventListener("resize", checkMobileEmergencyMode);
-    window.addEventListener("orientationchange", checkMobileEmergencyMode);
-    window.visualViewport?.addEventListener("resize", checkMobileEmergencyMode);
+    syncRouteSeparatedViewMode();
+    window.addEventListener("popstate", syncRouteSeparatedViewMode);
+    window.addEventListener("hashchange", syncRouteSeparatedViewMode);
 
     return () => {
-      window.removeEventListener("resize", checkMobileEmergencyMode);
-      window.removeEventListener("orientationchange", checkMobileEmergencyMode);
-      window.visualViewport?.removeEventListener("resize", checkMobileEmergencyMode);
+      window.removeEventListener("popstate", syncRouteSeparatedViewMode);
+      window.removeEventListener("hashchange", syncRouteSeparatedViewMode);
     };
   }, []);
 
@@ -7234,20 +7156,7 @@ async function saveMemberPreference() {
     }, 80);
   }
 
-  const shouldRenderMobileEmergencyMode = (() => {
-    if (!isMobileEmergencyMode || typeof window === "undefined") return false;
-    const innerW = window.innerWidth || 0;
-    const innerH = window.innerHeight || 0;
-    const screenW = window.screen?.width || innerW || 0;
-    const screenH = window.screen?.height || innerH || 0;
-    const shortSide = Math.min(innerW || screenW || 9999, innerH || screenH || 9999, screenW || 9999, screenH || 9999);
-    const longSide = Math.max(innerW || 0, innerH || 0, screenW || 0, screenH || 0);
-    // 최후 안전장치: 태블릿 크기에서는 상태값이 true여도 모바일 화면 조기 return을 막습니다.
-    // 갤럭시탭 PWA가 960x540 전후로 보고되어도 태블릿 화면을 유지합니다.
-    const tabletLike = (longSide >= 850 && shortSide >= 500) || shortSide >= 600 || longSide >= 1100;
-    if (tabletLike) return false;
-    return shortSide <= 499 && longSide <= 930;
-  })();
+  const shouldRenderMobileEmergencyMode = isMobileEmergencyMode;
 
   const incompleteSchedules = schedules.filter((schedule) => {
     if (
@@ -7288,6 +7197,9 @@ async function saveMemberPreference() {
             onClick={() => {
               window.localStorage?.setItem("spotainerViewMode", "tablet");
               setIsMobileEmergencyMode(false);
+              if (window.location.pathname.includes("/mobile-schedule")) {
+                window.location.href = "/?view=tablet";
+              }
             }}
             style={styles.mobileEmergencyRefreshButton}
           >
