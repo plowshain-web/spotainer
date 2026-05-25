@@ -227,7 +227,7 @@ const circuitPrograms = [
   },
 ];
 
-const SPOTAINER_PATCH_VERSION = "2026-05-25-tablet-mobile-separated-safe";
+const SPOTAINER_PATCH_VERSION = "2026-05-25-tablet-phone-hard-separated-v2";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const memberStageOptions = [
@@ -514,11 +514,24 @@ const [workoutExercises, setWorkoutExercises] = useState([
       // Android 태블릿 브라우저/PWA userAgent에도 "Mobile Safari" 문구가 들어가는 경우가 있어
       // userAgent만으로 Android.*Mobile을 판정하면 태블릿이 휴대폰 화면으로 잘못 열릴 수 있습니다.
       // 그래서 Android는 반드시 실제 화면 크기까지 같이 확인합니다.
-      const looksLikePhoneSize = shortSide <= 600 && longSide <= 1000;
-      const isAndroidPhone = isAndroid && hasAndroidMobileToken && looksLikePhoneSize;
-      const isSmallUnknownPhone = !isAndroid && looksLikePhoneSize;
+      // 2026-05-25 긴급 수정:
+      // Android 태블릿 PWA가 "Mobile Safari" 토큰 때문에 휴대폰 화면으로 잘못 들어가는 문제를 막습니다.
+      // 휴대폰은 CSS 픽셀 기준으로 짧은 변/긴 변이 모두 작을 때만 휴대폰 모드로 봅니다.
+      // 예: Galaxy Tab 계열은 PWA/가로모드에서도 보통 800px 이상 또는 긴 변 1100px 이상이라 태블릿으로 유지됩니다.
+      const forceDesktop = new URLSearchParams(window.location.search).get("view") === "tablet" ||
+        window.localStorage?.getItem("spotainerViewMode") === "tablet";
+      const forcePhone = new URLSearchParams(window.location.search).get("view") === "phone" ||
+        window.localStorage?.getItem("spotainerViewMode") === "phone";
 
-      setIsMobileEmergencyMode(Boolean(isApplePhone || isAndroidPhone || isSmallUnknownPhone));
+      const looksLikePhoneSize = shortSide <= 700 && longSide <= 1100;
+      const looksLikeTabletSize = shortSide >= 760 || longSide >= 1180;
+
+      const isAndroidPhone = isAndroid && hasAndroidMobileToken && looksLikePhoneSize && !looksLikeTabletSize;
+      const isApplePhoneBySize = isApplePhone && looksLikePhoneSize && !looksLikeTabletSize;
+      const isSmallUnknownPhone = !isAndroid && !isApplePhone && looksLikePhoneSize && !looksLikeTabletSize;
+
+      const nextMobileMode = forceDesktop ? false : forcePhone ? true : Boolean(isApplePhoneBySize || isAndroidPhone || isSmallUnknownPhone);
+      setIsMobileEmergencyMode(nextMobileMode);
     }
 
     checkMobileEmergencyMode();
