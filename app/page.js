@@ -227,7 +227,7 @@ const circuitPrograms = [
   },
 ];
 
-const SPOTAINER_PATCH_VERSION = "2026-05-25-v10-route-separated-tablet-root-phone-mobile-schedule";
+const SPOTAINER_PATCH_VERSION = "2026-05-25-v11-pwa-tablet-install-rescue";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const memberStageOptions = [
@@ -567,14 +567,49 @@ const [workoutExercises, setWorkoutExercises] = useState([
       const params = new URLSearchParams(window.location.search);
       const viewParam = params.get("view");
 
-      // v10 핵심 수정:
-      // 자동 기기 판정은 완전히 제거합니다.
-      // / 또는 일반 주소는 무조건 태블릿 화면입니다.
-      // /mobile-schedule 주소 또는 ?view=phone일 때만 휴대폰 스케줄 화면을 사용합니다.
-      // 태블릿 PWA/브라우저가 viewport를 휴대폰처럼 보고해도 더 이상 모바일 화면으로 바뀌지 않습니다.
-      const routeWantsMobile = pathname.includes("/mobile-schedule") || viewParam === "phone";
-      const routeWantsTablet = viewParam === "tablet" || !routeWantsMobile;
-      const nextMobileMode = routeWantsMobile && !routeWantsTablet;
+      // v11 핵심 수정:
+      // PWA 설치앱은 manifest/start_url 또는 오래된 캐시 때문에
+      // 태블릿에서 /mobile-schedule로 실행되는 경우가 있습니다.
+      // 그래서 최종 판정은 아래처럼 고정합니다.
+      // 1) ?view=tablet  -> 무조건 태블릿
+      // 2) ?view=phone   -> 무조건 휴대폰
+      // 3) /mobile-schedule + 실제 화면이 휴대폰 크기 -> 휴대폰
+      // 4) 그 외, 특히 태블릿 크기/PWA 실행 -> 무조건 태블릿
+      const innerWidth = window.innerWidth || 0;
+      const innerHeight = window.innerHeight || 0;
+      const visualWidth = window.visualViewport?.width || innerWidth || 0;
+      const visualHeight = window.visualViewport?.height || innerHeight || 0;
+      const screenWidth = window.screen?.width || 0;
+      const screenHeight = window.screen?.height || 0;
+
+      const longSide = Math.max(innerWidth, innerHeight, visualWidth, visualHeight, screenWidth, screenHeight);
+      const shortSide = Math.min(
+        ...[innerWidth, innerHeight, visualWidth, visualHeight, screenWidth, screenHeight].filter((value) => value > 0)
+      );
+
+      const tabletLike = longSide >= 900 && shortSide >= 500;
+      const phoneLike = longSide <= 930 && shortSide <= 499;
+      const pathWantsMobile = pathname.includes("/mobile-schedule");
+
+      let nextMobileMode = false;
+
+      if (viewParam === "tablet") {
+        nextMobileMode = false;
+      } else if (viewParam === "phone") {
+        nextMobileMode = true;
+      } else if (pathWantsMobile && phoneLike && !tabletLike) {
+        nextMobileMode = true;
+      } else {
+        nextMobileMode = false;
+      }
+
+      if (!nextMobileMode && pathWantsMobile && viewParam !== "phone") {
+        try {
+          window.history.replaceState(null, "", "/?view=tablet");
+        } catch (error) {
+          console.warn("태블릿 주소 정리 실패", error);
+        }
+      }
 
       try {
         window.localStorage?.setItem("spotainerViewMode", nextMobileMode ? "phone" : "tablet");
@@ -582,11 +617,22 @@ const [workoutExercises, setWorkoutExercises] = useState([
         console.warn("Spotainer view mode 저장 실패", error);
       }
 
-      console.log("Spotainer route separated view", {
+      console.log("Spotainer v11 route separated view", {
         pathname,
         viewParam,
+        innerWidth,
+        innerHeight,
+        visualWidth,
+        visualHeight,
+        screenWidth,
+        screenHeight,
+        longSide,
+        shortSide,
+        tabletLike,
+        phoneLike,
+        pathWantsMobile,
         nextMobileMode,
-        reason: nextMobileMode ? "mobile-schedule-route" : "tablet-root-route",
+        reason: nextMobileMode ? "phone-route-and-phone-size" : "tablet-forced-root-or-tablet-size",
       });
 
       setIsMobileEmergencyMode(Boolean(nextMobileMode));
