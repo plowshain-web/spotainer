@@ -227,7 +227,7 @@ const circuitPrograms = [
   },
 ];
 
-const SPOTAINER_PATCH_VERSION = "2026-05-25-v8-realtime-memo-sanitize";
+const SPOTAINER_PATCH_VERSION = "2026-05-25-v9-tablet-forced-no-phone-cache";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const memberStageOptions = [
@@ -585,31 +585,66 @@ const [workoutExercises, setWorkoutExercises] = useState([
       const uaDataMobile = navigator.userAgentData?.mobile === true;
       const hasCoarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches === true;
 
-      // v6 핵심 기준:
-      // - 태블릿 운영이 우선이므로 Android / Mobile Safari / userAgentData.mobile 값만으로는 절대 모바일 화면을 띄우지 않습니다.
-      // - 실제 현재 화면의 짧은 변이 540px 이하일 때만 휴대폰 모드 후보가 됩니다.
-      // - PWA 설치 앱은 manifest start_url 때문에 ?view=tablet이 사라질 수 있으므로 URL에 의존하지 않습니다.
-      // - 이전에 저장된 phone 값은 태블릿에서도 모바일을 강제할 수 있어 더 이상 우선 적용하지 않습니다.
-      const forcedTablet = viewParam === "tablet" || savedViewMode === "tablet";
-      const forcedPhone = viewParam === "phone";
-      // v7 핵심 수정:
-      // 갤럭시탭/안드로이드 태블릿 PWA는 CSS 화면값이 960x540 전후로 잡히는 경우가 있습니다.
-      // 이전 기준(짧은 변 540 이하)을 쓰면 태블릿을 휴대폰으로 오인합니다.
-      // 그래서 태블릿 판정을 먼저, 더 넓게 잡습니다.
+      // v9 핵심 수정:
+      // - 태블릿처럼 보이는 화면이면 저장값/브라우저 신호/안드로이드 coarse pointer와 무관하게 무조건 태블릿 화면을 유지합니다.
+      // - 예전에 localStorage에 spotainerViewMode=phone 이 남아 있어도 태블릿에서는 즉시 tablet으로 덮어씁니다.
+      // - 휴대폰 강제 모드는 실제 휴대폰 크기일 때만 허용합니다.
       const landscapeTabletLike = viewportLongSide >= 850 && viewportShortSide >= 500;
       const screenTabletLike = screenLongSide >= 850 && screenShortSide >= 500;
-      const clearlyTablet = landscapeTabletLike || screenTabletLike || viewportShortSide >= 600 || screenShortSide >= 600 || viewportLongSide >= 1100 || screenLongSide >= 1100;
-      const clearlyPhoneSize = viewportShortSide > 0 && viewportShortSide <= 499 && viewportLongSide <= 930 && screenShortSide <= 499;
+      const clearlyTablet =
+        landscapeTabletLike ||
+        screenTabletLike ||
+        viewportShortSide >= 600 ||
+        screenShortSide >= 600 ||
+        viewportLongSide >= 1100 ||
+        screenLongSide >= 1100;
+
+      const clearlyPhoneSize =
+        viewportShortSide > 0 &&
+        viewportShortSide <= 499 &&
+        viewportLongSide <= 930 &&
+        screenShortSide <= 499;
+
       const phoneSignal = isApplePhone || uaDataMobile || (isAndroid && hasCoarsePointer);
 
       if (viewParam === "tablet") {
         window.localStorage?.setItem("spotainerViewMode", "tablet");
       }
-      if (viewParam === "phone") {
+
+      if (clearlyTablet) {
+        window.localStorage?.setItem("spotainerViewMode", "tablet");
+
+        console.log("Spotainer device check", {
+          userAgent,
+          screenWidth,
+          screenHeight,
+          innerWidth,
+          innerHeight,
+          visualWidth,
+          visualHeight,
+          viewportShortSide,
+          viewportLongSide,
+          screenShortSide,
+          screenLongSide,
+          savedViewMode,
+          clearlyTablet,
+          clearlyPhoneSize,
+          nextMobileMode: false,
+          reason: "tablet-size-forced",
+        });
+
+        setIsMobileEmergencyMode(false);
+        return;
+      }
+
+      if (viewParam === "phone" && clearlyPhoneSize) {
         window.localStorage?.setItem("spotainerViewMode", "phone");
       }
 
-      const nextMobileMode = forcedTablet ? false : ((forcedPhone || phoneSignal) && !clearlyTablet && clearlyPhoneSize);
+      const currentSavedViewMode = window.localStorage?.getItem("spotainerViewMode") || savedViewMode;
+      const forcedTablet = viewParam === "tablet" || currentSavedViewMode === "tablet";
+      const forcedPhone = viewParam === "phone" && clearlyPhoneSize;
+      const nextMobileMode = forcedTablet ? false : ((forcedPhone || phoneSignal) && clearlyPhoneSize);
 
       console.log("Spotainer device check", {
         userAgent,
@@ -624,6 +659,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
         screenShortSide,
         screenLongSide,
         savedViewMode,
+        currentSavedViewMode,
         clearlyTablet,
         clearlyPhoneSize,
         nextMobileMode,
