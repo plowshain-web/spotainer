@@ -346,6 +346,16 @@ const [prefCommunicationStyle, setPrefCommunicationStyle] = useState([]);
 const [prefClassMood, setPrefClassMood] = useState([]);
   const [prefRequestNote, setPrefRequestNote] = useState("");
 
+  const [otExperience, setOtExperience] = useState([]);
+  const [otConcerns, setOtConcerns] = useState([]);
+  const [otPainParts, setOtPainParts] = useState([]);
+  const [otCondition, setOtCondition] = useState([]);
+  const [otWorkoutStyle, setOtWorkoutStyle] = useState([]);
+  const [otTouchStyle, setOtTouchStyle] = useState([]);
+  const [otGoals, setOtGoals] = useState([]);
+  const [otPtExpectations, setOtPtExpectations] = useState([]);
+  const [otTrainerStyle, setOtTrainerStyle] = useState([]);
+
   const [attendanceList, setAttendanceList] = useState([]);
   const [ptLogList, setPtLogList] = useState([]);
 
@@ -2952,6 +2962,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
     const tagSet = new Set();
 
     getScheduleMembers(schedule).forEach((member) => {
+      getOtSummaryTags(member).forEach((tag) => tagSet.add(`OT ${tag}`));
       getPreferenceTags(member).forEach((tag) => tagSet.add(tag));
     });
 
@@ -4819,6 +4830,276 @@ function togglePreferenceValue(currentValues, nextValue) {
   return [...currentValues, nextValue];
 }
 
+const otCheckSections = [
+  {
+    key: "ot_experience",
+    title: "1️⃣ 운동 경험이 있으신가요?",
+    options: [
+      "운동이 거의 처음이에요",
+      "헬스장은 다녀봤어요",
+      "PT 받아본 적 있어요",
+      "꾸준히 운동했던 적 있어요",
+    ],
+  },
+  {
+    key: "ot_concerns",
+    title: "2️⃣ 운동 시작하면서 가장 걱정되는 부분은 어떤건가요?",
+    options: [
+      "체력이 너무 없어요",
+      "자세를 잘 모르겠어요",
+      "운동기구가 어렵고 낯설어요",
+      "혼자하면 꾸준히 못할 것 같아요",
+      "통증이나 불편한 부위가 있어요",
+      "운동 강도가 걱정돼요",
+      "딱히 걱정은 없어요",
+    ],
+  },
+  {
+    key: "ot_pain_parts",
+    title: "3️⃣ 현재 가장 불편하거나 신경쓰이는 부위가 있으신가요?",
+    options: [
+      "목/승모",
+      "어깨",
+      "허리",
+      "무릎",
+      "손목",
+      "발목",
+      "골반/고관절",
+      "딱히 없어요",
+    ],
+  },
+  {
+    key: "ot_condition",
+    title: "4️⃣ 평소 몸 상태는 어떤 편인가요?",
+    options: [
+      "자주 피곤한 편이에요",
+      "몸이 잘 붓는 편이에요",
+      "어깨나 목이 자주 뭉쳐요",
+      "체력이 빨리 떨어지는 편이에요",
+      "잠을 푹 못자는 편이에요",
+      "해당사항 없어요",
+    ],
+  },
+  {
+    key: "ot_workout_style",
+    title: "5️⃣ 운동할 때 어떤 스타일이 편하세요?",
+    options: [
+      "천천히 자세 위주로 하고 싶어요",
+      "분위기 편하게 재밌게 하고 싶어요",
+      "어느정도 힘든 느낌이 좋아요",
+      "설명을 자세히 들으면서 하고 싶어요",
+      "일단 몸부터 움직이는 스타일이 좋아요",
+    ],
+  },
+  {
+    key: "ot_touch_style",
+    title: "6️⃣ 운동 중 자세를 잡아드릴 때 어떤 스타일이 편하세요?",
+    options: [
+      "직접 자세를 잡아주는게 편해요",
+      "필요한 경우만 가볍게 터치해주는게 좋아요",
+      "터치는 최소한으로 해주셨으면 좋겠어요",
+      "말로 설명해주는 방식이 더 편해요",
+    ],
+  },
+  {
+    key: "ot_goals",
+    title: "7️⃣ 운동을 통해 가장 바꾸고 싶은 부분은 무엇인가요?",
+    options: [
+      "체력 증가",
+      "다이어트",
+      "자세/체형 교정",
+      "근력 증가",
+      "통증 완화",
+      "라인 관리",
+      "생활습관 개선",
+    ],
+  },
+  {
+    key: "ot_pt_expectations",
+    title: "8️⃣ PT를 받게 된다면 어떤 부분을 가장 기대하시나요?",
+    options: [
+      "혼자보다 꾸준히 운동하는 것",
+      "자세를 정확히 배우는 것",
+      "체형이나 몸 변화",
+      "운동 습관 만들기",
+      "체력/컨디션 관리",
+      "식단이나 생활관리 도움",
+    ],
+  },
+  {
+    key: "ot_trainer_style",
+    title: "9️⃣ 트레이너가 어떤 스타일이면 좋으세요?",
+    options: [
+      "차분하게 설명 잘해주는 스타일",
+      "편하게 대화 가능한 스타일",
+      "동기부여 많이 해주는 스타일",
+      "꼼꼼하게 체크해주는 스타일",
+      "운동 분위기를 잘 만들어주는 스타일",
+    ],
+  },
+];
+
+function getOtCheckState(key) {
+  const map = {
+    ot_experience: otExperience,
+    ot_concerns: otConcerns,
+    ot_pain_parts: otPainParts,
+    ot_condition: otCondition,
+    ot_workout_style: otWorkoutStyle,
+    ot_touch_style: otTouchStyle,
+    ot_goals: otGoals,
+    ot_pt_expectations: otPtExpectations,
+    ot_trainer_style: otTrainerStyle,
+  };
+
+  return map[key] || [];
+}
+
+function setOtCheckState(key, updater) {
+  const map = {
+    ot_experience: setOtExperience,
+    ot_concerns: setOtConcerns,
+    ot_pain_parts: setOtPainParts,
+    ot_condition: setOtCondition,
+    ot_workout_style: setOtWorkoutStyle,
+    ot_touch_style: setOtTouchStyle,
+    ot_goals: setOtGoals,
+    ot_pt_expectations: setOtPtExpectations,
+    ot_trainer_style: setOtTrainerStyle,
+  };
+
+  const setter = map[key];
+  if (setter) setter(updater);
+}
+
+function fillOtCheckForm(member) {
+  setOtExperience(parsePreferenceValue(member?.ot_experience));
+  setOtConcerns(parsePreferenceValue(member?.ot_concerns));
+  setOtPainParts(parsePreferenceValue(member?.ot_pain_parts));
+  setOtCondition(parsePreferenceValue(member?.ot_condition));
+  setOtWorkoutStyle(parsePreferenceValue(member?.ot_workout_style));
+  setOtTouchStyle(parsePreferenceValue(member?.ot_touch_style));
+  setOtGoals(parsePreferenceValue(member?.ot_goals));
+  setOtPtExpectations(parsePreferenceValue(member?.ot_pt_expectations));
+  setOtTrainerStyle(parsePreferenceValue(member?.ot_trainer_style));
+}
+
+function getOtCheckPayload() {
+  return {
+    ot_experience: stringifyPreferenceValue(otExperience),
+    ot_concerns: stringifyPreferenceValue(otConcerns),
+    ot_pain_parts: stringifyPreferenceValue(otPainParts),
+    ot_condition: stringifyPreferenceValue(otCondition),
+    ot_workout_style: stringifyPreferenceValue(otWorkoutStyle),
+    ot_touch_style: stringifyPreferenceValue(otTouchStyle),
+    ot_goals: stringifyPreferenceValue(otGoals),
+    ot_pt_expectations: stringifyPreferenceValue(otPtExpectations),
+    ot_trainer_style: stringifyPreferenceValue(otTrainerStyle),
+    ot_check_updated_at: new Date().toISOString(),
+  };
+}
+
+function getOtSummaryTags(member) {
+  const tags = [];
+  const painParts = parsePreferenceValue(member?.ot_pain_parts).filter((item) => item !== "딱히 없어요");
+  const concerns = parsePreferenceValue(member?.ot_concerns).filter((item) => item !== "딱히 걱정은 없어요");
+  const workoutStyle = parsePreferenceValue(member?.ot_workout_style);
+  const touchStyle = parsePreferenceValue(member?.ot_touch_style);
+  const condition = parsePreferenceValue(member?.ot_condition).filter((item) => item !== "해당사항 없어요");
+
+  painParts.slice(0, 2).forEach((item) => tags.push(`${item} 주의`));
+  if (concerns.some((item) => item.includes("체력"))) tags.push("체력걱정");
+  if (concerns.some((item) => item.includes("자세"))) tags.push("자세걱정");
+  if (workoutStyle.some((item) => item.includes("자세 위주"))) tags.push("자세위주");
+  if (workoutStyle.some((item) => item.includes("설명"))) tags.push("설명선호");
+  if (touchStyle.some((item) => item.includes("최소한") || item.includes("말로 설명"))) tags.push("터치주의");
+  if (condition.some((item) => item.includes("피곤") || item.includes("붓") || item.includes("잠"))) tags.push("컨디션체크");
+
+  return [...new Set(tags)].slice(0, 6);
+}
+
+function buildOtCheckSmsMessage(member) {
+  const body = otCheckSections
+    .map((section) => `${section.title}\n\n${section.options.map((option) => `- ${option}`).join("\n")}`)
+    .join("\n\n---\n\n");
+
+  return `안녕하세요! 스포테이너 피트니스 팀장 김선수 입니다 😌
+
+OT수업 전에 회원님의 운동 스타일과 운동 목적을 확인하고 컨디션에 맞춰 수업을 진행하고자 합니다.
+보다 편안하고 만족도 높은 수업 진행을 위해 체크 부탁드릴게요 :)
+
+부담없이 편하게 작성해주세요~!
+
+🏷️ OT 회원 성향체크 (중복선택 가능)
+
+${body}`;
+}
+
+function sendOtCheckSms(member) {
+  if (!member?.phone) {
+    alert("회원 전화번호가 없어요.");
+    return;
+  }
+
+  const phone = String(member.phone).replace(/[^0-9]/g, "");
+  const message = buildOtCheckSmsMessage(member);
+  window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
+}
+
+async function saveOtCheck() {
+  if (!selectedMember) return;
+
+  const payload = getOtCheckPayload();
+
+  const { data, error } = await supabase
+    .from("members")
+    .update(payload)
+    .eq("id", selectedMember.id)
+    .select("*")
+    .single();
+
+  if (error) {
+    alert("OT 성향체크 저장 실패: " + error.message + "\n\n처음 적용하는 경우 Supabase members 테이블에 OT 성향체크 컬럼을 먼저 추가해야 해요.");
+    return;
+  }
+
+  setSelectedMember(data || { ...selectedMember, ...payload });
+  setMembers((prev) =>
+    prev.map((member) =>
+      member.id === selectedMember.id ? { ...member, ...(data || payload) } : member
+    )
+  );
+
+  alert("OT 성향체크가 저장되었어요.");
+  setDetailMode("menu");
+}
+
+function renderOtCheckSection(section) {
+  const currentValues = getOtCheckState(section.key);
+
+  return (
+    <div key={section.key} style={preferenceStyles.section}>
+      <div style={preferenceStyles.label}>{section.title}</div>
+      <div style={preferenceStyles.helper}>중복 선택 가능해요.</div>
+      <div style={preferenceStyles.grid3}>
+        {section.options.map((label) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => setOtCheckState(section.key, (prev) => togglePreferenceValue(prev, label))}
+            style={{
+              ...preferenceStyles.optionButton,
+              ...(currentValues.includes(label) ? preferenceStyles.activeButton : {}),
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function fillPreferenceForm(member) {
   const onlyCurrentOptions = (key, value) => {
     const allowed = getAllowedPreferenceValues(key);
@@ -4872,6 +5153,7 @@ async function saveMemberPreference() {
   async function openDetail(member, mode = "menu") {
     setSelectedMember(member);
     fillPreferenceForm(member);
+    fillOtCheckForm(member);
     setDetailMode(mode);
     setShowAllPtModal(false);
     setShowAllAttendanceModal(false);
@@ -9023,7 +9305,7 @@ async function saveMemberPreference() {
                     문자
                   </button>
                 </div>
-                      {getPreferenceTags(selectedMember).length > 0 && (
+                      {(getPreferenceTags(selectedMember).length > 0 || getOtSummaryTags(selectedMember).length > 0) && (
   <div
     style={{
       display: "flex",
@@ -9033,9 +9315,25 @@ async function saveMemberPreference() {
       marginBottom: 8,
     }}
   >
+    {getOtSummaryTags(selectedMember).map((tag) => (
+      <div
+        key={`ot-${tag}`}
+        style={{
+          background: "#fff7ed",
+          color: "#111",
+          padding: "6px 10px",
+          borderRadius: 999,
+          fontSize: 12,
+          fontWeight: 800,
+          border: "1px solid #fed7aa",
+        }}
+      >
+        OT {tag}
+      </div>
+    ))}
     {getPreferenceTags(selectedMember).map((tag) => (
       <div
-        key={tag}
+        key={`pref-${tag}`}
         style={{
           background: "#f3f4f6",
           color: "#111",
@@ -9078,6 +9376,16 @@ async function saveMemberPreference() {
                   </button>
                   <button onClick={() => setDetailMode("preference")} style={styles.menuButton}>
                     성향 메모
+                  </button>
+                  <button onClick={() => setDetailMode("otCheck")} style={styles.menuButton}>
+                    OT 성향체크
+                  </button>
+                  <button
+                    type="button"
+                    style={styles.menuButton}
+                    onClick={() => sendOtCheckSms(selectedMember)}
+                  >
+                    OT 성향체크 문자
                   </button>
                   <button
                     type="button"
@@ -9150,6 +9458,52 @@ ${link}`;
                 {renderInfoBlock("트레이너 메모", selectedMember.memo)}
               </>
             )}
+
+            {detailMode === "otCheck" && (
+  <>
+    <div style={styles.recordHeader}>
+      <h3 style={styles.subTitle}>OT 회원 성향체크 (중복선택 가능)</h3>
+      <button type="button" onClick={saveOtCheck} style={styles.smallDark}>
+        저장
+      </button>
+    </div>
+
+    <div style={preferenceStyles.noticeBox}>
+      <div style={preferenceStyles.noticeTitle}>
+        OT수업 전에 회원님의 운동 스타일과 운동 목적을 확인하는 기본 체크예요.
+      </div>
+      <div style={preferenceStyles.noticeText}>
+        통증 부위, 터치 민감도, 운동 스타일을 미리 저장해두면 수업 전에 바로 확인할 수 있어요.
+      </div>
+    </div>
+
+    {getOtSummaryTags({
+      ot_pain_parts: stringifyPreferenceValue(otPainParts),
+      ot_concerns: stringifyPreferenceValue(otConcerns),
+      ot_workout_style: stringifyPreferenceValue(otWorkoutStyle),
+      ot_touch_style: stringifyPreferenceValue(otTouchStyle),
+      ot_condition: stringifyPreferenceValue(otCondition),
+    }).length > 0 && (
+      <div style={preferenceStyles.summaryTagBox}>
+        {getOtSummaryTags({
+          ot_pain_parts: stringifyPreferenceValue(otPainParts),
+          ot_concerns: stringifyPreferenceValue(otConcerns),
+          ot_workout_style: stringifyPreferenceValue(otWorkoutStyle),
+          ot_touch_style: stringifyPreferenceValue(otTouchStyle),
+          ot_condition: stringifyPreferenceValue(otCondition),
+        }).map((tag) => (
+          <span key={tag} style={preferenceStyles.summaryTag}>{tag}</span>
+        ))}
+      </div>
+    )}
+
+    {otCheckSections.map(renderOtCheckSection)}
+
+    <button type="button" onClick={saveOtCheck} style={preferenceStyles.saveButton}>
+      OT 성향체크 저장
+    </button>
+  </>
+)}
 
             {detailMode === "preference" && (
   <>
@@ -10880,6 +11234,21 @@ const preferenceStyles = {
     fontSize: "17px",
     fontWeight: 900,
     boxShadow: "0 10px 20px rgba(17, 24, 39, 0.16)",
+  },
+  summaryTagBox: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+    marginBottom: "14px",
+  },
+  summaryTag: {
+    background: "#fff7ed",
+    color: "#111827",
+    border: "1px solid #fed7aa",
+    borderRadius: 999,
+    padding: "7px 11px",
+    fontSize: "13px",
+    fontWeight: 900,
   },
 };
 
