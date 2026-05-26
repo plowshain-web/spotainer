@@ -268,6 +268,48 @@ export default function Page() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const pathname = window.location.pathname || "";
+    const match = pathname.match(/^\/ot-check\/([^/?#]+)/);
+
+    if (!match?.[1]) {
+      setPublicOtCheckMemberId(null);
+      return;
+    }
+
+    setPublicOtCheckMemberId(decodeURIComponent(match[1]));
+  }, []);
+
+  useEffect(() => {
+    if (!publicOtCheckMemberId) return;
+
+    async function loadPublicOtCheckMember() {
+      setPublicOtCheckLoading(true);
+      setPublicOtCheckError("");
+
+      const { data, error } = await supabase
+        .from("members")
+        .select("id,name,ot_experience,ot_concerns,ot_pain_parts,ot_condition,ot_workout_style,ot_touch_style,ot_goals,ot_pt_expectations,ot_trainer_style,ot_check_updated_at")
+        .eq("id", publicOtCheckMemberId)
+        .single();
+
+      if (error) {
+        setPublicOtCheckError("성향체크 정보를 불러오지 못했어요. 링크를 다시 확인해주세요.");
+        setPublicOtCheckLoading(false);
+        return;
+      }
+
+      setPublicOtCheckMember(data);
+      fillOtCheckForm(data);
+      setPublicOtCheckLoading(false);
+    }
+
+    loadPublicOtCheckMember();
+  }, [publicOtCheckMemberId]);
+
   const [memberActionMenuMember, setMemberActionMenuMember] = useState(null);
   const [showContactListModal, setShowContactListModal] = useState(false);
   const [showCenterModal, setShowCenterModal] = useState(false);
@@ -355,6 +397,13 @@ const [prefClassMood, setPrefClassMood] = useState([]);
   const [otGoals, setOtGoals] = useState([]);
   const [otPtExpectations, setOtPtExpectations] = useState([]);
   const [otTrainerStyle, setOtTrainerStyle] = useState([]);
+
+  const [publicOtCheckMemberId, setPublicOtCheckMemberId] = useState(null);
+  const [publicOtCheckMember, setPublicOtCheckMember] = useState(null);
+  const [publicOtCheckLoading, setPublicOtCheckLoading] = useState(false);
+  const [publicOtCheckSaving, setPublicOtCheckSaving] = useState(false);
+  const [publicOtCheckSaved, setPublicOtCheckSaved] = useState(false);
+  const [publicOtCheckError, setPublicOtCheckError] = useState("");
 
   const [attendanceList, setAttendanceList] = useState([]);
   const [ptLogList, setPtLogList] = useState([]);
@@ -5019,9 +5068,9 @@ function getOtSummaryTags(member) {
 }
 
 function buildOtCheckSmsMessage(member) {
-  const body = otCheckSections
-    .map((section) => `${section.title}\n\n${section.options.map((option) => `- ${option}`).join("\n")}`)
-    .join("\n\n---\n\n");
+  const memberId = member?.id ? encodeURIComponent(member.id) : "";
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const link = memberId ? `${baseUrl}/ot-check/${memberId}` : baseUrl;
 
   return `안녕하세요! 스포테이너 피트니스 팀장 김선수 입니다 😌
 
@@ -5030,9 +5079,7 @@ OT수업 전에 회원님의 운동 스타일과 운동 목적을 확인하고 �
 
 부담없이 편하게 작성해주세요~!
 
-🏷️ OT 회원 성향체크 (중복선택 가능)
-
-${body}`;
+${link}`;
 }
 
 function sendOtCheckSms(member) {
@@ -5072,6 +5119,33 @@ async function saveOtCheck() {
 
   alert("OT 성향체크가 저장되었어요.");
   setDetailMode("menu");
+}
+
+async function savePublicOtCheck() {
+  if (!publicOtCheckMemberId) return;
+
+  setPublicOtCheckSaving(true);
+  setPublicOtCheckError("");
+
+  const payload = getOtCheckPayload();
+
+  const { data, error } = await supabase
+    .from("members")
+    .update(payload)
+    .eq("id", publicOtCheckMemberId)
+    .select("id,name,ot_experience,ot_concerns,ot_pain_parts,ot_condition,ot_workout_style,ot_touch_style,ot_goals,ot_pt_expectations,ot_trainer_style,ot_check_updated_at")
+    .single();
+
+  setPublicOtCheckSaving(false);
+
+  if (error) {
+    setPublicOtCheckError("저장에 실패했어요. 잠시 후 다시 시도해주세요.");
+    return;
+  }
+
+  setPublicOtCheckMember(data || { ...publicOtCheckMember, ...payload });
+  setPublicOtCheckSaved(true);
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function renderOtCheckSection(section) {
@@ -7482,6 +7556,86 @@ async function saveMemberPreference() {
         console.error("앱 종료 시도 실패", error);
       }
     }, 80);
+  }
+
+  if (publicOtCheckMemberId) {
+    return (
+      <main
+        style={{
+          minHeight: "100dvh",
+          background: "#fff7f3",
+          color: "#111827",
+          padding: "20px",
+          boxSizing: "border-box",
+        }}
+      >
+        <section
+          style={{
+            width: "100%",
+            maxWidth: 760,
+            margin: "0 auto",
+            background: "#ffffff",
+            borderRadius: 24,
+            padding: "22px 18px 26px",
+            boxShadow: "0 18px 50px rgba(17, 24, 39, 0.12)",
+            border: "1px solid #f1e5de",
+          }}
+        >
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: "#8a6f63", marginBottom: 6 }}>
+              SPOTAINER FITNESS
+            </div>
+            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 1000, letterSpacing: "-0.04em" }}>
+              OT 회원 성향체크
+            </h1>
+            <p style={{ margin: "10px 0 0", fontSize: 14, lineHeight: 1.6, fontWeight: 750, color: "#6b4f45" }}>
+              중복선택 가능해요. 회원님의 컨디션과 스타일에 맞춰 수업을 진행하기 위한 체크입니다.
+            </p>
+          </div>
+
+          {publicOtCheckLoading ? (
+            <div style={preferenceStyles.noticeBox}>불러오는 중이에요...</div>
+          ) : publicOtCheckError ? (
+            <div style={{ ...preferenceStyles.noticeBox, background: "#fff1f2", borderColor: "#fecdd3" }}>
+              <div style={preferenceStyles.noticeTitle}>확인이 필요해요</div>
+              <div style={preferenceStyles.noticeText}>{publicOtCheckError}</div>
+            </div>
+          ) : publicOtCheckSaved ? (
+            <div style={preferenceStyles.noticeBox}>
+              <div style={preferenceStyles.noticeTitle}>작성 완료됐어요 :)</div>
+              <div style={preferenceStyles.noticeText}>
+                체크해주신 내용 참고해서 컨디션과 스타일에 맞춰 OT 진행 도와드릴게요.
+              </div>
+            </div>
+          ) : (
+            <>
+              {publicOtCheckMember?.name && (
+                <div style={preferenceStyles.noticeBox}>
+                  <div style={preferenceStyles.noticeTitle}>{publicOtCheckMember.name}님 체크</div>
+                  <div style={preferenceStyles.noticeText}>
+                    부담없이 편하게 선택해주세요.
+                  </div>
+                </div>
+              )}
+
+              {otCheckSections.map(renderOtCheckSection)}
+
+              <button
+                type="button"
+                onClick={savePublicOtCheck}
+                disabled={publicOtCheckSaving}
+                style={{
+                  ...preferenceStyles.saveButton,
+                  opacity: publicOtCheckSaving ? 0.65 : 1,
+                }}
+              >
+                {publicOtCheckSaving ? "저장 중..." : "작성 완료"}
+              </button>
+            </>
+          )}
+        </section>
+      </main>
+    );
   }
 
   const shouldRenderMobileEmergencyMode = isMobileEmergencyMode;
