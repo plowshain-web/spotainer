@@ -269,46 +269,6 @@ export default function Page() {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const pathname = window.location.pathname || "";
-    const match = pathname.match(/^\/ot-check\/([^/?#]+)/);
-
-    if (!match?.[1]) {
-      setPublicOtCheckMemberId(null);
-      return;
-    }
-
-    setPublicOtCheckMemberId(decodeURIComponent(match[1]));
-  }, []);
-
-  useEffect(() => {
-    if (!publicOtCheckMemberId) return;
-
-    async function loadPublicOtCheckMember() {
-      setPublicOtCheckLoading(true);
-      setPublicOtCheckError("");
-
-      const { data, error } = await supabase
-        .from("members")
-        .select("id,name,ot_experience,ot_concerns,ot_pain_parts,ot_condition,ot_workout_style,ot_touch_style,ot_goals,ot_pt_expectations,ot_trainer_style,ot_check_updated_at")
-        .eq("id", publicOtCheckMemberId)
-        .single();
-
-      if (error) {
-        setPublicOtCheckError("성향체크 정보를 불러오지 못했어요. 링크를 다시 확인해주세요.");
-        setPublicOtCheckLoading(false);
-        return;
-      }
-
-      setPublicOtCheckMember(data);
-      fillOtCheckForm(data);
-      setPublicOtCheckLoading(false);
-    }
-
-    loadPublicOtCheckMember();
-  }, [publicOtCheckMemberId]);
 
   const [memberActionMenuMember, setMemberActionMenuMember] = useState(null);
   const [showContactListModal, setShowContactListModal] = useState(false);
@@ -404,6 +364,47 @@ const [prefClassMood, setPrefClassMood] = useState([]);
   const [publicOtCheckSaving, setPublicOtCheckSaving] = useState(false);
   const [publicOtCheckSaved, setPublicOtCheckSaved] = useState(false);
   const [publicOtCheckError, setPublicOtCheckError] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const pathname = window.location.pathname || "";
+    const match = pathname.match(/^\/ot-check\/([^/?#]+)/);
+
+    if (!match?.[1]) {
+      setPublicOtCheckMemberId(null);
+      return;
+    }
+
+    setPublicOtCheckMemberId(decodeURIComponent(match[1]));
+  }, []);
+
+  useEffect(() => {
+    if (!publicOtCheckMemberId) return;
+
+    async function loadPublicOtCheckMember() {
+      setPublicOtCheckLoading(true);
+      setPublicOtCheckError("");
+
+      const { data, error } = await supabase
+        .from("members")
+        .select("id,name,ot_experience,ot_concerns,ot_pain_parts,ot_condition,ot_workout_style,ot_touch_style,ot_goals,ot_pt_expectations,ot_trainer_style,ot_check_updated_at")
+        .eq("id", publicOtCheckMemberId)
+        .single();
+
+      if (error) {
+        setPublicOtCheckError("성향체크 정보를 불러오지 못했어요. 링크를 다시 확인해주세요.");
+        setPublicOtCheckLoading(false);
+        return;
+      }
+
+      setPublicOtCheckMember(data);
+      fillOtCheckForm(data);
+      setPublicOtCheckLoading(false);
+    }
+
+    loadPublicOtCheckMember();
+  }, [publicOtCheckMemberId]);
 
   const [attendanceList, setAttendanceList] = useState([]);
   const [ptLogList, setPtLogList] = useState([]);
