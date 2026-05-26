@@ -358,7 +358,12 @@ const [prefClassMood, setPrefClassMood] = useState([]);
   const [otPtExpectations, setOtPtExpectations] = useState([]);
   const [otTrainerStyle, setOtTrainerStyle] = useState([]);
 
-  const [publicOtCheckMemberId, setPublicOtCheckMemberId] = useState(null);
+  const [publicOtCheckMemberId, setPublicOtCheckMemberId] = useState(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search || "");
+    const queryMemberId = params.get("otCheck") || params.get("ot_check") || params.get("otCheckMemberId");
+    return queryMemberId ? decodeURIComponent(queryMemberId) : null;
+  });
   const [publicOtCheckMember, setPublicOtCheckMember] = useState(null);
   const [publicOtCheckLoading, setPublicOtCheckLoading] = useState(false);
   const [publicOtCheckSaving, setPublicOtCheckSaving] = useState(false);
@@ -626,6 +631,17 @@ const [workoutExercises, setWorkoutExercises] = useState([
       const pathname = window.location.pathname || "/";
       const params = new URLSearchParams(window.location.search);
       const viewParam = params.get("view");
+      const otCheckParam = params.get("otCheck") || params.get("ot_check") || params.get("otCheckMemberId");
+
+      if (otCheckParam) {
+        setIsMobileEmergencyMode(false);
+        try {
+          window.localStorage?.setItem("spotainerViewMode", "tablet");
+        } catch (error) {
+          console.warn("Spotainer view mode 저장 실패", error);
+        }
+        return;
+      }
 
       // v11 핵심 수정:
       // PWA 설치앱은 manifest/start_url 또는 오래된 캐시 때문에
@@ -5071,9 +5087,7 @@ function getOtSummaryTags(member) {
 function buildOtCheckSmsMessage(member) {
   const memberId = member?.id ? encodeURIComponent(member.id) : "";
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const currentPath = typeof window !== "undefined" ? window.location.pathname || "/mobile-schedule" : "/mobile-schedule";
-  const safePath = currentPath === "/" ? "/mobile-schedule" : currentPath;
-  const link = memberId ? `${baseUrl}${safePath}?otCheck=${memberId}` : `${baseUrl}${safePath}`;
+  const link = memberId ? `${baseUrl}/?otCheck=${memberId}` : `${baseUrl}/`;
 
   return `안녕하세요! 스포테이너 피트니스 팀장 김선수 입니다 😌
 
