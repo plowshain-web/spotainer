@@ -368,15 +368,15 @@ const [prefClassMood, setPrefClassMood] = useState([]);
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const pathname = window.location.pathname || "";
-    const match = pathname.match(/^\/ot-check\/([^/?#]+)/);
+    const params = new URLSearchParams(window.location.search || "");
+    const queryMemberId = params.get("otCheck") || params.get("ot_check") || params.get("otCheckMemberId");
 
-    if (!match?.[1]) {
+    if (!queryMemberId) {
       setPublicOtCheckMemberId(null);
       return;
     }
 
-    setPublicOtCheckMemberId(decodeURIComponent(match[1]));
+    setPublicOtCheckMemberId(decodeURIComponent(queryMemberId));
   }, []);
 
   useEffect(() => {
@@ -5071,7 +5071,9 @@ function getOtSummaryTags(member) {
 function buildOtCheckSmsMessage(member) {
   const memberId = member?.id ? encodeURIComponent(member.id) : "";
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const link = memberId ? `${baseUrl}/ot-check/${memberId}` : baseUrl;
+  const currentPath = typeof window !== "undefined" ? window.location.pathname || "/mobile-schedule" : "/mobile-schedule";
+  const safePath = currentPath === "/" ? "/mobile-schedule" : currentPath;
+  const link = memberId ? `${baseUrl}${safePath}?otCheck=${memberId}` : `${baseUrl}${safePath}`;
 
   return `안녕하세요! 스포테이너 피트니스 팀장 김선수 입니다 😌
 
