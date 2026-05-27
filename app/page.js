@@ -9620,29 +9620,75 @@ async function saveMemberPreference() {
 
             {detailMode === "menu" && (
               <>
-                <h3 style={styles.subTitle}>상세 보기</h3>
+                <div style={styles.detailOverviewGrid}>
+                  <div style={styles.detailSummaryPanel}>
+                    <div style={styles.detailPanelTopRow}>
+                      <div>
+                        <h3 style={styles.detailPanelTitle}>최근수업</h3>
+                        <p style={styles.detailPanelSub}>회원카드는 출석 대신 PT 사용 기준으로 봅니다.</p>
+                      </div>
+                      <span style={styles.detailMiniBadge}>CARE</span>
+                    </div>
+                    {(() => {
+                      const latestWorkout = detailWorkoutSessions?.[0];
+                      const latestCondition = getLatestConditionForMember(selectedMember);
+                      const pt = getPtSummary(selectedMember, ptLogList);
+                      const workoutSummary = getLastWorkoutSummary(latestWorkout);
+                      const issueText = normalizeCompactText(
+                        latestWorkout?.issue || latestCondition?.memo || selectedMember?.note || "특이사항 없음",
+                        34
+                      );
 
-                {renderWorkoutPatternBox()}
+                      return (
+                        <div style={styles.detailSummaryMiniGrid}>
+                          <div style={styles.detailSummaryMiniCard}>
+                            <span style={styles.detailSummaryLabel}>PT</span>
+                            <strong style={styles.detailSummaryValue}>{pt.used}/{pt.total}</strong>
+                            <small style={styles.detailSummaryHint}>{pt.remain}회 남음</small>
+                          </div>
+                          <div style={styles.detailSummaryMiniCard}>
+                            <span style={styles.detailSummaryLabel}>부위</span>
+                            <strong style={styles.detailSummaryValue}>{workoutSummary?.bodyPartText || "미정"}</strong>
+                            <small style={styles.detailSummaryHint}>최근 기록</small>
+                          </div>
+                          <div style={styles.detailSummaryWideCard}>
+                            <span style={styles.detailSummaryLabel}>지난이슈</span>
+                            <strong style={styles.detailSummaryIssue}>{issueText}</strong>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  <div style={styles.detailPatternPanel}>
+                    {renderWorkoutPatternBox()}
+                  </div>
+                </div>
+
+                <div style={styles.detailLauncherHeaderRow}>
+                  <h3 style={styles.subTitleCompact}>빠른 관리</h3>
+                  <span style={styles.detailLauncherHint}>필요한 메뉴만 작게 눌러 이동</span>
+                </div>
 
                 <div style={styles.menuGrid}>
                   <button onClick={() => setDetailMode("info")} style={styles.menuButton}>
-                    회원 정보
+                    <span style={styles.menuButtonIcon}>i</span><span>회원 정보</span>
                   </button>
                   <button onClick={() => openContactModal(selectedMember, "pending")} style={styles.menuButton}>
-                    상담기록
+                    <span style={styles.menuButtonIcon}>✎</span><span>상담기록</span>
                   </button>
                   <button onClick={() => setDetailMode("preference")} style={styles.menuButton}>
-                    성향 메모
+                    <span style={styles.menuButtonIcon}>#</span><span>성향 메모</span>
                   </button>
                   <button onClick={() => setDetailMode("otCheck")} style={styles.menuButton}>
-                    OT 성향체크
+                    <span style={styles.menuButtonIcon}>OT</span><span>OT 성향체크</span>
                   </button>
                   <button
                     type="button"
                     style={styles.menuButton}
                     onClick={() => sendOtCheckSms(selectedMember)}
                   >
-                    OT 성향체크 문자
+                    <span style={styles.menuButtonIcon}>↗</span><span>OT 체크 문자</span>
                   </button>
                   <button
                     type="button"
@@ -9665,10 +9711,10 @@ ${link}`;
                       window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
                     }}
                   >
-                    성향체크 문자
+                    <span style={styles.menuButtonIcon}>↗</span><span>성향체크 문자</span>
                   </button>
                   <button onClick={() => setDetailMode("pt")} style={styles.menuButton}>
-                    PT 사용 기록
+                    <span style={styles.menuButtonIcon}>PT</span><span>PT 사용기록</span>
                   </button>
                   <button
                     onClick={() => {
@@ -9676,13 +9722,13 @@ ${link}`;
                     }}
                     style={styles.menuButton}
                   >
-                    운동 기록
+                    <span style={styles.menuButtonIcon}>W</span><span>운동 기록</span>
                   </button>
                   <button onClick={() => setDetailMode("inbody")} style={styles.menuButton}>
-                    인바디 기록
+                    <span style={styles.menuButtonIcon}>△</span><span>인바디 기록</span>
                   </button>
                   <button onClick={() => openMemberScheduleSearch(selectedMember)} style={styles.menuButton}>
-                    스케줄 확인
+                    <span style={styles.menuButtonIcon}>⌘</span><span>스케줄 확인</span>
                   </button>
                 </div>
               </>
@@ -13202,7 +13248,8 @@ const styles = {
   modalOverlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,.72)",
+    background: "rgba(17, 24, 39, .42)",
+    backdropFilter: "blur(8px)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
@@ -13215,12 +13262,12 @@ const styles = {
     height: "calc(100vh - 88px)",
     maxHeight: "none",
     overflowY: "auto",
-    background: "#ffffff",
-    color: "#111",
-    border: "1px solid #e5e5e5",
-    borderRadius: 24,
-    padding: 22,
-    boxShadow: "0 20px 60px rgba(0,0,0,.45)",
+    background: "linear-gradient(180deg, #fffdf8 0%, #f8f5ed 100%)",
+    color: "#111827",
+    border: "1px solid rgba(191, 159, 104, .45)",
+    borderRadius: 28,
+    padding: 18,
+    boxShadow: "0 24px 70px rgba(15, 23, 42, .28)",
   },
   modalTitle: {
     fontSize: 28,
@@ -13553,18 +13600,36 @@ const styles = {
   },
   menuGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 12,
+    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+    gap: 10,
   },
   menuButton: {
-    background: "#f7f7f7",
-    color: "#111",
-    border: "1px solid #dddddd",
+    background: "rgba(255,255,255,.86)",
+    color: "#111827",
+    border: "1px solid rgba(191, 159, 104, .32)",
     borderRadius: 18,
-    padding: 18,
-    fontSize: 18,
-    fontWeight: 900,
+    padding: "12px 10px",
+    fontSize: 14,
+    fontWeight: 950,
     marginBottom: 0,
+    display: "grid",
+    gap: 7,
+    justifyItems: "center",
+    alignItems: "center",
+    minHeight: 78,
+    boxShadow: "0 10px 24px rgba(17, 24, 39, .06)",
+  },
+  menuButtonIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 12,
+    background: "#111827",
+    color: "#fffaf0",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 12,
+    fontWeight: 1000,
   },
   recordHeader: {
     display: "flex",
@@ -14031,9 +14096,13 @@ textarea: {
   detailTop: {
     display: "flex",
     justifyContent: "space-between",
-    gap: 16,
+    gap: 14,
     alignItems: "flex-start",
-    marginBottom: 20,
+    marginBottom: 12,
+    padding: "12px 14px",
+    borderRadius: 22,
+    background: "rgba(255,255,255,.78)",
+    border: "1px solid rgba(191, 159, 104, .28)",
   },
   detailHeaderLeft: {
     minWidth: 0,
@@ -14077,12 +14146,12 @@ textarea: {
     whiteSpace: "nowrap",
   },
   detailHeaderPassButton: {
-    border: "1px solid #111",
-    background: "#111",
-    color: "#fff",
+    border: "1px solid #111827",
+    background: "#111827",
+    color: "#fffaf0",
     borderRadius: 999,
-    padding: "9px 15px",
-    fontSize: 14,
+    padding: "7px 12px",
+    fontSize: 13,
     fontWeight: 1000,
   },
   detailFloatingBackButton: {
@@ -14090,18 +14159,20 @@ textarea: {
     right: 24,
     bottom: 24,
     zIndex: 100002,
-    border: "1px solid #111",
-    background: "#111",
-    color: "#fff",
+    border: "1px solid #111827",
+    background: "#111827",
+    color: "#fffaf0",
     borderRadius: 999,
-    padding: "14px 20px",
-    fontSize: 16,
+    padding: "11px 18px",
+    fontSize: 14,
     fontWeight: 1000,
-    boxShadow: "0 14px 34px rgba(0,0,0,0.26)",
+    boxShadow: "0 14px 34px rgba(0,0,0,0.20)",
   },
   detailName: {
-    fontSize: 34,
+    fontSize: 30,
     margin: 0,
+    letterSpacing: -0.5,
+    color: "#111827",
   },
   muted: {
     color: "#555",
@@ -14113,17 +14184,125 @@ textarea: {
     fontWeight: 900,
   },
   closeButton: {
-    background: "#111",
-    color: "#fff",
-    border: "1px solid #444",
-    borderRadius: 14,
-    padding: "12px 16px",
-    fontWeight: 900,
+    background: "#ffffff",
+    color: "#111827",
+    border: "1px solid rgba(17,24,39,.18)",
+    borderRadius: 999,
+    padding: "9px 14px",
+    fontWeight: 1000,
   },
   subTitle: {
     fontSize: 22,
     marginTop: 22,
     marginBottom: 14,
+  },
+  subTitleCompact: {
+    fontSize: 18,
+    margin: 0,
+    color: "#111827",
+    fontWeight: 1000,
+  },
+  detailOverviewGrid: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1.1fr) minmax(280px, .9fr)",
+    gap: 12,
+    alignItems: "stretch",
+    marginBottom: 12,
+  },
+  detailSummaryPanel: {
+    background: "rgba(255,255,255,.86)",
+    border: "1px solid rgba(191, 159, 104, .32)",
+    borderRadius: 22,
+    padding: 14,
+    boxShadow: "0 12px 30px rgba(17,24,39,.06)",
+  },
+  detailPatternPanel: {
+    minWidth: 0,
+  },
+  detailPanelTopRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 10,
+    alignItems: "flex-start",
+    marginBottom: 10,
+  },
+  detailPanelTitle: {
+    margin: 0,
+    color: "#111827",
+    fontSize: 17,
+    fontWeight: 1000,
+  },
+  detailPanelSub: {
+    margin: "4px 0 0",
+    color: "#6b7280",
+    fontSize: 12,
+    fontWeight: 800,
+  },
+  detailMiniBadge: {
+    border: "1px solid rgba(191, 159, 104, .5)",
+    color: "#7c5a1f",
+    background: "#fff7e6",
+    borderRadius: 999,
+    padding: "5px 8px",
+    fontSize: 11,
+    fontWeight: 1000,
+  },
+  detailSummaryMiniGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 8,
+  },
+  detailSummaryMiniCard: {
+    background: "#fffaf0",
+    border: "1px solid rgba(191, 159, 104, .28)",
+    borderRadius: 16,
+    padding: "10px 11px",
+    display: "grid",
+    gap: 3,
+  },
+  detailSummaryWideCard: {
+    gridColumn: "1 / -1",
+    background: "#ffffff",
+    border: "1px solid rgba(17,24,39,.11)",
+    borderRadius: 16,
+    padding: "10px 11px",
+    display: "grid",
+    gap: 4,
+  },
+  detailSummaryLabel: {
+    color: "#7c5a1f",
+    fontSize: 11,
+    fontWeight: 1000,
+  },
+  detailSummaryValue: {
+    color: "#111827",
+    fontSize: 18,
+    fontWeight: 1000,
+  },
+  detailSummaryHint: {
+    color: "#6b7280",
+    fontSize: 11,
+    fontWeight: 800,
+  },
+  detailSummaryIssue: {
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: 950,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  detailLauncherHeaderRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    margin: "6px 2px 10px",
+    gap: 10,
+  },
+  detailLauncherHint: {
+    color: "#6b7280",
+    fontSize: 12,
+    fontWeight: 800,
   },
   infoBlock: {
     background: "#222",
@@ -16616,7 +16795,8 @@ textarea: {
   modalOverlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,.72)",
+    background: "rgba(17, 24, 39, .42)",
+    backdropFilter: "blur(8px)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
@@ -16629,30 +16809,33 @@ textarea: {
     height: "calc(100vh - 88px)",
     maxHeight: "none",
     overflowY: "auto",
-    background: "#ffffff",
-    color: "#111",
-    border: "1px solid #e5e5e5",
-    borderRadius: 24,
-    padding: 22,
-    boxShadow: "0 20px 60px rgba(0,0,0,.45)",
+    background: "linear-gradient(180deg, #fffdf8 0%, #f8f5ed 100%)",
+    color: "#111827",
+    border: "1px solid rgba(191, 159, 104, .45)",
+    borderRadius: 28,
+    padding: 18,
+    boxShadow: "0 24px 70px rgba(15, 23, 42, .28)",
   },
   detailTop: {
     display: "flex",
     justifyContent: "space-between",
-    gap: 16,
+    gap: 14,
     alignItems: "flex-start",
-    marginBottom: 18,
-    paddingBottom: 14,
-    borderBottom: "1px solid #e5e5e5",
+    marginBottom: 12,
+    padding: "12px 14px",
+    borderRadius: 22,
+    background: "rgba(255,255,255,.78)",
+    border: "1px solid rgba(191, 159, 104, .28)",
   },
   detailName: {
-    fontSize: 34,
+    fontSize: 30,
     margin: 0,
     fontWeight: 1000,
-    color: "#111",
+    color: "#111827",
+    letterSpacing: -0.5,
   },
   muted: {
-    color: "#555",
+    color: "#4b5563",
     margin: 0,
     marginBottom: 8,
     fontWeight: 800,
@@ -16663,15 +16846,20 @@ textarea: {
     color: "#111",
   },
   menuButton: {
-    background: "#ffffff",
-    color: "#111",
-    border: "1px solid #d4d4d4",
+    background: "rgba(255,255,255,.86)",
+    color: "#111827",
+    border: "1px solid rgba(191, 159, 104, .32)",
     borderRadius: 18,
-    padding: 18,
-    fontSize: 18,
-    fontWeight: 1000,
+    padding: "12px 10px",
+    fontSize: 14,
+    fontWeight: 950,
     marginBottom: 0,
-    boxShadow: "0 4px 12px rgba(0,0,0,.04)",
+    display: "grid",
+    gap: 7,
+    justifyItems: "center",
+    alignItems: "center",
+    minHeight: 78,
+    boxShadow: "0 10px 24px rgba(17,24,39,.06)",
   },
   infoBlock: {
     background: "#ffffff",
@@ -17403,12 +17591,13 @@ textarea: {
     fontWeight: 900,
   },
   workoutPatternBox: {
-    border: "1px solid #111",
-    borderRadius: 18,
+    border: "1px solid rgba(191, 159, 104, .32)",
+    borderRadius: 22,
     padding: 14,
-    margin: "12px 0 16px",
-    background: "#fff",
-    color: "#111",
+    margin: 0,
+    background: "rgba(255,255,255,.86)",
+    color: "#111827",
+    boxShadow: "0 12px 30px rgba(17,24,39,.06)",
   },
   workoutPatternHeader: {
     display: "flex",
@@ -17462,16 +17651,16 @@ textarea: {
     color: "#111",
   },
   workoutPatternBarTrack: {
-    height: 10,
-    border: "1px solid #111",
+    height: 8,
+    border: "1px solid rgba(191, 159, 104, .3)",
     borderRadius: 999,
-    background: "#fff",
+    background: "#fffaf0",
     overflow: "hidden",
   },
   workoutPatternBar: {
     height: "100%",
     borderRadius: 999,
-    background: "#111",
+    background: "linear-gradient(90deg, #111827, #a77b2a)",
   },
   workoutPatternCount: {
     textAlign: "right",
