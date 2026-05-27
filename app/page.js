@@ -2484,7 +2484,39 @@ const [workoutExercises, setWorkoutExercises] = useState([
   function openDetailFromMemberList(member) {
     setReturnToMemberListAfterDetail(true);
     setShowMemberListModal(false);
+
+    if (memberListTitle === "PT 사용/차감") {
+      openDetail(member, "pt");
+      return;
+    }
+
+    if (memberListTitle === "인바디 기록") {
+      openDetail(member, "inbody");
+      return;
+    }
+
+    if (memberListTitle === "운동 기록") {
+      setReturnToMemberListAfterDetail(false);
+      openWorkout(member, "memberList");
+      return;
+    }
+
+    if (memberListTitle === "상담 기록") {
+      setReturnToMemberListAfterDetail(false);
+      openContactModal(member, "pending");
+      return;
+    }
+
     openDetail(member, "menu");
+  }
+
+  function getMemberListModalDescription() {
+    if (showInactiveMembers) return "비활성 회원은 복구 후 다시 운영 목록에 표시됩니다.";
+    if (memberListTitle === "PT 사용/차감") return "회원을 누르면 PT 사용 기록 화면으로 바로 이동합니다.";
+    if (memberListTitle === "상담 기록") return "회원을 누르면 상담기록 입력창이 바로 열립니다.";
+    if (memberListTitle === "운동 기록") return "회원을 누르면 운동기록 화면으로 바로 이동합니다.";
+    if (memberListTitle === "인바디 기록") return "회원을 누르면 인바디 기록 화면으로 바로 이동합니다.";
+    return "회원을 검색하고 카드를 누르면 상세보기로 바로 이동합니다.";
   }
 
   async function saveScheduleRow(row, options = {}) {
@@ -8187,10 +8219,10 @@ async function saveMemberPreference() {
           <strong>스케줄 관리</strong>
           <span>일정 관리</span>
         </button>
-        <button type="button" onClick={() => setShowSalesModal(true)} style={styles.homeLauncherItem}>
-          <span style={{ ...styles.homeLauncherIcon, color: "#fb923c" }}>▥</span>
-          <strong>통계 보기</strong>
-          <span>매출 및 회원 통계</span>
+        <button type="button" onClick={() => setShowTodayTodoModal(true)} style={styles.homeLauncherItem}>
+          <span style={{ ...styles.homeLauncherIcon, color: "#fb923c" }}>✓</span>
+          <strong>오늘 할 일</strong>
+          <span>필요할 때만 확인</span>
         </button>
       </section>
 
@@ -11312,7 +11344,7 @@ ${link}`;
             <div style={styles.whiteModalTop}>
               <div>
                 <h2 style={styles.whiteModalTitle}>{memberListTitle}</h2>
-                <p style={styles.whiteMuted}>{showInactiveMembers ? "비활성 회원은 복구 후 다시 운영 목록에 표시됩니다." : "회원을 검색하고 카드를 누르면 상세보기로 바로 이동합니다."}</p>
+                <p style={styles.whiteMuted}>{getMemberListModalDescription()}</p>
               </div>
 
               <button onClick={closeMemberListModal} style={styles.whiteCloseButton}>
