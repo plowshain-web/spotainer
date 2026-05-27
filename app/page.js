@@ -1784,12 +1784,68 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
   function getScheduleLastIssueText(schedule, member, workout) {
     const latestCondition = member ? getLatestConditionForMember(member) : null;
-    const issue =
-      workout?.issue ||
-      latestCondition?.memo ||
-      "";
+    const bodyPartOnlyWords = ["가슴", "어깨", "등", "하체", "팔", "코어", "복부", "전신", "유산소", "서킷", "미정"];
+    const issueKeywords = [
+      "통증", "불편", "결림", "뻐근", "뻐근함", "저림", "긴장", "피로", "근육통",
+      "컨디션", "수면", "부족", "공복", "생리", "무릎", "허리", "발목", "손목", "목", "골반", "어깨"
+    ];
 
-    return normalizeCompactText(issue, 28);
+    const structuredConditionParts = [];
+
+    if (latestCondition?.condition_level && !String(latestCondition.condition_level).includes("좋음") && latestCondition.condition_level !== "보통") {
+      structuredConditionParts.push(`컨디션 ${latestCondition.condition_level}`);
+    }
+    if (latestCondition?.pain_area && latestCondition.pain_area !== "없음") {
+      structuredConditionParts.push(`${latestCondition.pain_area} 불편`);
+    }
+    if (latestCondition?.sleep_status && String(latestCondition.sleep_status).includes("부족")) {
+      structuredConditionParts.push(`수면 ${latestCondition.sleep_status}`);
+    }
+    if (latestCondition?.muscle_soreness && latestCondition.muscle_soreness !== "없음") {
+      structuredConditionParts.push(`근육통 ${latestCondition.muscle_soreness}`);
+    }
+    if (latestCondition?.workout_burden && latestCondition.workout_burden !== "괜찮음") {
+      structuredConditionParts.push(`운동부담 ${latestCondition.workout_burden}`);
+    }
+
+    const candidates = [
+      structuredConditionParts.join(", "),
+      latestCondition?.memo,
+      workout?.issue,
+      workout?.trainer_note,
+    ];
+
+    function sanitizeIssueCandidate(value) {
+      let text = String(value || "").replace(/\s+/g, " ").trim();
+      if (!text) return "";
+
+      exerciseList.forEach((exerciseName) => {
+        const name = String(exerciseName || "").trim();
+        if (!name) return;
+        text = text.split(name).join("");
+      });
+
+      text = text
+        .replace(/외\s*\d+\s*개/g, "")
+        .replace(/지난\s*운동\s*부위/g, "")
+        .replace(/지난\s*운동/g, "")
+        .replace(/[·,，、]+/g, " ")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+
+      if (!text) return "";
+      if (bodyPartOnlyWords.includes(text)) return "";
+      if (!issueKeywords.some((keyword) => text.includes(keyword))) return "";
+
+      return normalizeCompactText(text, 28);
+    }
+
+    for (const candidate of candidates) {
+      const issueText = sanitizeIssueCandidate(candidate);
+      if (issueText) return issueText;
+    }
+
+    return "";
   }
 
   function renderScheduleCheckItem(schedule, showDate = false) {
@@ -17977,17 +18033,17 @@ textarea: {
     minHeight: "100vh",
     overflow: "hidden",
     boxSizing: "border-box",
-    background: "radial-gradient(circle at top left, #1b2326 0%, #111719 34%, #0d1113 100%)",
+    background: "radial-gradient(circle at top left, #1a2022 0%, #101618 38%, #090d0f 100%)",
     color: "#fff",
-    padding: "18px 30px 14px",
+    padding: "14px 28px 10px",
     fontFamily: "Arial, sans-serif",
   },
   header: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: 18,
-    marginBottom: 18,
+    gap: 16,
+    marginBottom: 10,
   },
   headerTitleRow: {
     display: "flex",
@@ -17996,14 +18052,14 @@ textarea: {
   },
   title: {
     margin: 0,
-    fontSize: 44,
+    fontSize: 40,
     lineHeight: 1,
     fontWeight: 1000,
     letterSpacing: "-0.05em",
   },
   subtitle: {
-    margin: "8px 0 0",
-    fontSize: 18,
+    margin: "6px 0 0",
+    fontSize: 16,
     color: "#f4f4f5",
     fontWeight: 800,
   },
@@ -18022,49 +18078,49 @@ textarea: {
     gap: 12,
   },
   trainerQuickButton: {
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.18)",
+    background: "rgba(255,255,255,0.055)",
     color: "#fff",
-    borderRadius: 16,
-    padding: "13px 22px",
-    fontSize: 15,
+    borderRadius: 15,
+    padding: "10px 18px",
+    fontSize: 14,
     fontWeight: 1000,
   },
   adminBadge: {
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.18)",
+    background: "rgba(255,255,255,0.055)",
     color: "#fff",
-    borderRadius: 16,
-    padding: "13px 22px",
-    fontSize: 15,
+    borderRadius: 15,
+    padding: "10px 18px",
+    fontSize: 14,
     fontWeight: 1000,
   },
   incompleteBox: {
-    background: "linear-gradient(180deg, rgba(28,34,36,0.96), rgba(19,24,26,0.96))",
-    border: "1px solid rgba(246, 211, 139, 0.56)",
+    background: "linear-gradient(180deg, rgba(26,31,33,0.97), rgba(15,19,21,0.985))",
+    border: "1.5px solid rgba(246, 211, 139, 0.86)",
     borderRadius: 24,
-    padding: "14px 16px 13px",
-    marginBottom: 12,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 18px 45px rgba(0,0,0,0.22)",
+    padding: "12px 16px 12px",
+    marginBottom: 10,
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07), 0 0 0 1px rgba(255,255,255,0.035), 0 18px 45px rgba(0,0,0,0.24), 0 0 22px rgba(246,211,139,0.08)",
   },
   incompleteTop: {
     display: "flex",
     justifyContent: "space-between",
     gap: 14,
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 9,
   },
   incompleteTitle: {
-    fontSize: 24,
+    fontSize: 23,
     margin: 0,
     fontWeight: 1000,
-    color: "#facc15",
+    color: "#f6d38b",
     letterSpacing: "-0.03em",
   },
   incompleteDesc: {
     color: "#d4d4d8",
-    margin: "5px 0 0",
-    fontSize: 13,
+    margin: "4px 0 0",
+    fontSize: 12,
     fontWeight: 700,
   },
   todaySmsStartButton: {
@@ -18089,26 +18145,28 @@ textarea: {
   incompleteList: {
     display: "grid",
     gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-    gap: 11,
+    gridTemplateRows: "repeat(2, minmax(0, 1fr))",
+    gap: 10,
     alignItems: "stretch",
   },
   incompleteItem: {
     position: "relative",
-    background: "linear-gradient(180deg, rgba(30,35,37,0.92), rgba(18,22,24,0.96))",
-    border: "1px solid rgba(246, 211, 139, 0.74)",
+    background: "linear-gradient(180deg, rgba(29,34,36,0.92), rgba(15,19,21,0.965))",
+    border: "1.5px solid rgba(246, 211, 139, 0.90)",
     borderRadius: 14,
-    padding: "10px 10px 9px",
+    padding: "8px 9px 8px",
     display: "grid",
     gridTemplateColumns: "1fr",
-    gap: 8,
+    gap: 5,
     alignItems: "stretch",
     minWidth: 0,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 1px rgba(255,255,255,0.025), 0 8px 18px rgba(0,0,0,0.18)",
+    minHeight: 0,
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.065), 0 0 0 1px rgba(255,255,255,0.025), 0 9px 20px rgba(0,0,0,0.20), 0 0 13px rgba(246,211,139,0.12)",
   },
   compactScheduleHead: {
     display: "grid",
-    gridTemplateColumns: "58px minmax(0, 1fr)",
-    gap: 8,
+    gridTemplateColumns: "52px minmax(0, 1fr)",
+    gap: 7,
     alignItems: "start",
     minWidth: 0,
   },
@@ -18149,41 +18207,42 @@ textarea: {
     display: "flex",
     flexWrap: "wrap",
     gap: 4,
-    minHeight: 20,
+    minHeight: 17,
+    maxHeight: 19,
     overflow: "hidden",
   },
   compactTag: {
-    background: "rgba(255,255,255,0.13)",
+    background: "rgba(255,255,255,0.12)",
     color: "#f4f4f5",
     border: "1px solid rgba(255,255,255,0.10)",
-    padding: "3px 7px",
+    padding: "2px 6px",
     borderRadius: 999,
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 900,
     lineHeight: 1.1,
   },
   compactWorkoutRow: {
     display: "grid",
-    gridTemplateColumns: "38px minmax(46px, 1fr) 1px 34px auto",
+    gridTemplateColumns: "32px minmax(42px, 1fr) 1px 30px auto",
     alignItems: "center",
-    gap: 8,
-    minHeight: 50,
+    gap: 7,
+    minHeight: 40,
   },
   compactBodyIcon: {
-    width: 34,
-    height: 34,
+    width: 30,
+    height: 30,
     borderRadius: 999,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    border: "1px solid #facc15",
-    color: "#facc15",
-    fontSize: 13,
+    border: "1px solid #f6d38b",
+    color: "#f6d38b",
+    fontSize: 12,
     fontWeight: 1000,
-    background: "rgba(250,204,21,0.04)",
+    background: "rgba(246,211,139,0.045)",
   },
   compactBodyText: {
-    fontSize: 23,
+    fontSize: 21,
     fontWeight: 1000,
     color: "#fff",
     letterSpacing: "-0.05em",
@@ -18193,12 +18252,12 @@ textarea: {
   },
   compactDivider: {
     width: 1,
-    height: 34,
+    height: 30,
     background: "rgba(255,255,255,0.10)",
   },
   compactConditionIcon: {
-    color: "#facc15",
-    fontSize: 22,
+    color: "#f6d38b",
+    fontSize: 20,
     lineHeight: 1,
   },
   compactConditionText: {
@@ -18210,12 +18269,12 @@ textarea: {
   compactIssueLine: {
     borderTop: "1px solid rgba(255,255,255,0.08)",
     borderBottom: "1px solid rgba(255,255,255,0.06)",
-    padding: "7px 0",
+    padding: "4px 0",
     display: "flex",
     alignItems: "center",
     gap: 6,
     color: "#f4f4f5",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 800,
     minWidth: 0,
     whiteSpace: "nowrap",
@@ -18229,10 +18288,10 @@ textarea: {
   },
   scheduleStatusRow: {
     display: "flex",
-    gap: 5,
+    gap: 4,
     flexWrap: "wrap",
     marginTop: 0,
-    minHeight: 20,
+    minHeight: 17,
   },
   scheduleDoneText: {
     color: "#d7fff3",
@@ -18281,21 +18340,21 @@ textarea: {
   incompleteCompleteButton: {
     background: "rgba(255,255,255,0.10)",
     color: "#fff",
-    border: "1px solid rgba(255,255,255,0.10)",
+    border: "1px solid rgba(255,255,255,0.12)",
     borderRadius: 8,
-    padding: "7px 8px",
+    padding: "6px 7px",
     fontWeight: 1000,
-    fontSize: 12,
+    fontSize: 11,
     whiteSpace: "nowrap",
   },
   scheduleSmsButton: {
     background: "rgba(19,78,74,0.70)",
     color: "#d7fff3",
-    border: "1px solid rgba(45,115,105,0.7)",
+    border: "1px solid rgba(45,115,105,0.76)",
     borderRadius: 8,
-    padding: "7px 8px",
+    padding: "6px 7px",
     fontWeight: 1000,
-    fontSize: 12,
+    fontSize: 11,
     whiteSpace: "nowrap",
   },
   scheduleDisabledButton: {
@@ -18303,76 +18362,80 @@ textarea: {
     color: "#9ca3af",
     border: "1px solid rgba(255,255,255,0.08)",
     borderRadius: 8,
-    padding: "7px 8px",
+    padding: "6px 7px",
     fontWeight: 1000,
-    fontSize: 12,
+    fontSize: 11,
     whiteSpace: "nowrap",
   },
   scheduleQuickButtonWrap: {
     position: "relative",
     display: "grid",
-    gridTemplateColumns: "1fr 1fr 42px",
-    gap: 7,
+    gridTemplateColumns: "1fr 1fr 38px",
+    gap: 6,
     width: "100%",
   },
   scheduleMoreButton: {
     background: "rgba(0,0,0,0.34)",
     color: "#fff",
-    border: "1px solid rgba(255,255,255,0.12)",
+    border: "1px solid rgba(255,255,255,0.13)",
     borderRadius: 8,
-    padding: "7px 8px",
+    padding: "6px 7px",
     fontWeight: 1000,
-    fontSize: 16,
+    fontSize: 15,
     lineHeight: 1,
     whiteSpace: "nowrap",
   },
   homeLauncherGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(9, minmax(0, 1fr))",
-    gap: 10,
+    gridTemplateColumns: "repeat(9, 104px)",
+    justifyContent: "space-between",
+    gap: 8,
     marginBottom: 0,
+    paddingTop: 0,
   },
   homeLauncherItem: {
-    aspectRatio: "1 / 1",
+    width: 104,
+    height: 104,
     minHeight: 0,
-    border: "1px solid rgba(246, 211, 139, 0.42)",
-    background: "linear-gradient(180deg, rgba(31,36,38,0.94), rgba(19,23,25,0.96))",
+    border: "1.25px solid rgba(246, 211, 139, 0.72)",
+    background: "linear-gradient(180deg, rgba(30,35,37,0.94), rgba(17,21,23,0.97))",
     color: "#fff",
-    borderRadius: 16,
-    padding: "10px 8px",
+    borderRadius: 15,
+    padding: "8px 7px",
     display: "grid",
     justifyItems: "center",
     alignContent: "center",
-    gap: 4,
+    gap: 3,
     textAlign: "center",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 18px rgba(0,0,0,0.18)",
+    fontSize: 11,
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.055), 0 8px 18px rgba(0,0,0,0.18), 0 0 12px rgba(246,211,139,0.08)",
   },
   homeLauncherIcon: {
-    height: 28,
-    minWidth: 28,
-    borderRadius: 10,
+    height: 23,
+    minWidth: 23,
+    borderRadius: 8,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: 21,
+    fontSize: 18,
     fontWeight: 1000,
-    marginBottom: 1,
+    marginBottom: 0,
   },
 
   moreScheduleCard: {
     position: "relative",
     background: "linear-gradient(180deg, rgba(30,35,37,0.92), rgba(18,22,24,0.96))",
-    border: "1px dashed rgba(246, 211, 139, 0.72)",
+    border: "1.5px dashed rgba(246, 211, 139, 0.84)",
     borderRadius: 14,
-    padding: "10px",
+    padding: "8px",
     minWidth: 0,
     color: "#f6d38b",
     display: "grid",
     placeItems: "center",
     alignContent: "center",
-    gap: 8,
+    gap: 6,
     textAlign: "center",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 18px rgba(0,0,0,0.18)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 18px rgba(0,0,0,0.18), 0 0 13px rgba(246,211,139,0.10)",
   },
   moreScheduleIcon: {
     width: 42,
