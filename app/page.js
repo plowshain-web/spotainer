@@ -1630,6 +1630,78 @@ const [workoutExercises, setWorkoutExercises] = useState([
     };
   }
 
+
+  function normalizeCompactText(value, maxLength = 22) {
+    const text = String(value || "").replace(/\s+/g, " ").trim();
+    if (!text) return "";
+    return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+  }
+
+  function getScheduleTodayBodyPart(schedule, workout) {
+    const candidates = [];
+
+    [
+      schedule?.today_body_part,
+      schedule?.todayBodyPart,
+      schedule?.body_part,
+      schedule?.bodyPart,
+      schedule?.workout_body_part,
+      schedule?.workoutBodyPart,
+      schedule?.planned_body_part,
+      schedule?.plannedBodyPart,
+    ].forEach((value) => {
+      if (Array.isArray(value)) candidates.push(value.join(", "));
+      else if (value) candidates.push(value);
+    });
+
+    candidates.push(schedule?.memo, schedule?.note, schedule?.description);
+
+    const keywords = ["가슴", "어깨", "등", "하체", "팔", "복부", "전신", "상체", "서킷"];
+    const sourceText = candidates.filter(Boolean).join(" ");
+    const found = keywords.find((keyword) => sourceText.includes(keyword));
+    if (found) return found === "서킷" ? "전신" : found;
+
+    const lastBodyPart = getLastWorkoutSummary(workout)?.bodyPartText;
+    return lastBodyPart || "미정";
+  }
+
+  function getBodyPartIcon(bodyPartText) {
+    const text = String(bodyPartText || "");
+    if (text.includes("하체")) return "⌁";
+    if (text.includes("상체")) return "⌂";
+    if (text.includes("가슴")) return "◇";
+    if (text.includes("어깨")) return "◡";
+    if (text.includes("등")) return "♙";
+    if (text.includes("팔")) return "Ⅱ";
+    if (text.includes("복부")) return "◎";
+    if (text.includes("전신")) return "✦";
+    return "PT";
+  }
+
+  function getScheduleConditionCompact(schedule, member, workout) {
+    const latestCondition = member ? getLatestConditionForMember(member) : null;
+    const raw = workout?.condition || latestCondition?.condition || latestCondition?.status || "";
+    const text = getWorkoutConditionText(raw) || getConditionPreviewText(latestCondition)?.split(" · ")[0] || "보통";
+
+    if (String(text).includes("좋")) return { text: "좋음", icon: "🙂" };
+    if (String(text).includes("나쁨") || String(text).includes("안좋") || String(text).includes("불편")) return { text: "나쁨", icon: "😟" };
+    return { text: "보통", icon: "😐" };
+  }
+
+  function getScheduleLastIssueText(schedule, member, workout) {
+    const latestCondition = member ? getLatestConditionForMember(member) : null;
+    const issue =
+      workout?.issue ||
+      workout?.next_plan ||
+      workout?.memo ||
+      workout?.trainer_note ||
+      latestCondition?.memo ||
+      schedule?.memo ||
+      "";
+
+    return normalizeCompactText(issue, 28) || "특이사항 없음";
+  }
+
   function renderScheduleCheckItem(schedule, showDate = false) {
     const member = getScheduleMember(schedule) || schedule.members;
     const memberNames = getScheduleMemberNames(schedule);
@@ -7807,31 +7879,6 @@ async function saveMemberPreference() {
       </header>
 
 
-      <section style={styles.todayDashboardBox}>
-        <div style={styles.todayDashboardTop}>
-          <div>
-            <h2 style={styles.todayDashboardTitle}>오늘 할 일</h2>
-            <p style={styles.todayDashboardDesc}>메인은 깔끔하게 보고, 필요한 작업은 전체화면에서 처리합니다.</p>
-          </div>
-          <span style={styles.todayDashboardBadge}>{getTodayDateString()}</span>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setShowTodayTodoModal(true)}
-          style={styles.todayTodoOpenButton}
-        >
-          <span style={styles.todayTodoOpenTextWrap}>
-            <strong style={styles.todayTodoOpenTitle}>오늘 할 일 열기</strong>
-            <span style={styles.todayTodoOpenDesc}>
-              처리할 일 {pendingTodayTodoItems.length}건
-              {doneTodayTodoItems.length > 0 ? ` · 완료 ${doneTodayTodoItems.length}건` : ""}
-            </span>
-          </span>
-          <span style={styles.todayTodoOpenCount}>{pendingTodayTodoItems.length}건</span>
-        </button>
-      </section>
-
       {showTodayTodoModal && (
         <div style={styles.todayTodoPopupOverlay} onClick={() => setShowTodayTodoModal(false)}>
           <div style={styles.todayTodoPopupModal} onClick={(e) => e.stopPropagation()}>
@@ -8020,103 +8067,75 @@ async function saveMemberPreference() {
               const isNoShow = schedule.status === "noshow";
               const isCancelled = schedule.status === "cancelled";
               const isCompleted = schedule.status === "completed" || (attended && ptUsed);
+              const lastWorkout = lastWorkoutMap[schedule.id];
+              const todayBodyPart = getScheduleTodayBodyPart(schedule, lastWorkout);
+              const condition = getScheduleConditionCompact(schedule, member, lastWorkout);
+              const lastIssueText = getScheduleLastIssueText(schedule, member, lastWorkout);
+              const preferenceTags = getSchedulePreferenceTags(schedule);
+              const memberPtText = getScheduleMemberPtText(schedule);
 
               return (
                 <div key={schedule.id} style={styles.incompleteItem}>
-                  <div style={styles.incompleteMain}>
-                    <div style={styles.scheduleTime}>{formatTime(schedule.start_time)}</div>
+                  <div style={styles.compactScheduleHead}>
+                    <div style={styles.compactScheduleTime}>
+                      <span>{formatTime(schedule.start_time).startsWith("오전") ? "오전" : "오후"}</span>
+                      <strong>{formatTime(schedule.start_time).replace("오후 ", "").replace("오전 ", "")}</strong>
+                    </div>
 
-                    <div>
-                      <strong style={styles.scheduleMemberName}>
-                        {getScheduleTypeText(schedule.type)} · {getScheduleMemberNames(schedule)}
-                        {getScheduleMemberPtText(schedule) ? ` (${getScheduleMemberPtText(schedule)})` : ""}
-                      </strong>
+                    <div style={styles.compactMemberBlock}>
+                      <div style={styles.compactMemberLine}>
+                        <strong style={styles.compactMemberName}>{getScheduleMemberNames(schedule)}</strong>
+                        {memberPtText && <span style={styles.compactPtText}>{memberPtText}</span>}
+                      </div>
 
-                      {getSchedulePreferenceTags(schedule).length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                          {getSchedulePreferenceTags(schedule).map((tag) => (
-                            <span
-                              key={tag}
-                              style={{
-                                background: "rgba(255,255,255,0.14)",
-                                color: "#f9fafb",
-                                border: "1px solid rgba(255,255,255,0.18)",
-                                padding: "4px 8px",
-                                borderRadius: 999,
-                                fontSize: 11,
-                                fontWeight: 800,
-                              }}
-                            >
+                      {preferenceTags.length > 0 && (
+                        <div style={styles.compactTagRow}>
+                          {preferenceTags.slice(0, 3).map((tag) => (
+                            <span key={tag} style={styles.compactTag}>
                               {tag}
                             </span>
                           ))}
                         </div>
                       )}
-
-                      {getReRegisterAlert(member) && (
-                        <div style={styles.reRegisterInlineAlertDark}>
-                          <strong>{getReRegisterAlert(member).title}</strong>
-                          <span>{getReRegisterAlert(member).text}</span>
-                        </div>
-                      )}
-
-                      {getLastWorkoutSummary(lastWorkoutMap[schedule.id]) && (
-                        <div style={styles.lastWorkoutPreviewDark}>
-                          {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).bodyPartText && (
-                            <span>지난부위: {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).bodyPartText}</span>
-                          )}
-                          <span>지난운동: {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).exerciseText}</span>
-                          {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).conditionLine && (
-                            <span>{getLastWorkoutSummary(lastWorkoutMap[schedule.id]).conditionLine}</span>
-                          )}
-                          {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).noteLine && (
-                            <span>{getLastWorkoutSummary(lastWorkoutMap[schedule.id]).noteLine}</span>
-                          )}
-                        </div>
-                      )}
-
-                      {member && getLatestConditionForMember(member) && (
-                        <div style={styles.lastWorkoutPreviewDark}>
-                          <span>최근컨디션: {getConditionPreviewText(getLatestConditionForMember(member))}</span>
-                          {getLatestConditionForMember(member)?.memo && (
-                            <span>{getLatestConditionForMember(member).memo}</span>
-                          )}
-                        </div>
-                      )}
-
-                      <div style={styles.scheduleStatusRow}>
-                        {isScheduleSMSSent(schedule) && (
-                          <span style={styles.scheduleSmsDoneText}>문자 완료</span>
-                        )}
-                        {isCancelled ? (
-                          <>
-                            <span style={styles.scheduleCancelText}>취소</span>
-                            <span style={styles.scheduleWarningText}>출석 없음</span>
-                            <span style={styles.scheduleWarningText}>차감 없음</span>
-                          </>
-                        ) : isNoShow ? (
-                          <>
-                            <span style={styles.scheduleNoShowText}>노쇼</span>
-                            <span style={styles.scheduleWarningText}>출석 없음</span>
-                            <span style={styles.scheduleDoneText}>차감 완료</span>
-                          </>
-                        ) : (
-                          <>
-                            {attended ? (
-                              <span style={styles.scheduleDoneText}>출석 완료</span>
-                            ) : (
-                              <span style={styles.scheduleWarningText}>출석 전</span>
-                            )}
-
-                            {ptUsed ? (
-                              <span style={styles.scheduleDoneText}>차감 완료</span>
-                            ) : (
-                              <span style={styles.scheduleWarningText}>차감 전</span>
-                            )}
-                          </>
-                        )}
-                      </div>
                     </div>
+                  </div>
+
+                  <div style={styles.compactWorkoutRow}>
+                    <span style={styles.compactBodyIcon}>{getBodyPartIcon(todayBodyPart)}</span>
+                    <strong style={styles.compactBodyText}>{todayBodyPart}</strong>
+                    <span style={styles.compactDivider} />
+                    <span style={styles.compactConditionIcon}>{condition.icon}</span>
+                    <strong style={styles.compactConditionText}>{condition.text}</strong>
+                  </div>
+
+                  <div style={styles.compactIssueLine}>
+                    <span style={styles.compactIssueIcon}>▣</span>
+                    <span>지난 이슈: {lastIssueText}</span>
+                  </div>
+
+                  <div style={styles.scheduleStatusRow}>
+                    {isScheduleSMSSent(schedule) && (
+                      <span style={styles.scheduleSmsDoneText}>문자 완료</span>
+                    )}
+                    {isCancelled ? (
+                      <span style={styles.scheduleCancelText}>취소</span>
+                    ) : isNoShow ? (
+                      <>
+                        <span style={styles.scheduleNoShowText}>노쇼</span>
+                        <span style={styles.scheduleDoneText}>차감 완료</span>
+                      </>
+                    ) : isCompleted ? (
+                      <span style={styles.scheduleDoneText}>완료</span>
+                    ) : (
+                      <>
+                        <span style={attended ? styles.scheduleDoneText : styles.scheduleWarningText}>
+                          {attended ? "출석 완료" : "출석 전"}
+                        </span>
+                        <span style={ptUsed ? styles.scheduleDoneText : styles.scheduleWarningText}>
+                          {ptUsed ? "차감 완료" : "차감 전"}
+                        </span>
+                      </>
+                    )}
                   </div>
 
                   <div style={styles.incompleteButtonGroup}>
@@ -8132,11 +8151,46 @@ async function saveMemberPreference() {
         )}
       </section>
 
-      <section style={styles.scheduleAddWideBox}>
-        <button onClick={openScheduleCheckModal} style={styles.scheduleAddWideButton}>
-          <span style={styles.actionCardIcon}>☰</span>
-          <span>스케줄 확인 / 추가</span>
-          <span style={styles.actionCardArrow}>›</span>
+      <section style={styles.homeLauncherGrid}>
+        <button type="button" onClick={() => openMemberListModal("회원 목록", true, false)} style={styles.homeLauncherItem}>
+          <span style={{ ...styles.homeLauncherIcon, color: "#facc15" }}>👥</span>
+          <strong>회원 목록</strong>
+          <span>전체 회원 관리</span>
+        </button>
+        <button type="button" onClick={() => setShowAddModal(true)} style={styles.homeLauncherItem}>
+          <span style={{ ...styles.homeLauncherIcon, color: "#facc15" }}>＋</span>
+          <strong>신규 등록</strong>
+          <span>신규 회원 등록</span>
+        </button>
+        <button type="button" onClick={() => openMemberListModal("PT 사용/차감", true, false)} style={styles.homeLauncherItem}>
+          <span style={{ ...styles.homeLauncherIcon, color: "#9eead8" }}>PT</span>
+          <strong>PT 사용/차감</strong>
+          <span>PT 이용 현황</span>
+        </button>
+        <button type="button" onClick={() => openMemberListModal("상담 기록", true, false)} style={styles.homeLauncherItem}>
+          <span style={{ ...styles.homeLauncherIcon, color: "#5eead4" }}>💬</span>
+          <strong>상담 기록</strong>
+          <span>상담 내역 관리</span>
+        </button>
+        <button type="button" onClick={() => openMemberListModal("운동 기록", true, false)} style={styles.homeLauncherItem}>
+          <span style={{ ...styles.homeLauncherIcon, color: "#93c5fd" }}>🏋</span>
+          <strong>운동 기록</strong>
+          <span>운동 기록 작성</span>
+        </button>
+        <button type="button" onClick={() => openMemberListModal("인바디 기록", true, false)} style={styles.homeLauncherItem}>
+          <span style={{ ...styles.homeLauncherIcon, color: "#c4b5fd" }}>▤</span>
+          <strong>인바디 기록</strong>
+          <span>인바디 결과</span>
+        </button>
+        <button type="button" onClick={openScheduleCheckModal} style={styles.homeLauncherItem}>
+          <span style={{ ...styles.homeLauncherIcon, color: "#f9a8d4" }}>▣</span>
+          <strong>스케줄 관리</strong>
+          <span>일정 관리</span>
+        </button>
+        <button type="button" onClick={() => setShowSalesModal(true)} style={styles.homeLauncherItem}>
+          <span style={{ ...styles.homeLauncherIcon, color: "#fb923c" }}>▥</span>
+          <strong>통계 보기</strong>
+          <span>매출 및 회원 통계</span>
         </button>
       </section>
 
@@ -17608,6 +17662,401 @@ textarea: {
     padding: "8px 12px",
     fontSize: 12,
     fontWeight: 1000,
+  },
+
+
+  /* ====================================================
+     1차 메인화면 정리안 적용
+     - 오늘 할 일/요약 노출 제거
+     - 오늘 스케줄 중심
+     - 4열 x 2줄 기준 압축 카드
+     - 차콜 다크톤 + 카드 분리감
+     - 하단 런처형 메뉴
+  ==================================================== */
+  page: {
+    minHeight: "100vh",
+    background: "radial-gradient(circle at top left, #1b2326 0%, #111719 34%, #0d1113 100%)",
+    color: "#fff",
+    padding: "22px 30px",
+    fontFamily: "Arial, sans-serif",
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 18,
+    marginBottom: 18,
+  },
+  headerTitleRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 18,
+  },
+  title: {
+    margin: 0,
+    fontSize: 44,
+    lineHeight: 1,
+    fontWeight: 1000,
+    letterSpacing: "-0.05em",
+  },
+  subtitle: {
+    margin: "8px 0 0",
+    fontSize: 18,
+    color: "#f4f4f5",
+    fontWeight: 800,
+  },
+  headerSalesButton: {
+    border: "1px solid rgba(250,204,21,0.7)",
+    background: "rgba(250,204,21,0.06)",
+    color: "#facc15",
+    borderRadius: 999,
+    padding: "9px 17px",
+    fontSize: 15,
+    fontWeight: 1000,
+  },
+  headerActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+  },
+  trainerQuickButton: {
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.06)",
+    color: "#fff",
+    borderRadius: 16,
+    padding: "13px 22px",
+    fontSize: 15,
+    fontWeight: 1000,
+  },
+  adminBadge: {
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.06)",
+    color: "#fff",
+    borderRadius: 16,
+    padding: "13px 22px",
+    fontSize: 15,
+    fontWeight: 1000,
+  },
+  incompleteBox: {
+    background: "linear-gradient(180deg, rgba(28,34,36,0.96), rgba(19,24,26,0.96))",
+    border: "1px solid rgba(255,255,255,0.10)",
+    borderRadius: 24,
+    padding: "16px 18px 14px",
+    marginBottom: 18,
+    boxShadow: "0 18px 45px rgba(0,0,0,0.22)",
+  },
+  incompleteTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 14,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  incompleteTitle: {
+    fontSize: 24,
+    margin: 0,
+    fontWeight: 1000,
+    color: "#facc15",
+    letterSpacing: "-0.03em",
+  },
+  incompleteDesc: {
+    color: "#d4d4d8",
+    margin: "5px 0 0",
+    fontSize: 13,
+    fontWeight: 700,
+  },
+  todaySmsStartButton: {
+    background: "#d7fff3",
+    color: "#10201d",
+    border: "1px solid #9eead8",
+    borderRadius: 999,
+    padding: "9px 15px",
+    fontSize: 13,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+  },
+  incompleteCount: {
+    background: "#facc15",
+    color: "#111",
+    borderRadius: 999,
+    padding: "9px 14px",
+    fontSize: 15,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+  },
+  incompleteList: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 11,
+    alignItems: "stretch",
+  },
+  incompleteItem: {
+    position: "relative",
+    background: "linear-gradient(180deg, rgba(30,35,37,0.92), rgba(18,22,24,0.96))",
+    border: "1px solid rgba(250,204,21,0.38)",
+    borderRadius: 14,
+    padding: "10px 10px 9px",
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: 8,
+    alignItems: "stretch",
+    minWidth: 0,
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 18px rgba(0,0,0,0.18)",
+  },
+  compactScheduleHead: {
+    display: "grid",
+    gridTemplateColumns: "58px minmax(0, 1fr)",
+    gap: 8,
+    alignItems: "start",
+    minWidth: 0,
+  },
+  compactScheduleTime: {
+    color: "#60a5fa",
+    fontWeight: 1000,
+    lineHeight: 1.05,
+    letterSpacing: "-0.02em",
+  },
+  compactMemberBlock: {
+    minWidth: 0,
+    display: "grid",
+    gap: 4,
+  },
+  compactMemberLine: {
+    display: "flex",
+    alignItems: "baseline",
+    gap: 7,
+    minWidth: 0,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+  },
+  compactMemberName: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: 1000,
+    letterSpacing: "-0.03em",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  compactPtText: {
+    color: "#d4d4d8",
+    fontSize: 12,
+    fontWeight: 800,
+    flexShrink: 0,
+  },
+  compactTagRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 4,
+    minHeight: 20,
+    overflow: "hidden",
+  },
+  compactTag: {
+    background: "rgba(255,255,255,0.13)",
+    color: "#f4f4f5",
+    border: "1px solid rgba(255,255,255,0.10)",
+    padding: "3px 7px",
+    borderRadius: 999,
+    fontSize: 10,
+    fontWeight: 900,
+    lineHeight: 1.1,
+  },
+  compactWorkoutRow: {
+    display: "grid",
+    gridTemplateColumns: "38px minmax(46px, 1fr) 1px 34px auto",
+    alignItems: "center",
+    gap: 8,
+    minHeight: 50,
+  },
+  compactBodyIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    border: "1px solid #facc15",
+    color: "#facc15",
+    fontSize: 13,
+    fontWeight: 1000,
+    background: "rgba(250,204,21,0.04)",
+  },
+  compactBodyText: {
+    fontSize: 23,
+    fontWeight: 1000,
+    color: "#fff",
+    letterSpacing: "-0.05em",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  compactDivider: {
+    width: 1,
+    height: 34,
+    background: "rgba(255,255,255,0.10)",
+  },
+  compactConditionIcon: {
+    color: "#facc15",
+    fontSize: 22,
+    lineHeight: 1,
+  },
+  compactConditionText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  compactIssueLine: {
+    borderTop: "1px solid rgba(255,255,255,0.08)",
+    borderBottom: "1px solid rgba(255,255,255,0.06)",
+    padding: "7px 0",
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    color: "#f4f4f5",
+    fontSize: 12,
+    fontWeight: 800,
+    minWidth: 0,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  compactIssueIcon: {
+    color: "#e5e7eb",
+    fontSize: 10,
+    flexShrink: 0,
+  },
+  scheduleStatusRow: {
+    display: "flex",
+    gap: 5,
+    flexWrap: "wrap",
+    marginTop: 0,
+    minHeight: 20,
+  },
+  scheduleDoneText: {
+    color: "#d7fff3",
+    background: "rgba(32,92,78,0.42)",
+    border: "1px solid rgba(62,151,130,0.5)",
+    borderRadius: 999,
+    padding: "3px 7px",
+    fontSize: 10,
+    fontWeight: 1000,
+  },
+  scheduleSmsDoneText: {
+    fontSize: 10,
+    fontWeight: 1000,
+    color: "#2563eb",
+    background: "#dbeafe",
+    borderRadius: 999,
+    padding: "3px 7px",
+  },
+  scheduleWarningText: {
+    color: "#fde68a",
+    background: "rgba(70,48,12,0.55)",
+    border: "1px solid rgba(250,204,21,0.42)",
+    borderRadius: 999,
+    padding: "3px 7px",
+    fontSize: 10,
+    fontWeight: 1000,
+  },
+  scheduleNoShowText: {
+    color: "#fca5a5",
+    background: "rgba(63,17,17,0.7)",
+    border: "1px solid rgba(127,29,29,0.8)",
+    borderRadius: 999,
+    padding: "3px 7px",
+    fontSize: 10,
+    fontWeight: 1000,
+  },
+  scheduleCancelText: {
+    color: "#bdbdbd",
+    background: "rgba(36,36,36,0.7)",
+    border: "1px solid rgba(80,80,80,0.9)",
+    borderRadius: 999,
+    padding: "3px 7px",
+    fontSize: 10,
+    fontWeight: 1000,
+  },
+  incompleteCompleteButton: {
+    background: "rgba(255,255,255,0.10)",
+    color: "#fff",
+    border: "1px solid rgba(255,255,255,0.10)",
+    borderRadius: 8,
+    padding: "7px 8px",
+    fontWeight: 1000,
+    fontSize: 12,
+    whiteSpace: "nowrap",
+  },
+  scheduleSmsButton: {
+    background: "rgba(19,78,74,0.70)",
+    color: "#d7fff3",
+    border: "1px solid rgba(45,115,105,0.7)",
+    borderRadius: 8,
+    padding: "7px 8px",
+    fontWeight: 1000,
+    fontSize: 12,
+    whiteSpace: "nowrap",
+  },
+  scheduleDisabledButton: {
+    background: "rgba(255,255,255,0.08)",
+    color: "#9ca3af",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: 8,
+    padding: "7px 8px",
+    fontWeight: 1000,
+    fontSize: 12,
+    whiteSpace: "nowrap",
+  },
+  scheduleQuickButtonWrap: {
+    position: "relative",
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 42px",
+    gap: 7,
+    width: "100%",
+  },
+  scheduleMoreButton: {
+    background: "rgba(0,0,0,0.34)",
+    color: "#fff",
+    border: "1px solid rgba(255,255,255,0.12)",
+    borderRadius: 8,
+    padding: "7px 8px",
+    fontWeight: 1000,
+    fontSize: 16,
+    lineHeight: 1,
+    whiteSpace: "nowrap",
+  },
+  homeLauncherGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(8, minmax(0, 1fr))",
+    gap: 12,
+    marginBottom: 18,
+  },
+  homeLauncherItem: {
+    minHeight: 112,
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "linear-gradient(180deg, rgba(31,36,38,0.94), rgba(19,23,25,0.96))",
+    color: "#fff",
+    borderRadius: 16,
+    padding: "12px 10px",
+    display: "grid",
+    justifyItems: "center",
+    alignContent: "center",
+    gap: 5,
+    textAlign: "center",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 18px rgba(0,0,0,0.18)",
+  },
+  homeLauncherIcon: {
+    height: 36,
+    minWidth: 36,
+    borderRadius: 12,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 23,
+    fontWeight: 1000,
+    marginBottom: 3,
+  },
+  actionSearchGridThree: {
+    display: "none",
   },
 
 };
