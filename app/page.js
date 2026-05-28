@@ -261,12 +261,35 @@ function createEmptyWorkoutExercise(trainingType = "weight") {
 
 export default function Page() {
   const [mounted, setMounted] = useState(false);
+  const [mainScale, setMainScale] = useState(1);
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");
   const [summaryModal, setSummaryModal] = useState(null);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const updateMainScale = () => {
+      const viewportWidth = window.visualViewport?.width || window.innerWidth || 1536;
+      const viewportHeight = window.visualViewport?.height || window.innerHeight || 900;
+      const designWidth = 1536;
+      const designHeight = 900;
+      const nextScale = Math.min(viewportWidth / designWidth, viewportHeight / designHeight, 1);
+      setMainScale(Number.isFinite(nextScale) && nextScale > 0 ? nextScale : 1);
+    };
+
+    updateMainScale();
+    window.addEventListener("resize", updateMainScale);
+    window.visualViewport?.addEventListener("resize", updateMainScale);
+
+    return () => {
+      window.removeEventListener("resize", updateMainScale);
+      window.visualViewport?.removeEventListener("resize", updateMainScale);
+    };
   }, []);
 
 
@@ -7984,6 +8007,7 @@ async function saveMemberPreference() {
 
   return (
     <main style={styles.page}>
+      <div style={{ ...styles.mainStage, transform: `translateX(-50%) scale(${mainScale})` }}>
       <header style={styles.header}>
         <div>
           <div style={styles.headerTitleRow}>
@@ -8349,6 +8373,9 @@ async function saveMemberPreference() {
           <span>매출 현황 확인</span>
         </button>
       </section>
+
+      <div style={styles.homeFooter}>© 2025 Spotainer Fitness. All rights reserved.</div>
+      </div>
 
       {actionModalSchedule && (
         <div style={styles.modalOverlay}>
@@ -18144,23 +18171,34 @@ textarea: {
   ==================================================== */
   page: {
     height: "100dvh",
-    minHeight: "100vh",
+    minHeight: "100dvh",
     overflow: "hidden",
     boxSizing: "border-box",
     position: "relative",
+    background: "radial-gradient(circle at 18% 0%, rgba(246,211,139,0.08), transparent 24%), radial-gradient(circle at 85% 8%, rgba(255,255,255,0.035), transparent 22%), linear-gradient(180deg, #05080a 0%, #070b0d 52%, #020304 100%)",
+    color: "#fff",
+    padding: 0,
+    fontFamily: "Arial, sans-serif",
+  },
+  mainStage: {
+    position: "absolute",
+    top: 0,
+    left: "50%",
+    width: 1536,
+    height: 900,
+    boxSizing: "border-box",
+    padding: "28px 32px 16px",
+    transformOrigin: "top center",
     display: "flex",
     flexDirection: "column",
-    background: "radial-gradient(circle at top left, #12191b 0%, #080c0e 44%, #020304 100%)",
-    color: "#fff",
-    padding: "24px 32px max(78px, env(safe-area-inset-bottom))",
-    fontFamily: "Arial, sans-serif",
   },
   header: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     gap: 16,
-    marginBottom: 18,
+    height: 68,
+    marginBottom: 12,
     flexShrink: 0,
   },
   headerTitleRow: {
@@ -18176,8 +18214,8 @@ textarea: {
   },
   title: {
     margin: 0,
-    fontSize: 56,
-    lineHeight: 0.9,
+    fontSize: 50,
+    lineHeight: 0.92,
     fontWeight: 1000,
     letterSpacing: "-0.075em",
     textShadow: "0 10px 28px rgba(0,0,0,0.48)",
@@ -18223,15 +18261,15 @@ textarea: {
     fontWeight: 1000,
   },
   incompleteBox: {
-    background: "linear-gradient(180deg, rgba(21,26,28,0.94), rgba(6,10,12,0.985)) padding-box, linear-gradient(135deg, rgba(246,211,139,0.86), rgba(178,112,26,0.42), rgba(246,211,139,0.72)) border-box",
-    border: "1.3px solid transparent",
-    borderRadius: 16,
-    padding: "20px 22px 20px",
-    marginBottom: 0,
-    height: "clamp(500px, 54dvh, 560px)",
+    background: "linear-gradient(180deg, rgba(18,23,25,0.90), rgba(5,8,10,0.985)) padding-box, linear-gradient(135deg, rgba(246,211,139,0.82), rgba(176,111,28,0.34), rgba(246,211,139,0.62)) border-box",
+    border: "1.2px solid transparent",
+    borderRadius: 15,
+    padding: "26px 22px 18px",
+    marginBottom: 20,
+    height: 630,
     minHeight: 0,
     boxSizing: "border-box",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 40px rgba(0,0,0,0.26), 0 0 16px rgba(246,211,139,0.045)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 18px 40px rgba(0,0,0,0.22), 0 0 20px rgba(246,211,139,0.045)",
     flexShrink: 0,
   },
   incompleteTop: {
@@ -18239,7 +18277,7 @@ textarea: {
     justifyContent: "space-between",
     gap: 14,
     alignItems: "center",
-    marginBottom: 18,
+    marginBottom: 24,
   },
   incompleteTitle: {
     fontSize: 34,
@@ -18278,25 +18316,27 @@ textarea: {
   incompleteList: {
     display: "grid",
     gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-    gridTemplateRows: "minmax(0, 1fr) 68px",
-    gap: 14,
-    alignItems: "stretch",
-    height: "calc(100% - 92px)",
+    gridTemplateRows: "365px 72px",
+    columnGap: 14,
+    rowGap: 24,
+    alignItems: "start",
+    height: "calc(100% - 104px)",
   },
   incompleteItem: {
     position: "relative",
-    background: "linear-gradient(180deg, rgba(21,27,29,0.90), rgba(5,8,10,0.985)) padding-box, linear-gradient(135deg, rgba(246,211,139,0.72), rgba(166,98,20,0.35), rgba(246,211,139,0.58)) border-box",
-    border: "1.1px solid transparent",
+    height: 365,
+    background: "linear-gradient(180deg, rgba(20,25,27,0.90), rgba(5,8,10,0.985)) padding-box, linear-gradient(135deg, rgba(246,211,139,0.70), rgba(157,92,19,0.30), rgba(246,211,139,0.52)) border-box",
+    border: "1px solid transparent",
     borderRadius: 12,
-    padding: "12px 14px 12px",
+    padding: "17px 16px 14px",
     display: "grid",
     gridTemplateColumns: "1fr",
-    gridTemplateRows: "auto 1fr auto auto auto",
-    gap: 8,
+    gridTemplateRows: "auto 88px auto auto 48px",
+    gap: 9,
     alignItems: "stretch",
     minWidth: 0,
     minHeight: 0,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045), 0 12px 24px rgba(0,0,0,0.22), 0 0 8px rgba(246,211,139,0.035)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 12px 24px rgba(0,0,0,0.20), 0 0 8px rgba(246,211,139,0.025)",
   },
   compactScheduleHead: {
     display: "grid",
@@ -18358,10 +18398,10 @@ textarea: {
   },
   compactWorkoutRow: {
     display: "grid",
-    gridTemplateColumns: "44px minmax(44px, 1fr) 1px 30px auto",
+    gridTemplateColumns: "48px minmax(48px, 1fr) 1px 32px auto",
     alignItems: "center",
-    gap: 9,
-    minHeight: 60,
+    gap: 10,
+    minHeight: 82,
   },
   compactBodyIcon: {
     width: 40,
@@ -18528,8 +18568,8 @@ textarea: {
   homeLauncherGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(9, minmax(0, 1fr))",
-    gap: 12,
-    marginTop: "auto",
+    gap: 14,
+    marginTop: 0,
     paddingTop: 0,
     paddingBottom: 0,
     flexShrink: 0,
@@ -18540,17 +18580,17 @@ textarea: {
     height: "auto",
     minHeight: 0,
     border: "1px solid transparent",
-    background: "linear-gradient(180deg, rgba(28,33,35,0.88), rgba(10,14,16,0.98)) padding-box, linear-gradient(135deg, rgba(246,211,139,0.68), rgba(150,92,18,0.34), rgba(246,211,139,0.50)) border-box",
+    background: "linear-gradient(180deg, rgba(24,29,31,0.86), rgba(8,12,14,0.985)) padding-box, linear-gradient(135deg, rgba(246,211,139,0.62), rgba(141,82,16,0.28), rgba(246,211,139,0.44)) border-box",
     color: "#fff",
     borderRadius: 12,
-    padding: "10px 8px",
+    padding: "13px 8px 10px",
     display: "grid",
     justifyItems: "center",
     alignContent: "center",
-    gap: 6,
+    gap: 7,
     textAlign: "center",
-    fontSize: 10,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 16px rgba(0,0,0,0.14), 0 0 8px rgba(246,211,139,0.035)",
+    fontSize: 12,
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 16px rgba(0,0,0,0.13), 0 0 6px rgba(246,211,139,0.025)",
   },
   homeLauncherIcon: {
     height: 34,
@@ -18666,8 +18706,8 @@ textarea: {
   moreScheduleCard: {
     position: "relative",
     gridColumn: "1 / -1",
-    minHeight: 64,
-    background: "linear-gradient(180deg, rgba(18,23,25,0.70), rgba(7,11,13,0.96)) padding-box, linear-gradient(135deg, rgba(255,255,255,0.18), rgba(246,211,139,0.28), rgba(255,255,255,0.12)) border-box",
+    minHeight: 72,
+    background: "linear-gradient(180deg, rgba(19,24,26,0.70), rgba(7,11,13,0.96)) padding-box, linear-gradient(135deg, rgba(255,255,255,0.16), rgba(246,211,139,0.24), rgba(255,255,255,0.10)) border-box",
     border: "1px solid transparent",
     borderRadius: 12,
     padding: "6px",
@@ -18678,7 +18718,7 @@ textarea: {
     justifyContent: "center",
     gap: 12,
     textAlign: "center",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 18px rgba(0,0,0,0.12)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 18px rgba(0,0,0,0.11)",
   },
   moreScheduleIcon: {
     display: "none",
@@ -18702,6 +18742,17 @@ textarea: {
     justifyContent: "center",
     fontSize: 15,
     fontWeight: 1000,
+  },
+  homeFooter: {
+    height: 26,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "rgba(255,255,255,0.38)",
+    fontSize: 13,
+    fontWeight: 500,
+    marginTop: 12,
+    flexShrink: 0,
   },
   actionSearchGridThree: {
     display: "none",
