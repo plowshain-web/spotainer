@@ -8291,7 +8291,7 @@ async function saveMemberPreference() {
                   </div>
 
                   <div style={styles.compactWorkoutRow}>
-                    <span style={styles.compactBodyIcon}>{renderWorkoutPartIcon(todayBodyPart, 24)}</span>
+                    <span style={styles.compactBodyIcon}>{renderWorkoutPartIcon(todayBodyPart, 42)}</span>
                     <strong style={styles.compactBodyText}>{getWorkoutPartMeta(todayBodyPart).label}</strong>
                     <span style={styles.compactDivider} />
                     <span style={styles.compactConditionIcon}>{condition.icon}</span>
@@ -9128,7 +9128,7 @@ async function saveMemberPreference() {
                       </div>
 
                       <div style={styles.compactWorkoutRow}>
-                        <span style={styles.compactBodyIcon}>{renderWorkoutPartIcon(todayBodyPart, 24)}</span>
+                        <span style={styles.compactBodyIcon}>{renderWorkoutPartIcon(todayBodyPart, 42)}</span>
                         <strong style={styles.compactBodyText}>{getWorkoutPartMeta(todayBodyPart).label}</strong>
                         <span style={styles.compactDivider} />
                         <span style={styles.compactConditionIcon}>{condition.icon}</span>
@@ -18294,15 +18294,15 @@ textarea: {
     fontWeight: 1000,
   },
   incompleteBox: {
-    background: "linear-gradient(180deg, rgba(22,27,29,0.96), rgba(7,11,13,0.985)) padding-box, linear-gradient(135deg, rgba(255,230,157,0.82), rgba(155,98,24,0.48), rgba(246,211,139,0.28)) border-box",
-    border: "1.35px solid transparent",
+    background: "#0b1011",
+    border: "1.25px solid rgba(246,211,139,0.70)",
     borderRadius: 18,
     padding: "14px 18px 14px",
     marginBottom: 0,
     height: "356px",
     minHeight: 0,
     boxSizing: "border-box",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045), 0 16px 42px rgba(0,0,0,0.30), 0 0 14px rgba(214,157,48,0.075)",
+    boxShadow: "0 16px 42px rgba(0,0,0,0.30)",
     flexShrink: 0,
   },
   incompleteTop: {
@@ -18354,18 +18354,17 @@ textarea: {
   },
   incompleteItem: {
     position: "relative",
-    background: "linear-gradient(180deg, rgba(24,29,31,0.90), rgba(7,11,13,0.985)) padding-box, linear-gradient(135deg, rgba(255,229,154,0.76), rgba(154,99,25,0.50), rgba(246,211,139,0.24)) border-box",
-    border: "1.15px solid transparent",
+    background: "#080c0e",
+    border: "1.1px solid rgba(246,211,139,0.62)",
     borderRadius: 12,
     padding: "10px 12px 10px",
-    display: "grid",
-    gridTemplateColumns: "1fr",
-    gridTemplateRows: "auto 44px auto auto auto",
+    display: "flex",
+    flexDirection: "column",
     gap: 6,
     alignItems: "stretch",
     minWidth: 0,
     minHeight: 0,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 10px 24px rgba(0,0,0,0.20), 0 0 8px rgba(214,157,48,0.055)",
+    boxShadow: "0 10px 24px rgba(0,0,0,0.20)",
   },
   compactScheduleHead: {
     display: "grid",
@@ -18427,23 +18426,23 @@ textarea: {
   },
   compactWorkoutRow: {
     display: "grid",
-    gridTemplateColumns: "36px minmax(42px, 1fr) 1px 26px auto",
+    gridTemplateColumns: "54px minmax(42px, 1fr) 1px 26px auto",
     alignItems: "center",
     gap: 7,
-    minHeight: 42,
+    minHeight: 48,
   },
   compactBodyIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 999,
+    width: 52,
+    height: 46,
+    borderRadius: 0,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    border: "1px solid rgba(246,211,139,0.78)",
-    color: "#f6d38b",
+    border: "none",
+    color: "#d69d30",
     fontSize: 12,
     fontWeight: 1000,
-    background: "rgba(246,211,139,0.045)",
+    background: "transparent",
   },
   compactBodyText: {
     fontSize: 19,
@@ -18491,16 +18490,18 @@ textarea: {
     flexShrink: 0,
   },
   compactIssueLinePlaceholder: {
+    height: 26,
     minHeight: 26,
     borderTop: "1px solid rgba(255,255,255,0.07)",
     borderBottom: "1px solid rgba(255,255,255,0.045)",
     visibility: "hidden",
+    flexShrink: 0,
   },
   scheduleStatusRow: {
     display: "flex",
     gap: 6,
     flexWrap: "wrap",
-    marginTop: 0,
+    marginTop: "auto",
     minHeight: 26,
     alignItems: "center",
   },
@@ -18614,8 +18615,8 @@ textarea: {
     width: "100%",
     height: "clamp(88px, 8.1vw, 106px)",
     minHeight: 0,
-    border: "1.05px solid transparent",
-    background: "linear-gradient(180deg, rgba(30,35,37,0.88), rgba(14,18,20,0.97)) padding-box, linear-gradient(135deg, rgba(255,229,154,0.68), rgba(153,96,24,0.44), rgba(246,211,139,0.22)) border-box",
+    border: "1.05px solid rgba(246,211,139,0.56)",
+    background: "#090d0f",
     color: "#fff",
     borderRadius: 13,
     padding: "8px 7px",
@@ -18742,8 +18743,8 @@ textarea: {
     position: "relative",
     gridColumn: "1 / -1",
     minHeight: 46,
-    background: "linear-gradient(180deg, rgba(20,25,27,0.70), rgba(9,13,15,0.94)) padding-box, linear-gradient(135deg, rgba(255,229,154,0.54), rgba(120,76,20,0.34), rgba(246,211,139,0.18)) border-box",
-    border: "1px solid transparent",
+    background: "#090d0f",
+    border: "1px solid rgba(246,211,139,0.42)",
     borderRadius: 11,
     padding: "4px",
     minWidth: 0,
