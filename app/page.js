@@ -1402,108 +1402,89 @@ const [workoutExercises, setWorkoutExercises] = useState([
     };
   }
 
-  function renderWorkoutPartIcon(value, size = 46) {
+  function renderWorkoutPartIcon(value, size = 30) {
     const meta = getWorkoutPartMeta(value);
     const stroke = "currentColor";
-    const common = {
-      fill: "none",
-      stroke,
-      strokeWidth: "2.2",
-      strokeLinecap: "round",
-      strokeLinejoin: "round",
-    };
-    const soft = {
-      fill: "rgba(246,211,139,0.08)",
-      stroke,
-      strokeWidth: "2.0",
-      strokeLinecap: "round",
-      strokeLinejoin: "round",
-    };
-
+    const common = { fill: "none", stroke, strokeWidth: "1.75", strokeLinecap: "round", strokeLinejoin: "round" };
+    const soft = { fill: "rgba(246,211,139,0.10)", stroke, strokeWidth: "1.55", strokeLinecap: "round", strokeLinejoin: "round" };
     const contentMap = {
       "가슴": (
         <>
-          <path {...common} d="M32 8v8" />
-          <path {...common} d="M19 22c3.5-4 7.8-6 13-6s9.5 2 13 6" />
-          <path {...soft} d="M15 27c4.2-3.1 9.8-3.9 17-1.8 7.2-2.1 12.8-1.3 17 1.8-1.6 8.2-7.2 13-17 13s-15.4-4.8-17-13Z" />
-          <path {...common} d="M32 25v16" />
-          <path {...common} d="M18 41c3.8 3.4 8.5 5 14 5s10.2-1.6 14-5" />
+          <path {...common} d="M16 7.8v3.8" />
+          <path {...common} d="M10.2 13.2c1.5-1.8 3.4-2.6 5.8-2.6s4.3.8 5.8 2.6" />
+          <path {...soft} d="M8.7 15.2c1.7-1.1 4.1-1.5 7.3-.6 3.2-.9 5.6-.5 7.3.6-.7 3.3-2.7 5.3-7.3 5.3s-6.6-2-7.3-5.3Z" />
+          <path {...common} d="M16 14.7v6.1" />
+          <path {...common} d="M9.1 20.7c1.8 1.8 4.1 2.6 6.9 2.6s5.1-.8 6.9-2.6" />
         </>
       ),
       "어깨": (
         <>
-          <path {...common} d="M32 10v8" />
-          <path {...common} d="M15 28c4.5-7.5 10.2-11.2 17-11.2S44.5 20.5 49 28" />
-          <path {...soft} d="M13 31.5c5 4.4 11.3 6.6 19 6.6s14-2.2 19-6.6" />
-          <path {...common} d="M21.5 28.6c2.8-1.9 6.3-2.8 10.5-2.8s7.7.9 10.5 2.8" />
+          <path {...common} d="M16 8.5v4" />
+          <path {...common} d="M8 16.2c2-3.7 4.7-5.4 8-5.4s6 1.7 8 5.4" />
+          <path {...soft} d="M7.2 18.3c2.3 2.1 5.2 3.2 8.8 3.2s6.5-1.1 8.8-3.2" />
+          <path {...common} d="M10.5 17.2c1.3-.9 3.1-1.4 5.5-1.4s4.2.5 5.5 1.4" />
         </>
       ),
       "등": (
         <>
-          <path {...common} d="M32 9v34" />
-          <path {...soft} d="M18 21c4.4 3.8 9 5.6 14 5.6s9.6-1.8 14-5.6" />
-          <path {...common} d="M18.5 45c3-9 7.5-13.5 13.5-13.5S42.5 36 45.5 45" />
-          <path {...common} d="M21 28c-1.9 5.5-2.8 11-2.8 16.5" />
-          <path {...common} d="M43 28c1.9 5.5 2.8 11 2.8 16.5" />
+          <path {...common} d="M16 7.8v15.7" />
+          <path {...soft} d="M9 12.5c2 1.7 4.4 2.5 7 2.5s5-.8 7-2.5" />
+          <path {...common} d="M9.5 22.2c1.4-4 3.6-6.1 6.5-6.1s5.1 2.1 6.5 6.1" />
+          <path {...common} d="M11.3 15.8c-.8 2.7-1.2 5.1-1.2 7.2" />
+          <path {...common} d="M20.7 15.8c.8 2.7 1.2 5.1 1.2 7.2" />
         </>
       ),
       "팔": (
         <>
-          <path {...common} d="M23 20c4.4-.8 7.8 1.2 9.5 5.6" />
-          <path {...soft} d="M32.5 25.6c.4 7.3 4.5 11.8 12.3 12" />
-          <path {...common} d="M22.6 20c2.1-3.7 6.8-5.2 10.8-3.2" />
-          <path {...common} d="M45 37.6c2.4.2 4.5-.8 5.9-3" />
-          <path {...common} d="M28 28c-3.5 1.4-6 4-7.3 7.6" />
+          <path {...common} d="M11 12.3c1.9-.5 3.5.4 4.2 2.4" />
+          <path {...soft} d="M15.2 14.7c.2 3.5 2.2 5.6 5.9 5.7" />
+          <path {...common} d="M10.8 12.3c1-1.7 3.2-2.5 5.1-1.5" />
+          <path {...common} d="M20.9 20.4c1.1.1 2.1-.4 2.7-1.4" />
+          <path {...common} d="M13.5 15.8c-1.6.6-2.7 1.8-3.4 3.4" />
         </>
       ),
       "코어": (
         <>
-          <path {...common} d="M23 16h18" />
-          <path {...soft} d="M24 22h16" />
-          <path {...soft} d="M23.5 29h17" />
-          <path {...soft} d="M25 36h14" />
-          <path {...common} d="M20 18c2 8.5 2 17 0 25" />
-          <path {...common} d="M44 18c-2 8.5-2 17 0 25" />
-          <path {...common} d="M32 22v21" />
+          <path {...common} d="M11.5 10.2h9" />
+          <path {...soft} d="M12 12.8h8" />
+          <path {...soft} d="M11.8 16h8.4" />
+          <path {...soft} d="M12.5 19.2h7" />
+          <path {...common} d="M10.4 11.3c.9 3.4.9 6.9 0 10.4" />
+          <path {...common} d="M21.6 11.3c-.9 3.4-.9 6.9 0 10.4" />
+          <path {...common} d="M16 12.8v9" />
         </>
       ),
       "하체": (
         <>
-          <path {...common} d="M22 13c3.2 1.2 6.5 1.8 10 1.8s6.8-.6 10-1.8" />
-          <path {...soft} d="M23 16l-2.5 16.5L15 48" />
-          <path {...soft} d="M41 16l2.5 16.5L49 48" />
-          <path {...common} d="M25.5 32.5h13" />
-          <path {...common} d="M19 49h-5" />
-          <path {...common} d="M50 49h-5" />
+          <path {...common} d="M12.1 9.4c1.2.5 2.5.8 3.9.8s2.7-.3 3.9-.8" />
+          <path {...soft} d="M12.3 10.5l-1.1 7.1-2.4 6.1" />
+          <path {...soft} d="M19.7 10.5l1.1 7.1 2.4 6.1" />
+          <path {...common} d="M13 17.1h6" />
+          <path {...common} d="M11 23.6H8.5" />
+          <path {...common} d="M23.5 23.6H21" />
         </>
       ),
       "전신": (
         <>
-          <circle {...common} cx="32" cy="13" r="4" />
-          <path {...common} d="M32 18v17" />
-          <path {...soft} d="M18 25l14-4.5L46 25" />
-          <path {...common} d="M32 35l-9 13" />
-          <path {...common} d="M32 35l9 13" />
+          <circle {...common} cx="16" cy="8.4" r="1.9" />
+          <path {...common} d="M16 10.7v7" />
+          <path {...soft} d="M9.4 14.2l6.6-2.1 6.6 2.1" />
+          <path {...common} d="M16 17.7l-4.2 5.7" />
+          <path {...common} d="M16 17.7l4.2 5.7" />
         </>
       ),
       "유산소": (
         <>
-          <path {...common} d="M13 34c5-11 10.5-11 15.5 0s10.5 11 16.5 0" />
-          <path {...common} d="M15 45h34" />
-          <path {...common} d="M18 24h28" />
-          <path {...soft} d="M22 24l5-5 5 5 5-5 5 5" />
+          <path {...common} d="M7.2 17c2.3-5 5-5 7.4 0s5.1 5 7.8 0" />
+          <path {...common} d="M8.3 22.5h15.4" />
+          <path {...common} d="M9.5 12.2h13" />
+          <path {...soft} d="M11.5 12.2l2.4-2.5 2.1 2.5 2.2-2.5 2.3 2.5" />
         </>
       ),
     };
-
     return (
-      <svg width={size} height={size} viewBox="0 0 64 64" aria-label={meta.label} role="img">
-        {contentMap[meta.key] || (
-          <>
-            <circle {...common} cx="32" cy="32" r="14" />
-            <path {...common} d="M24 32h16" />
-          </>
-        )}
+      <svg width={size} height={size} viewBox="0 0 32 32" aria-label={meta.label} role="img">
+        {contentMap[meta.key] || (<><circle {...common} cx="16" cy="16" r="7" /><path {...common} d="M12 16h8" /></>)}
       </svg>
     );
   }
@@ -8310,7 +8291,7 @@ async function saveMemberPreference() {
                   </div>
 
                   <div style={styles.compactWorkoutRow}>
-                    <span style={styles.compactBodyIcon}>{renderWorkoutPartIcon(todayBodyPart, 48)}</span>
+                    <span style={styles.compactBodyIcon}>{renderWorkoutPartIcon(todayBodyPart, 42)}</span>
                     <strong style={styles.compactBodyText}>{getWorkoutPartMeta(todayBodyPart).label}</strong>
                     <span style={styles.compactDivider} />
                     <span style={styles.compactConditionIcon}>{condition.icon}</span>
@@ -9147,7 +9128,7 @@ async function saveMemberPreference() {
                       </div>
 
                       <div style={styles.compactWorkoutRow}>
-                        <span style={styles.compactBodyIcon}>{renderWorkoutPartIcon(todayBodyPart, 48)}</span>
+                        <span style={styles.compactBodyIcon}>{renderWorkoutPartIcon(todayBodyPart, 42)}</span>
                         <strong style={styles.compactBodyText}>{getWorkoutPartMeta(todayBodyPart).label}</strong>
                         <span style={styles.compactDivider} />
                         <span style={styles.compactConditionIcon}>{condition.icon}</span>
@@ -11877,293 +11858,6 @@ const preferenceStyles = {
     fontWeight: 900,
   },
 };
-
-
-/* ====================================================
-   v39 메인화면 확정 디자인 복원 오버라이드
-   - 디자인 재해석 금지
-   - 순수 다크 배경, 승인된 골드 톤, 5개 카드 1줄, 런처 하단 안정화
-   - 지난 이슈가 없어도 버튼 높낮이 유지
-==================================================== */
-Object.assign(styles, {
-  page: {
-    ...styles.page,
-    height: "100dvh",
-    minHeight: "100vh",
-    overflow: "hidden",
-    background: "#050708",
-    backgroundImage: "none",
-    color: "#fff",
-    padding: "18px 30px max(18px, env(safe-area-inset-bottom))",
-  },
-  header: {
-    ...styles.header,
-    marginBottom: 20,
-    flexShrink: 0,
-  },
-  title: {
-    ...styles.title,
-    fontSize: 54,
-    lineHeight: 0.92,
-  },
-  subtitle: {
-    ...styles.subtitle,
-    fontSize: 18,
-  },
-  incompleteBox: {
-    ...styles.incompleteBox,
-    height: 520,
-    background: "#080b0d",
-    backgroundImage: "none",
-    border: "1.25px solid rgba(214,157,48,0.76)",
-    borderRadius: 18,
-    padding: "26px 22px 20px",
-    boxShadow: "0 0 0 1px rgba(246,211,139,0.03), 0 18px 42px rgba(0,0,0,0.28), 0 0 20px rgba(214,157,48,0.055)",
-    flexShrink: 0,
-  },
-  incompleteTop: {
-    ...styles.incompleteTop,
-    marginBottom: 24,
-    alignItems: "flex-start",
-  },
-  incompleteTitle: {
-    ...styles.incompleteTitle,
-    fontSize: 30,
-    color: "#f6d38b",
-  },
-  incompleteDesc: {
-    ...styles.incompleteDesc,
-    fontSize: 14,
-    color: "#e5e7eb",
-    marginTop: 6,
-  },
-  incompleteList: {
-    ...styles.incompleteList,
-    display: "grid",
-    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-    gridTemplateRows: "320px 66px",
-    columnGap: 12,
-    rowGap: 20,
-    alignItems: "stretch",
-    height: "calc(100% - 86px)",
-  },
-  incompleteItem: {
-    ...styles.incompleteItem,
-    height: 320,
-    minHeight: 0,
-    background: "#050708",
-    backgroundImage: "none",
-    border: "1.1px solid rgba(214,157,48,0.72)",
-    borderRadius: 13,
-    padding: "16px 14px 14px",
-    display: "grid",
-    gridTemplateRows: "64px 76px 30px 36px 44px",
-    gap: 6,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 10px 20px rgba(0,0,0,0.22)",
-  },
-  compactScheduleHead: {
-    ...styles.compactScheduleHead,
-    gridTemplateColumns: "64px minmax(0, 1fr)",
-    gap: 10,
-  },
-  compactScheduleTime: {
-    ...styles.compactScheduleTime,
-    color: "#60a5fa",
-    fontSize: 17,
-    lineHeight: 1.05,
-  },
-  compactMemberBlock: {
-    ...styles.compactMemberBlock,
-    gap: 7,
-  },
-  compactMemberName: {
-    ...styles.compactMemberName,
-    fontSize: 21,
-    lineHeight: 1.05,
-  },
-  compactPtText: {
-    ...styles.compactPtText,
-    fontSize: 13,
-    color: "#e5e7eb",
-  },
-  compactTag: {
-    ...styles.compactTag,
-    fontSize: 10,
-    padding: "3px 8px",
-    background: "rgba(255,255,255,0.11)",
-    color: "#f4f4f5",
-  },
-  compactWorkoutRow: {
-    ...styles.compactWorkoutRow,
-    gridTemplateColumns: "64px minmax(48px, 1fr) 1px 30px 36px",
-    gap: 9,
-    alignItems: "center",
-  },
-  compactBodyIcon: {
-    ...styles.compactBodyIcon,
-    width: 62,
-    height: 58,
-    color: "#d69d30",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "transparent",
-    border: "none",
-  },
-  compactBodyText: {
-    ...styles.compactBodyText,
-    fontSize: 22,
-    color: "#ffffff",
-  },
-  compactDivider: {
-    ...styles.compactDivider,
-    height: 38,
-    background: "rgba(255,255,255,0.12)",
-  },
-  compactConditionIcon: {
-    ...styles.compactConditionIcon,
-    fontSize: 24,
-  },
-  compactConditionText: {
-    ...styles.compactConditionText,
-    fontSize: 14,
-    color: "#ffffff",
-    textAlign: "left",
-  },
-  compactIssueLine: {
-    ...styles.compactIssueLine,
-    minHeight: 30,
-    height: 30,
-    padding: "5px 0",
-    fontSize: 12,
-    color: "#f4f4f5",
-    borderTop: "1px solid rgba(255,255,255,0.07)",
-    borderBottom: "1px solid rgba(255,255,255,0.045)",
-  },
-  compactIssueLinePlaceholder: {
-    ...styles.compactIssueLinePlaceholder,
-    minHeight: 30,
-    height: 30,
-    borderTop: "1px solid rgba(255,255,255,0.07)",
-    borderBottom: "1px solid rgba(255,255,255,0.045)",
-    visibility: "hidden",
-  },
-  scheduleStatusRow: {
-    ...styles.scheduleStatusRow,
-    minHeight: 36,
-    alignItems: "center",
-    gap: 8,
-  },
-  scheduleDoneText: {
-    ...styles.scheduleDoneText,
-    padding: "7px 12px",
-    fontSize: 12,
-  },
-  scheduleWarningText: {
-    ...styles.scheduleWarningText,
-    padding: "7px 12px",
-    fontSize: 12,
-  },
-  scheduleQuickButtonWrap: {
-    ...styles.scheduleQuickButtonWrap,
-    gridTemplateColumns: "1fr 1fr 48px",
-    gap: 10,
-    alignSelf: "end",
-  },
-  incompleteCompleteButton: {
-    ...styles.incompleteCompleteButton,
-    borderRadius: 9,
-    padding: "10px 10px",
-    fontSize: 13,
-  },
-  scheduleSmsButton: {
-    ...styles.scheduleSmsButton,
-    borderRadius: 9,
-    padding: "10px 10px",
-    fontSize: 13,
-  },
-  scheduleDisabledButton: {
-    ...styles.scheduleDisabledButton,
-    borderRadius: 9,
-    padding: "10px 10px",
-    fontSize: 13,
-  },
-  scheduleMoreButton: {
-    ...styles.scheduleMoreButton,
-    borderRadius: 9,
-    padding: "10px 8px",
-    fontSize: 18,
-  },
-  moreScheduleCard: {
-    ...styles.moreScheduleCard,
-    gridColumn: "1 / -1",
-    height: 66,
-    minHeight: 66,
-    borderRadius: 11,
-    background: "#070b0d",
-    backgroundImage: "none",
-    border: "1px solid rgba(246,211,139,0.32)",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 18px rgba(0,0,0,0.10)",
-    padding: 0,
-    alignSelf: "stretch",
-    justifySelf: "stretch",
-  },
-  moreScheduleCount: {
-    ...styles.moreScheduleCount,
-    color: "#ffffff",
-    fontSize: 22,
-    fontWeight: 900,
-  },
-  moreScheduleArrow: {
-    ...styles.moreScheduleArrow,
-    width: 26,
-    height: 26,
-    borderColor: "rgba(246,211,139,0.54)",
-    color: "#f6d38b",
-  },
-  notice: {
-    ...styles.notice,
-    position: "fixed",
-    left: "50%",
-    bottom: "calc(138px + env(safe-area-inset-bottom))",
-    transform: "translateX(-50%)",
-    zIndex: 9998,
-    width: "min(440px, 60vw)",
-    margin: 0,
-    borderRadius: 14,
-    background: "rgba(70,48,12,0.92)",
-    border: "1px solid rgba(246,211,139,0.65)",
-    boxShadow: "0 16px 36px rgba(0,0,0,0.35)",
-  },
-  homeLauncherGrid: {
-    ...styles.homeLauncherGrid,
-    gridTemplateColumns: "repeat(9, minmax(0, 1fr))",
-    gap: 12,
-    marginTop: "auto",
-    paddingTop: 0,
-    paddingBottom: "max(4px, env(safe-area-inset-bottom))",
-    transform: "translateY(8px)",
-    flexShrink: 0,
-  },
-  homeLauncherItem: {
-    ...styles.homeLauncherItem,
-    height: "clamp(112px, 10.4vw, 126px)",
-    borderRadius: 12,
-    background: "#06090b",
-    backgroundImage: "none",
-    border: "1.05px solid rgba(246,211,139,0.58)",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 18px rgba(0,0,0,0.16), 0 0 8px rgba(246,211,139,0.045)",
-    padding: "11px 8px",
-    gap: 5,
-  },
-  homeLauncherIcon: {
-    ...styles.homeLauncherIcon,
-    height: 34,
-    minWidth: 34,
-    fontSize: 30,
-    marginBottom: 4,
-  },
-});
 
 const styles = {
   mainReturnButton: {
@@ -19337,3 +19031,280 @@ textarea: {
   schedulePartPickerIcon: { width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" },
 
 };
+
+
+/* ====================================================
+   FINAL LOCKED MAIN DESIGN PATCH
+   - 승인된 메인화면 디자인 유지
+   - 배경 그라데이션 제거
+   - 스케줄 카드/더보기/런처 정렬 고정
+   - 지난이슈 유무와 관계없이 버튼 높이 유지
+   - 운동부위 SVG 아이콘 유지
+   - 스타일 객체 선언 이후 적용하여 TDZ/초기화 오류 방지
+==================================================== */
+Object.assign(styles, {
+  page: {
+    ...styles.page,
+    height: "100dvh",
+    minHeight: "100dvh",
+    overflow: "hidden",
+    background: "#050708",
+    padding: "18px 28px max(18px, env(safe-area-inset-bottom))",
+    boxSizing: "border-box",
+  },
+  header: {
+    ...styles.header,
+    marginBottom: 14,
+    flexShrink: 0,
+  },
+  title: {
+    ...styles.title,
+    fontSize: 54,
+    lineHeight: 0.9,
+    letterSpacing: "-0.075em",
+  },
+  subtitle: {
+    ...styles.subtitle,
+    fontSize: 18,
+  },
+  incompleteBox: {
+    ...styles.incompleteBox,
+    height: 430,
+    border: "1.15px solid rgba(214,157,48,0.74)",
+    borderRadius: 18,
+    background: "#080b0d",
+    padding: "18px 20px 17px",
+    boxShadow: "0 14px 34px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.035)",
+    flexShrink: 0,
+  },
+  incompleteTop: {
+    ...styles.incompleteTop,
+    marginBottom: 14,
+    alignItems: "center",
+  },
+  incompleteTitle: {
+    ...styles.incompleteTitle,
+    fontSize: 30,
+    color: "#f6d38b",
+  },
+  incompleteDesc: {
+    ...styles.incompleteDesc,
+    fontSize: 13,
+    color: "#e5e7eb",
+  },
+  incompleteList: {
+    ...styles.incompleteList,
+    display: "grid",
+    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+    gridTemplateRows: "270px 56px",
+    columnGap: 12,
+    rowGap: 14,
+    height: "calc(100% - 72px)",
+    alignItems: "stretch",
+  },
+  incompleteItem: {
+    ...styles.incompleteItem,
+    height: "100%",
+    minHeight: 0,
+    background: "#06090b",
+    border: "1px solid rgba(214,157,48,0.78)",
+    borderRadius: 12,
+    padding: "13px 13px 12px",
+    display: "grid",
+    gridTemplateRows: "55px 64px 26px 30px 42px",
+    gap: 5,
+    boxShadow: "0 10px 24px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.03)",
+  },
+  compactScheduleHead: {
+    ...styles.compactScheduleHead,
+    gridTemplateColumns: "58px minmax(0, 1fr)",
+    gap: 10,
+  },
+  compactScheduleTime: {
+    ...styles.compactScheduleTime,
+    fontSize: 16,
+    lineHeight: 1.08,
+    color: "#60a5fa",
+  },
+  compactMemberName: {
+    ...styles.compactMemberName,
+    fontSize: 18,
+    color: "#fff",
+  },
+  compactPtText: {
+    ...styles.compactPtText,
+    fontSize: 11,
+    color: "#d4d4d8",
+  },
+  compactTagRow: {
+    ...styles.compactTagRow,
+    gap: 5,
+    maxHeight: 20,
+  },
+  compactTag: {
+    ...styles.compactTag,
+    fontSize: 9.5,
+    padding: "3px 7px",
+    background: "rgba(255,255,255,0.12)",
+  },
+  compactWorkoutRow: {
+    ...styles.compactWorkoutRow,
+    gridTemplateColumns: "55px minmax(56px, 1fr) 1px 26px auto",
+    gap: 8,
+    alignItems: "center",
+  },
+  compactBodyIcon: {
+    ...styles.compactBodyIcon,
+    width: 55,
+    height: 52,
+    color: "#d69d30",
+    border: "none",
+    background: "transparent",
+  },
+  compactBodyText: {
+    ...styles.compactBodyText,
+    fontSize: 22,
+    color: "#fff",
+  },
+  compactConditionIcon: {
+    ...styles.compactConditionIcon,
+    fontSize: 20,
+  },
+  compactConditionText: {
+    ...styles.compactConditionText,
+    fontSize: 13,
+    overflow: "visible",
+  },
+  compactIssueLine: {
+    ...styles.compactIssueLine,
+    minHeight: 26,
+    height: 26,
+    padding: "3px 0",
+    fontSize: 11,
+    borderTop: "1px solid rgba(255,255,255,0.07)",
+    borderBottom: "1px solid rgba(255,255,255,0.045)",
+  },
+  compactIssueLinePlaceholder: {
+    ...styles.compactIssueLinePlaceholder,
+    minHeight: 26,
+    height: 26,
+    borderTop: "1px solid rgba(255,255,255,0.07)",
+    borderBottom: "1px solid rgba(255,255,255,0.045)",
+    visibility: "hidden",
+  },
+  scheduleStatusRow: {
+    ...styles.scheduleStatusRow,
+    minHeight: 30,
+    height: 30,
+    marginTop: 0,
+    alignItems: "center",
+  },
+  scheduleDoneText: {
+    ...styles.scheduleDoneText,
+    fontSize: 11,
+    padding: "6px 10px",
+  },
+  scheduleWarningText: {
+    ...styles.scheduleWarningText,
+    fontSize: 11,
+    padding: "6px 10px",
+  },
+  scheduleQuickButtonWrap: {
+    ...styles.scheduleQuickButtonWrap,
+    gridTemplateColumns: "1fr 1fr 44px",
+    gap: 8,
+    height: 42,
+    alignSelf: "end",
+  },
+  incompleteCompleteButton: {
+    ...styles.incompleteCompleteButton,
+    height: 42,
+    fontSize: 13,
+    padding: "0 10px",
+  },
+  scheduleSmsButton: {
+    ...styles.scheduleSmsButton,
+    height: 42,
+    fontSize: 13,
+    padding: "0 10px",
+  },
+  scheduleDisabledButton: {
+    ...styles.scheduleDisabledButton,
+    height: 42,
+    fontSize: 12,
+    padding: "0 10px",
+  },
+  scheduleMoreButton: {
+    ...styles.scheduleMoreButton,
+    height: 42,
+    fontSize: 16,
+    padding: 0,
+  },
+  incompleteMoreCard: {
+    gridColumn: "1 / -1",
+    height: 56,
+    border: "1px solid rgba(255,255,255,0.16)",
+    background: "#070b0d",
+    color: "#fff",
+    borderRadius: 11,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 11,
+    fontSize: 20,
+    fontWeight: 1000,
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 7px 18px rgba(0,0,0,0.18)",
+  },
+  incompleteMoreIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    border: "1px solid rgba(246,211,139,0.55)",
+    color: "#f6d38b",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 14,
+    lineHeight: 1,
+    flexShrink: 0,
+  },
+  homeLauncherGrid: {
+    ...styles.homeLauncherGrid,
+    display: "grid",
+    gridTemplateColumns: "repeat(9, minmax(0, 1fr))",
+    gap: 12,
+    marginTop: 34,
+    paddingTop: 0,
+    paddingBottom: "max(20px, env(safe-area-inset-bottom))",
+    flexShrink: 0,
+    transform: "none",
+  },
+  homeLauncherItem: {
+    ...styles.homeLauncherItem,
+    height: "clamp(104px, 9vw, 124px)",
+    border: "1px solid rgba(214,157,48,0.78)",
+    background: "#070b0d",
+    borderRadius: 12,
+    padding: "11px 8px",
+    gap: 5,
+    boxShadow: "0 10px 22px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.035)",
+  },
+  homeLauncherIcon: {
+    ...styles.homeLauncherIcon,
+    height: 34,
+    minWidth: 34,
+    fontSize: 28,
+    marginBottom: 4,
+  },
+  appToast: {
+    ...styles.appToast,
+    left: "50%",
+    right: "auto",
+    bottom: "calc(max(20px, env(safe-area-inset-bottom)) + 128px)",
+    transform: "translateX(-50%)",
+    borderRadius: 13,
+    background: "linear-gradient(90deg, rgba(67,45,10,0.96), rgba(37,28,12,0.96))",
+    border: "1px solid rgba(246,211,139,0.62)",
+    boxShadow: "0 14px 34px rgba(0,0,0,0.36)",
+  },
+});
