@@ -7985,15 +7985,9 @@ async function saveMemberPreference() {
         <div>
           <div style={styles.headerTitleRow}>
             <h1 style={styles.title}>Spotainer</h1>
-            <button
-              type="button"
-              onClick={() => setShowSalesModal(true)}
-              style={styles.headerSalesButton}
-            >
-              매출 관리
-            </button>
+            <span style={styles.headerDivider} />
+            <p style={styles.subtitle}>{centerName || "스포테이너 피트니스"}</p>
           </div>
-          <p style={styles.subtitle}>{centerName || "여성전용 PT 회원관리"}</p>
         </div>
         <div style={styles.headerActions}>
           <button onClick={openTrainerLogModal} style={styles.trainerQuickButton}>
@@ -8187,7 +8181,7 @@ async function saveMemberPreference() {
           <p style={styles.muted}>오늘 등록된 스케줄이 없습니다.</p>
         ) : (
           <div style={styles.incompleteList}>
-            {(schedules.length > 8 ? schedules.slice(0, 7) : schedules).map((schedule) => {
+            {(schedules.length > 5 ? schedules.slice(0, 5) : schedules).map((schedule) => {
               const member = getScheduleMember(schedule);
               const attended = !!schedule.attendance_checked;
               const ptUsed = !!schedule.pt_used;
@@ -8276,14 +8270,14 @@ async function saveMemberPreference() {
                 </div>
               );
             })}
-            {schedules.length > 8 && (
+            {schedules.length > 5 && (
               <button
                 type="button"
                 onClick={openScheduleCheckModal}
                 style={styles.moreScheduleCard}
               >
                 <span style={styles.moreScheduleIcon}>▤</span>
-                <strong style={styles.moreScheduleCount}>+{schedules.length - 7}개 더</strong>
+                <strong style={styles.moreScheduleCount}>+{schedules.length - 5}개 더</strong>
                 <span style={styles.moreScheduleText}>오늘의 나머지 스케줄 보기</span>
                 <span style={styles.moreScheduleArrow}>→</span>
               </button>
@@ -18033,35 +18027,44 @@ textarea: {
     minHeight: "100vh",
     overflow: "hidden",
     boxSizing: "border-box",
-    background: "radial-gradient(circle at top left, #1a2022 0%, #101618 38%, #090d0f 100%)",
+    position: "relative",
+    background: "radial-gradient(circle at top left, #151b1d 0%, #0d1214 42%, #050708 100%)",
     color: "#fff",
-    padding: "14px 28px 10px",
+    padding: "12px 28px 176px",
     fontFamily: "Arial, sans-serif",
   },
   header: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 16,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   headerTitleRow: {
     display: "flex",
     alignItems: "center",
     gap: 18,
   },
+  headerDivider: {
+    width: 1,
+    height: 34,
+    background: "rgba(246,211,139,0.76)",
+    boxShadow: "0 0 12px rgba(246,211,139,0.20)",
+  },
   title: {
     margin: 0,
-    fontSize: 40,
+    fontSize: 48,
     lineHeight: 1,
     fontWeight: 1000,
-    letterSpacing: "-0.05em",
+    letterSpacing: "-0.06em",
+    textShadow: "0 10px 28px rgba(0,0,0,0.38)",
   },
   subtitle: {
-    margin: "6px 0 0",
-    fontSize: 16,
+    margin: 0,
+    fontSize: 18,
     color: "#f4f4f5",
-    fontWeight: 800,
+    fontWeight: 900,
+    letterSpacing: "-0.02em",
   },
   headerSalesButton: {
     border: "1px solid rgba(250,204,21,0.7)",
@@ -18096,12 +18099,16 @@ textarea: {
     fontWeight: 1000,
   },
   incompleteBox: {
-    background: "linear-gradient(180deg, rgba(26,31,33,0.97), rgba(15,19,21,0.985))",
-    border: "1.5px solid rgba(246, 211, 139, 0.86)",
+    background: "linear-gradient(180deg, rgba(24,29,31,0.965), rgba(10,14,16,0.99))",
+    border: "1.7px solid rgba(246, 211, 139, 0.94)",
     borderRadius: 24,
-    padding: "12px 16px 12px",
-    marginBottom: 10,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07), 0 0 0 1px rgba(255,255,255,0.035), 0 18px 45px rgba(0,0,0,0.24), 0 0 22px rgba(246,211,139,0.08)",
+    padding: "14px 18px 14px",
+    marginBottom: 0,
+    height: "calc(100dvh - 228px)",
+    minHeight: 390,
+    maxHeight: 540,
+    boxSizing: "border-box",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07), 0 0 0 1px rgba(255,255,255,0.035), 0 18px 45px rgba(0,0,0,0.24), 0 0 24px rgba(246,211,139,0.16)",
   },
   incompleteTop: {
     display: "flex",
@@ -18144,24 +18151,24 @@ textarea: {
   },
   incompleteList: {
     display: "grid",
-    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-    gridTemplateRows: "repeat(2, minmax(0, 1fr))",
+    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+    gridTemplateRows: "1fr 54px",
     gap: 10,
     alignItems: "stretch",
   },
   incompleteItem: {
     position: "relative",
-    background: "linear-gradient(180deg, rgba(29,34,36,0.92), rgba(15,19,21,0.965))",
-    border: "1.5px solid rgba(246, 211, 139, 0.90)",
-    borderRadius: 14,
-    padding: "8px 9px 8px",
+    background: "linear-gradient(180deg, rgba(28,33,35,0.92), rgba(9,13,15,0.975))",
+    border: "1.6px solid rgba(246, 211, 139, 0.92)",
+    borderRadius: 15,
+    padding: "9px 10px 9px",
     display: "grid",
     gridTemplateColumns: "1fr",
     gap: 5,
     alignItems: "stretch",
     minWidth: 0,
     minHeight: 0,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.065), 0 0 0 1px rgba(255,255,255,0.025), 0 9px 20px rgba(0,0,0,0.20), 0 0 13px rgba(246,211,139,0.12)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.065), 0 0 0 1px rgba(255,255,255,0.025), 0 9px 20px rgba(0,0,0,0.20), 0 0 18px rgba(246,211,139,0.18)",
   },
   compactScheduleHead: {
     display: "grid",
@@ -18386,19 +18393,23 @@ textarea: {
     whiteSpace: "nowrap",
   },
   homeLauncherGrid: {
+    position: "absolute",
+    left: 28,
+    right: 28,
+    bottom: "calc(50px + env(safe-area-inset-bottom, 0px))",
     display: "grid",
-    gridTemplateColumns: "repeat(9, 104px)",
+    gridTemplateColumns: "repeat(9, 1fr)",
     justifyContent: "space-between",
     gap: 8,
     marginBottom: 0,
     paddingTop: 0,
   },
   homeLauncherItem: {
-    width: 104,
+    width: "100%",
     height: 104,
     minHeight: 0,
-    border: "1.25px solid rgba(246, 211, 139, 0.72)",
-    background: "linear-gradient(180deg, rgba(30,35,37,0.94), rgba(17,21,23,0.97))",
+    border: "1.35px solid rgba(246, 211, 139, 0.82)",
+    background: "linear-gradient(180deg, rgba(30,35,37,0.94), rgba(14,18,20,0.98))",
     color: "#fff",
     borderRadius: 15,
     padding: "8px 7px",
@@ -18408,7 +18419,7 @@ textarea: {
     gap: 3,
     textAlign: "center",
     fontSize: 11,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.055), 0 8px 18px rgba(0,0,0,0.18), 0 0 12px rgba(246,211,139,0.08)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.055), 0 8px 18px rgba(0,0,0,0.18), 0 0 14px rgba(246,211,139,0.12)",
   },
   homeLauncherIcon: {
     height: 23,
@@ -18424,49 +18435,43 @@ textarea: {
 
   moreScheduleCard: {
     position: "relative",
-    background: "linear-gradient(180deg, rgba(30,35,37,0.92), rgba(18,22,24,0.96))",
-    border: "1.5px dashed rgba(246, 211, 139, 0.84)",
-    borderRadius: 14,
+    gridColumn: "1 / -1",
+    background: "linear-gradient(180deg, rgba(22,27,29,0.88), rgba(11,15,17,0.96))",
+    border: "1.35px solid rgba(246, 211, 139, 0.78)",
+    borderRadius: 13,
     padding: "8px",
     minWidth: 0,
     color: "#f6d38b",
-    display: "grid",
-    placeItems: "center",
-    alignContent: "center",
-    gap: 6,
-    textAlign: "center",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 18px rgba(0,0,0,0.18), 0 0 13px rgba(246,211,139,0.10)",
-  },
-  moreScheduleIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 999,
-    border: "1px solid rgba(246, 211, 139, 0.62)",
-    display: "inline-flex",
+    display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: 22,
+    gap: 10,
+    textAlign: "center",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 18px rgba(0,0,0,0.18), 0 0 11px rgba(246,211,139,0.10)",
+  },
+  moreScheduleIcon: {
+    display: "none",
   },
   moreScheduleCount: {
     color: "#f6d38b",
-    fontSize: 26,
+    fontSize: 17,
     fontWeight: 1000,
     letterSpacing: "-0.04em",
   },
   moreScheduleText: {
     color: "#f4f4f5",
-    fontSize: 13,
-    fontWeight: 800,
+    fontSize: 14,
+    fontWeight: 900,
   },
   moreScheduleArrow: {
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
     borderRadius: 999,
     border: "1px solid rgba(246, 211, 139, 0.56)",
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: 1000,
   },
   actionSearchGridThree: {
