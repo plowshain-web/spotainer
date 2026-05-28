@@ -470,6 +470,7 @@ const [prefClassMood, setPrefClassMood] = useState([]);
   const [completedTodayTodoKeys, setCompletedTodayTodoKeys] = useState({});
   const [activeTodayTodoKey, setActiveTodayTodoKey] = useState(null);
   const [showTodayTodoModal, setShowTodayTodoModal] = useState(false);
+  const [showTodayScheduleOnlyModal, setShowTodayScheduleOnlyModal] = useState(false);
   const [exerciseSuggestions, setExerciseSuggestions] = useState([]);
 const [activeExerciseIndex, setActiveExerciseIndex] = useState(null);
 const [workoutExercises, setWorkoutExercises] = useState([
@@ -7599,6 +7600,7 @@ async function saveMemberPreference() {
   const hasOpenModal =
     memberActionMenuMember ||
     showTodayTodoModal ||
+    showTodayScheduleOnlyModal ||
     showInbodyModal ||
     showAllInbodyModal ||
     showAllWorkoutModal ||
@@ -7709,6 +7711,7 @@ async function saveMemberPreference() {
   function goToMain() {
     setShowExitConfirm(false);
     setShowTodayTodoModal(false);
+    setShowTodayScheduleOnlyModal(false);
     setShowSalesModal(false);
     setShowTrainerLogModal(false);
     setShowTrainerWorkoutHistoryModal(false);
@@ -8272,12 +8275,12 @@ async function saveMemberPreference() {
             })}
             <button
               type="button"
-              onClick={openScheduleCheckModal}
+              onClick={() => setShowTodayScheduleOnlyModal(true)}
               style={styles.moreScheduleCard}
             >
               <span style={styles.moreScheduleIcon}>▤</span>
               <strong style={styles.moreScheduleCount}>{schedules.length > 5 ? `+${schedules.length - 5}개 더` : "더보기"}</strong>
-              <span style={styles.moreScheduleText}>{schedules.length > 5 ? "오늘의 나머지 스케줄 보기" : "전체 스케줄 확인"}</span>
+              <span style={styles.moreScheduleText}>{schedules.length > 5 ? "오늘 전체 스케줄 보기" : "오늘 전체 스케줄 보기"}</span>
               <span style={styles.moreScheduleArrow}>⌄</span>
             </button>
           </div>
@@ -8978,6 +8981,111 @@ async function saveMemberPreference() {
                 취소
               </button>
             </div>
+          </section>
+        </div>
+      )}
+
+
+      {showTodayScheduleOnlyModal && (
+        <div style={styles.todayScheduleOnlyOverlay} onClick={() => setShowTodayScheduleOnlyModal(false)}>
+          <section style={styles.todayScheduleOnlyModal} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.todayScheduleOnlyHeader}>
+              <div>
+                <h2 style={styles.todayScheduleOnlyTitle}>오늘 전체 스케줄</h2>
+                <p style={styles.todayScheduleOnlyDesc}>메인에 보이지 않는 수업까지 오늘 일정만 확인합니다.</p>
+              </div>
+              <div style={styles.todayScheduleOnlyActions}>
+                <span style={styles.todayScheduleOnlyCount}>{schedules.length}건</span>
+                <button type="button" onClick={() => setShowTodayScheduleOnlyModal(false)} style={styles.todayScheduleOnlyCloseButton}>
+                  닫기
+                </button>
+              </div>
+            </div>
+
+            {schedules.length === 0 ? (
+              <div style={styles.todayScheduleOnlyEmpty}>오늘 등록된 스케줄이 없습니다.</div>
+            ) : (
+              <div style={styles.todayScheduleOnlyGrid}>
+                {schedules.map((schedule) => {
+                  const member = getScheduleMember(schedule);
+                  const attended = !!schedule.attendance_checked;
+                  const ptUsed = !!schedule.pt_used;
+                  const isNoShow = schedule.status === "noshow";
+                  const isCancelled = schedule.status === "cancelled";
+                  const isCompleted = schedule.status === "completed" || (attended && ptUsed);
+                  const lastWorkout = lastWorkoutMap[schedule.id];
+                  const todayBodyPart = getScheduleTodayBodyPart(schedule, lastWorkout);
+                  const condition = getScheduleConditionCompact(schedule, member, lastWorkout);
+                  const lastIssueText = getScheduleLastIssueText(schedule, member, lastWorkout);
+                  const preferenceTags = getSchedulePreferenceTags(schedule);
+                  const memberPtText = getScheduleMemberPtText(schedule);
+
+                  return (
+                    <div key={schedule.id} style={styles.todayScheduleOnlyCard}>
+                      <div style={styles.compactScheduleHead}>
+                        <div style={styles.compactScheduleTime}>
+                          <span>{formatTime(schedule.start_time).startsWith("오전") ? "오전" : "오후"}</span>
+                          <strong>{formatTime(schedule.start_time).replace("오후 ", "").replace("오전 ", "")}</strong>
+                        </div>
+
+                        <div style={styles.compactMemberBlock}>
+                          <div style={styles.compactMemberLine}>
+                            <strong style={styles.compactMemberName}>{getScheduleMemberNames(schedule)}</strong>
+                            {memberPtText && <span style={styles.compactPtText}>{memberPtText}</span>}
+                          </div>
+
+                          {preferenceTags.length > 0 && (
+                            <div style={styles.compactTagRow}>
+                              {preferenceTags.slice(0, 3).map((tag) => (
+                                <span key={tag} style={styles.compactTag}>{tag}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={styles.compactWorkoutRow}>
+                        <span style={styles.compactBodyIcon}>{renderWorkoutPartIcon(todayBodyPart, 24)}</span>
+                        <strong style={styles.compactBodyText}>{getWorkoutPartMeta(todayBodyPart).label}</strong>
+                        <span style={styles.compactDivider} />
+                        <span style={styles.compactConditionIcon}>{condition.icon}</span>
+                        <strong style={styles.compactConditionText}>{condition.text}</strong>
+                      </div>
+
+                      {lastIssueText && (
+                        <div style={styles.compactIssueLine}>
+                          <span style={styles.compactIssueIcon}>▣</span>
+                          <span>지난 이슈: {lastIssueText}</span>
+                        </div>
+                      )}
+
+                      <div style={styles.scheduleStatusRow}>
+                        {isScheduleSMSSent(schedule) && <span style={styles.scheduleSmsDoneText}>문자 완료</span>}
+                        {isCancelled ? (
+                          <span style={styles.scheduleCancelText}>취소</span>
+                        ) : isNoShow ? (
+                          <>
+                            <span style={styles.scheduleNoShowText}>노쇼</span>
+                            <span style={styles.scheduleDoneText}>차감 완료</span>
+                          </>
+                        ) : isCompleted ? (
+                          <span style={styles.scheduleDoneText}>완료</span>
+                        ) : (
+                          <>
+                            <span style={attended ? styles.scheduleDoneText : styles.scheduleWarningText}>{attended ? "출석 완료" : "출석 전"}</span>
+                            <span style={ptUsed ? styles.scheduleDoneText : styles.scheduleWarningText}>{ptUsed ? "차감 완료" : "차감 전"}</span>
+                          </>
+                        )}
+                      </div>
+
+                      <div style={styles.incompleteButtonGroup}>
+                        {renderScheduleQuickButtons(schedule, isNoShow || isCancelled || isCompleted)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
         </div>
       )}
@@ -18394,7 +18502,7 @@ textarea: {
     position: "absolute",
     left: 28,
     right: 28,
-    bottom: "calc(74px + env(safe-area-inset-bottom, 0px))",
+    bottom: "calc(86px + env(safe-area-inset-bottom, 0px))",
     display: "grid",
     gridTemplateColumns: "repeat(9, 1fr)",
     justifyContent: "space-between",
@@ -18404,13 +18512,13 @@ textarea: {
   },
   homeLauncherItem: {
     width: "100%",
-    height: 104,
+    height: 96,
     minHeight: 0,
     border: "1.35px solid rgba(246, 211, 139, 0.82)",
     background: "linear-gradient(180deg, rgba(30,35,37,0.94), rgba(14,18,20,0.98))",
     color: "#fff",
     borderRadius: 15,
-    padding: "8px 7px",
+    padding: "7px 7px",
     display: "grid",
     justifyItems: "center",
     alignContent: "center",
@@ -18429,6 +18537,105 @@ textarea: {
     fontSize: 18,
     fontWeight: 1000,
     marginBottom: 0,
+  },
+
+
+  todayScheduleOnlyOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 99999,
+    background: "rgba(0,0,0,0.62)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "22px",
+    boxSizing: "border-box",
+    backdropFilter: "blur(8px)",
+  },
+  todayScheduleOnlyModal: {
+    width: "min(1420px, 96vw)",
+    maxHeight: "min(820px, 92dvh)",
+    overflow: "hidden",
+    background: "linear-gradient(180deg, rgba(20,25,27,0.98), rgba(8,11,13,0.99))",
+    border: "1.8px solid rgba(246,211,139,0.88)",
+    borderRadius: 24,
+    padding: "20px 22px 22px",
+    color: "#fff",
+    boxShadow: "0 24px 80px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 28px rgba(246,211,139,0.16)",
+    boxSizing: "border-box",
+  },
+  todayScheduleOnlyHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 16,
+    marginBottom: 16,
+  },
+  todayScheduleOnlyTitle: {
+    margin: 0,
+    fontSize: 28,
+    fontWeight: 1000,
+    color: "#f6d38b",
+    letterSpacing: "-0.04em",
+  },
+  todayScheduleOnlyDesc: {
+    margin: "5px 0 0",
+    fontSize: 13,
+    fontWeight: 800,
+    color: "#d4d4d8",
+  },
+  todayScheduleOnlyActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  },
+  todayScheduleOnlyCount: {
+    background: "linear-gradient(180deg, #f9d977, #d89b2a)",
+    color: "#111",
+    borderRadius: 999,
+    padding: "9px 14px",
+    fontSize: 15,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+  },
+  todayScheduleOnlyCloseButton: {
+    border: "1px solid rgba(255,255,255,0.18)",
+    background: "rgba(255,255,255,0.065)",
+    color: "#fff",
+    borderRadius: 14,
+    padding: "9px 16px",
+    fontSize: 13,
+    fontWeight: 1000,
+  },
+  todayScheduleOnlyEmpty: {
+    border: "1px solid rgba(246,211,139,0.45)",
+    borderRadius: 18,
+    padding: 32,
+    color: "#d4d4d8",
+    fontWeight: 900,
+    textAlign: "center",
+  },
+  todayScheduleOnlyGrid: {
+    maxHeight: "calc(92dvh - 125px)",
+    overflowY: "auto",
+    overscrollBehavior: "contain",
+    WebkitOverflowScrolling: "touch",
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 12,
+    paddingRight: 4,
+  },
+  todayScheduleOnlyCard: {
+    position: "relative",
+    background: "linear-gradient(180deg, rgba(28,33,35,0.92), rgba(9,13,15,0.975))",
+    border: "1.45px solid rgba(246, 211, 139, 0.78)",
+    borderRadius: 15,
+    padding: "10px 11px 10px",
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: 5,
+    minWidth: 0,
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 9px 20px rgba(0,0,0,0.20), 0 0 14px rgba(246,211,139,0.11)",
   },
 
   moreScheduleCard: {
