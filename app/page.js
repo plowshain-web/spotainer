@@ -261,35 +261,12 @@ function createEmptyWorkoutExercise(trainingType = "weight") {
 
 export default function Page() {
   const [mounted, setMounted] = useState(false);
-  const [mainScale, setMainScale] = useState(1);
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");
   const [summaryModal, setSummaryModal] = useState(null);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const updateMainScale = () => {
-      const viewportWidth = window.visualViewport?.width || window.innerWidth || 1536;
-      const viewportHeight = window.visualViewport?.height || window.innerHeight || 900;
-      const designWidth = 1536;
-      const designHeight = 900;
-      const nextScale = Math.min(viewportWidth / designWidth, viewportHeight / designHeight, 1);
-      setMainScale(Number.isFinite(nextScale) && nextScale > 0 ? nextScale : 1);
-    };
-
-    updateMainScale();
-    window.addEventListener("resize", updateMainScale);
-    window.visualViewport?.addEventListener("resize", updateMainScale);
-
-    return () => {
-      window.removeEventListener("resize", updateMainScale);
-      window.visualViewport?.removeEventListener("resize", updateMainScale);
-    };
   }, []);
 
 
@@ -8007,7 +7984,6 @@ async function saveMemberPreference() {
 
   return (
     <main style={styles.page}>
-      <div style={{ ...styles.mainStage, transform: `translateX(-50%) scale(${mainScale})` }}>
       <header style={styles.header}>
         <div>
           <div style={styles.headerTitleRow}>
@@ -8303,7 +8279,7 @@ async function saveMemberPreference() {
               style={styles.moreScheduleCard}
             >
               <span style={styles.moreScheduleIcon}>▤</span>
-              <strong style={styles.moreScheduleCount}>더보기</strong>
+              <strong style={styles.moreScheduleCount}>{schedules.length > 5 ? `+${schedules.length - 5}개 더` : "더보기"}</strong>
               <span style={styles.moreScheduleText}>{schedules.length > 5 ? "오늘 전체 스케줄 보기" : "오늘 전체 스케줄 보기"}</span>
               <span style={styles.moreScheduleArrow}>⌄</span>
             </button>
@@ -8373,9 +8349,6 @@ async function saveMemberPreference() {
           <span>매출 현황 확인</span>
         </button>
       </section>
-
-      <div style={styles.homeFooter}>© 2025 Spotainer Fitness. All rights reserved.</div>
-      </div>
 
       {actionModalSchedule && (
         <div style={styles.modalOverlay}>
@@ -13493,23 +13466,24 @@ const styles = {
   },
   notice: {
     position: "fixed",
-    left: 32,
-    right: 32,
-    bottom: "calc(max(78px, env(safe-area-inset-bottom)) + 136px)",
-    minHeight: 48,
-    background: "linear-gradient(90deg, rgba(80,57,17,0.88), rgba(40,31,13,0.90))",
+    left: "50%",
+    bottom: "calc(max(22px, env(safe-area-inset-bottom)) + 118px)",
+    transform: "translateX(-50%)",
+    zIndex: 9998,
+    minWidth: 360,
+    maxWidth: "min(720px, calc(100vw - 48px))",
+    background: "linear-gradient(90deg, rgba(82,59,14,0.78), rgba(32,25,14,0.90))",
+    border: "1.15px solid rgba(246,211,139,0.68)",
     color: "#f6d38b",
-    border: "1px solid rgba(214,157,48,0.62)",
-    borderRadius: 14,
+    padding: "8px 14px",
+    borderRadius: 13,
+    minHeight: 40,
     display: "flex",
-    alignItems: "center",
     justifyContent: "space-between",
-    gap: 12,
-    padding: "0 18px",
-    zIndex: 30000,
-    boxShadow: "0 12px 34px rgba(0,0,0,0.34)",
-    fontSize: 15,
-    fontWeight: 1000,
+    gap: 10,
+    alignItems: "center",
+    boxSizing: "border-box",
+    boxShadow: "0 14px 34px rgba(0,0,0,0.36)",
   },
   noticeButton: {
     background: "linear-gradient(180deg, #f9d977, #d89b2a)",
@@ -18171,54 +18145,43 @@ textarea: {
   ==================================================== */
   page: {
     height: "100dvh",
-    minHeight: "100dvh",
+    minHeight: "100vh",
     overflow: "hidden",
     boxSizing: "border-box",
     position: "relative",
-    background: "radial-gradient(circle at 18% 0%, rgba(246,211,139,0.08), transparent 24%), radial-gradient(circle at 85% 8%, rgba(255,255,255,0.035), transparent 22%), linear-gradient(180deg, #05080a 0%, #070b0d 52%, #020304 100%)",
-    color: "#fff",
-    padding: 0,
-    fontFamily: "Arial, sans-serif",
-  },
-  mainStage: {
-    position: "absolute",
-    top: 0,
-    left: "50%",
-    width: 1536,
-    height: 900,
-    boxSizing: "border-box",
-    padding: "28px 32px 16px",
-    transformOrigin: "top center",
     display: "flex",
     flexDirection: "column",
+    background: "radial-gradient(circle at 8% 0%, rgba(42,37,25,0.34) 0%, rgba(14,18,20,0.88) 34%, #050708 100%)",
+    color: "#fff",
+    padding: "14px 24px max(22px, env(safe-area-inset-bottom))",
+    fontFamily: "Arial, sans-serif",
   },
   header: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     gap: 16,
-    height: 68,
     marginBottom: 12,
     flexShrink: 0,
   },
   headerTitleRow: {
     display: "flex",
     alignItems: "center",
-    gap: 22,
+    gap: 18,
   },
   headerDivider: {
     width: 1,
-    height: 42,
-    background: "linear-gradient(180deg, rgba(246,211,139,0.10), rgba(246,211,139,0.78), rgba(246,211,139,0.10))",
-    boxShadow: "0 0 10px rgba(246,211,139,0.14)",
+    height: 40,
+    background: "rgba(246,211,139,0.78)",
+    boxShadow: "0 0 12px rgba(246,211,139,0.18)",
   },
   title: {
     margin: 0,
-    fontSize: 50,
-    lineHeight: 0.92,
+    fontSize: 56,
+    lineHeight: 0.9,
     fontWeight: 1000,
-    letterSpacing: "-0.075em",
-    textShadow: "0 10px 28px rgba(0,0,0,0.48)",
+    letterSpacing: "-0.07em",
+    textShadow: "0 10px 28px rgba(0,0,0,0.42)",
   },
   subtitle: {
     margin: 0,
@@ -18261,15 +18224,15 @@ textarea: {
     fontWeight: 1000,
   },
   incompleteBox: {
-    background: "linear-gradient(180deg, rgba(18,23,25,0.90), rgba(5,8,10,0.985)) padding-box, linear-gradient(135deg, rgba(246,211,139,0.82), rgba(176,111,28,0.34), rgba(246,211,139,0.62)) border-box",
-    border: "1.2px solid transparent",
-    borderRadius: 15,
-    padding: "26px 22px 18px",
-    marginBottom: 20,
-    height: 630,
+    background: "linear-gradient(180deg, rgba(22,27,29,0.96), rgba(7,11,13,0.985)) padding-box, linear-gradient(135deg, rgba(255,230,157,0.82), rgba(155,98,24,0.48), rgba(246,211,139,0.28)) border-box",
+    border: "1.35px solid transparent",
+    borderRadius: 18,
+    padding: "14px 18px 14px",
+    marginBottom: 0,
+    height: "356px",
     minHeight: 0,
     boxSizing: "border-box",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 18px 40px rgba(0,0,0,0.22), 0 0 20px rgba(246,211,139,0.045)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045), 0 16px 42px rgba(0,0,0,0.30), 0 0 14px rgba(214,157,48,0.075)",
     flexShrink: 0,
   },
   incompleteTop: {
@@ -18277,19 +18240,19 @@ textarea: {
     justifyContent: "space-between",
     gap: 14,
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 10,
   },
   incompleteTitle: {
-    fontSize: 34,
+    fontSize: 27,
     margin: 0,
     fontWeight: 1000,
     color: "#f6d38b",
-    letterSpacing: "-0.055em",
+    letterSpacing: "-0.04em",
   },
   incompleteDesc: {
-    color: "#e4e4e7",
-    margin: "6px 0 0",
-    fontSize: 15,
+    color: "#d4d4d8",
+    margin: "4px 0 0",
+    fontSize: 13,
     fontWeight: 800,
   },
   todaySmsStartButton: {
@@ -18297,50 +18260,46 @@ textarea: {
     color: "#10201d",
     border: "1px solid #9eead8",
     borderRadius: 999,
-    padding: "12px 20px",
-    fontSize: 15,
+    padding: "9px 15px",
+    fontSize: 13,
     fontWeight: 1000,
     whiteSpace: "nowrap",
-    boxShadow: "0 8px 20px rgba(0,0,0,0.18)",
   },
   incompleteCount: {
     background: "linear-gradient(180deg, #f9d977, #d89b2a)",
     color: "#111",
-    borderRadius: 14,
-    padding: "12px 20px",
-    fontSize: 22,
+    borderRadius: 999,
+    padding: "9px 14px",
+    fontSize: 15,
     fontWeight: 1000,
     whiteSpace: "nowrap",
-    boxShadow: "0 8px 20px rgba(0,0,0,0.20)",
   },
   incompleteList: {
     display: "grid",
     gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-    gridTemplateRows: "365px 72px",
-    columnGap: 14,
-    rowGap: 24,
-    alignItems: "start",
-    height: "calc(100% - 104px)",
+    gridTemplateRows: "223px 46px",
+    gap: 9,
+    alignItems: "stretch",
+    height: "calc(100% - 58px)",
   },
   incompleteItem: {
     position: "relative",
-    height: 365,
-    background: "linear-gradient(180deg, rgba(20,25,27,0.90), rgba(5,8,10,0.985)) padding-box, linear-gradient(135deg, rgba(246,211,139,0.70), rgba(157,92,19,0.30), rgba(246,211,139,0.52)) border-box",
-    border: "1px solid transparent",
+    background: "linear-gradient(180deg, rgba(24,29,31,0.90), rgba(7,11,13,0.985)) padding-box, linear-gradient(135deg, rgba(255,229,154,0.76), rgba(154,99,25,0.50), rgba(246,211,139,0.24)) border-box",
+    border: "1.15px solid transparent",
     borderRadius: 12,
-    padding: "17px 16px 14px",
+    padding: "10px 12px 10px",
     display: "grid",
     gridTemplateColumns: "1fr",
-    gridTemplateRows: "auto 88px auto auto 48px",
-    gap: 9,
+    gridTemplateRows: "auto 44px auto auto auto",
+    gap: 6,
     alignItems: "stretch",
     minWidth: 0,
     minHeight: 0,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 12px 24px rgba(0,0,0,0.20), 0 0 8px rgba(246,211,139,0.025)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 10px 24px rgba(0,0,0,0.20), 0 0 8px rgba(214,157,48,0.055)",
   },
   compactScheduleHead: {
     display: "grid",
-    gridTemplateColumns: "54px minmax(0, 1fr)",
+    gridTemplateColumns: "52px minmax(0, 1fr)",
     gap: 8,
     alignItems: "start",
     minWidth: 0,
@@ -18366,9 +18325,9 @@ textarea: {
   },
   compactMemberName: {
     color: "#fff",
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: 1000,
-    letterSpacing: "-0.045em",
+    letterSpacing: "-0.04em",
     overflow: "hidden",
     textOverflow: "ellipsis",
   },
@@ -18398,29 +18357,29 @@ textarea: {
   },
   compactWorkoutRow: {
     display: "grid",
-    gridTemplateColumns: "48px minmax(48px, 1fr) 1px 32px auto",
+    gridTemplateColumns: "36px minmax(42px, 1fr) 1px 26px auto",
     alignItems: "center",
-    gap: 10,
-    minHeight: 82,
+    gap: 7,
+    minHeight: 42,
   },
   compactBodyIcon: {
-    width: 40,
-    height: 40,
+    width: 34,
+    height: 34,
     borderRadius: 999,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    border: "1px solid #f6d38b",
+    border: "1px solid rgba(246,211,139,0.78)",
     color: "#f6d38b",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: 1000,
-    background: "rgba(246,211,139,0.035)",
+    background: "rgba(246,211,139,0.045)",
   },
   compactBodyText: {
-    fontSize: 24,
+    fontSize: 19,
     fontWeight: 1000,
     color: "#fff",
-    letterSpacing: "-0.055em",
+    letterSpacing: "-0.05em",
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -18442,14 +18401,14 @@ textarea: {
     whiteSpace: "nowrap",
   },
   compactIssueLine: {
-    borderTop: "1px solid rgba(255,255,255,0.08)",
-    borderBottom: "1px solid rgba(255,255,255,0.05)",
-    padding: "5px 0",
+    borderTop: "1px solid rgba(255,255,255,0.07)",
+    borderBottom: "1px solid rgba(255,255,255,0.045)",
+    padding: "4px 0",
     display: "flex",
     alignItems: "center",
     gap: 6,
     color: "#f4f4f5",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 800,
     minWidth: 0,
     whiteSpace: "nowrap",
@@ -18520,21 +18479,21 @@ textarea: {
   incompleteCompleteButton: {
     background: "rgba(255,255,255,0.10)",
     color: "#fff",
-    border: "1px solid rgba(255,255,255,0.15)",
+    border: "1px solid rgba(255,255,255,0.14)",
     borderRadius: 8,
-    padding: "9px 10px",
+    padding: "8px 9px",
     fontWeight: 1000,
-    fontSize: 13,
+    fontSize: 12,
     whiteSpace: "nowrap",
   },
   scheduleSmsButton: {
-    background: "rgba(19,78,74,0.72)",
+    background: "rgba(19,78,74,0.70)",
     color: "#d7fff3",
-    border: "1px solid rgba(45,115,105,0.78)",
+    border: "1px solid rgba(45,115,105,0.76)",
     borderRadius: 8,
-    padding: "9px 10px",
+    padding: "8px 9px",
     fontWeight: 1000,
-    fontSize: 13,
+    fontSize: 12,
     whiteSpace: "nowrap",
   },
   scheduleDisabledButton: {
@@ -18550,8 +18509,8 @@ textarea: {
   scheduleQuickButtonWrap: {
     position: "relative",
     display: "grid",
-    gridTemplateColumns: "1fr 1fr 48px",
-    gap: 9,
+    gridTemplateColumns: "1fr 1fr 42px",
+    gap: 8,
     width: "100%",
   },
   scheduleMoreButton: {
@@ -18568,40 +18527,39 @@ textarea: {
   homeLauncherGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(9, minmax(0, 1fr))",
-    gap: 14,
-    marginTop: 0,
+    gap: 12,
+    marginTop: "auto",
     paddingTop: 0,
     paddingBottom: 0,
     flexShrink: 0,
   },
   homeLauncherItem: {
     width: "100%",
-    aspectRatio: "1 / 1",
-    height: "auto",
+    height: "clamp(88px, 8.1vw, 106px)",
     minHeight: 0,
-    border: "1px solid transparent",
-    background: "linear-gradient(180deg, rgba(24,29,31,0.86), rgba(8,12,14,0.985)) padding-box, linear-gradient(135deg, rgba(246,211,139,0.62), rgba(141,82,16,0.28), rgba(246,211,139,0.44)) border-box",
+    border: "1.05px solid transparent",
+    background: "linear-gradient(180deg, rgba(30,35,37,0.88), rgba(14,18,20,0.97)) padding-box, linear-gradient(135deg, rgba(255,229,154,0.68), rgba(153,96,24,0.44), rgba(246,211,139,0.22)) border-box",
     color: "#fff",
-    borderRadius: 12,
-    padding: "13px 8px 10px",
+    borderRadius: 13,
+    padding: "8px 7px",
     display: "grid",
     justifyItems: "center",
     alignContent: "center",
-    gap: 7,
+    gap: 4,
     textAlign: "center",
-    fontSize: 12,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 16px rgba(0,0,0,0.13), 0 0 6px rgba(246,211,139,0.025)",
+    fontSize: 10,
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045), 0 8px 16px rgba(0,0,0,0.14), 0 0 7px rgba(246,211,139,0.055)",
   },
   homeLauncherIcon: {
-    height: 34,
-    minWidth: 34,
+    height: 27,
+    minWidth: 27,
     borderRadius: 8,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: 30,
+    fontSize: 23,
     fontWeight: 1000,
-    marginBottom: 2,
+    marginBottom: 1,
   },
 
 
@@ -18706,26 +18664,26 @@ textarea: {
   moreScheduleCard: {
     position: "relative",
     gridColumn: "1 / -1",
-    minHeight: 72,
-    background: "linear-gradient(180deg, rgba(19,24,26,0.70), rgba(7,11,13,0.96)) padding-box, linear-gradient(135deg, rgba(255,255,255,0.16), rgba(246,211,139,0.24), rgba(255,255,255,0.10)) border-box",
+    minHeight: 46,
+    background: "linear-gradient(180deg, rgba(20,25,27,0.70), rgba(9,13,15,0.94)) padding-box, linear-gradient(135deg, rgba(255,229,154,0.54), rgba(120,76,20,0.34), rgba(246,211,139,0.18)) border-box",
     border: "1px solid transparent",
-    borderRadius: 12,
-    padding: "6px",
+    borderRadius: 11,
+    padding: "4px",
     minWidth: 0,
     color: "#f6d38b",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
+    gap: 10,
     textAlign: "center",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 18px rgba(0,0,0,0.11)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 18px rgba(0,0,0,0.10)",
   },
   moreScheduleIcon: {
     display: "none",
   },
   moreScheduleCount: {
     color: "#ffffff",
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 900,
     letterSpacing: "-0.04em",
   },
@@ -18742,17 +18700,6 @@ textarea: {
     justifyContent: "center",
     fontSize: 15,
     fontWeight: 1000,
-  },
-  homeFooter: {
-    height: 26,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "rgba(255,255,255,0.38)",
-    fontSize: 13,
-    fontWeight: 500,
-    marginTop: 12,
-    flexShrink: 0,
   },
   actionSearchGridThree: {
     display: "none",
