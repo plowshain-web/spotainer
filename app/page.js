@@ -8270,18 +8270,16 @@ async function saveMemberPreference() {
                 </div>
               );
             })}
-            {schedules.length > 5 && (
-              <button
-                type="button"
-                onClick={openScheduleCheckModal}
-                style={styles.moreScheduleCard}
-              >
-                <span style={styles.moreScheduleIcon}>▤</span>
-                <strong style={styles.moreScheduleCount}>+{schedules.length - 5}개 더</strong>
-                <span style={styles.moreScheduleText}>오늘의 나머지 스케줄 보기</span>
-                <span style={styles.moreScheduleArrow}>→</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={openScheduleCheckModal}
+              style={styles.moreScheduleCard}
+            >
+              <span style={styles.moreScheduleIcon}>▤</span>
+              <strong style={styles.moreScheduleCount}>{schedules.length > 5 ? `+${schedules.length - 5}개 더` : "더보기"}</strong>
+              <span style={styles.moreScheduleText}>{schedules.length > 5 ? "오늘의 나머지 스케줄 보기" : "전체 스케줄 확인"}</span>
+              <span style={styles.moreScheduleArrow}>⌄</span>
+            </button>
           </div>
         )}
       </section>
@@ -9697,7 +9695,7 @@ async function saveMemberPreference() {
       flexWrap: "wrap",
       gap: 6,
       marginTop: 8,
-      marginBottom: 8,
+      marginBottom: 6,
     }}
   >
     {getOtSummaryTags(selectedMember).map((tag) => (
@@ -18030,7 +18028,7 @@ textarea: {
     position: "relative",
     background: "radial-gradient(circle at top left, #151b1d 0%, #0d1214 42%, #050708 100%)",
     color: "#fff",
-    padding: "12px 28px 176px",
+    padding: "8px 28px 0",
     fontFamily: "Arial, sans-serif",
   },
   header: {
@@ -18104,9 +18102,9 @@ textarea: {
     borderRadius: 24,
     padding: "14px 18px 14px",
     marginBottom: 0,
-    height: "calc(100dvh - 228px)",
-    minHeight: 390,
-    maxHeight: 540,
+    height: "calc(100dvh - 294px)",
+    minHeight: 500,
+    maxHeight: 610,
     boxSizing: "border-box",
     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07), 0 0 0 1px rgba(255,255,255,0.035), 0 18px 45px rgba(0,0,0,0.24), 0 0 24px rgba(246,211,139,0.16)",
   },
@@ -18152,16 +18150,16 @@ textarea: {
   incompleteList: {
     display: "grid",
     gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-    gridTemplateRows: "1fr 54px",
-    gap: 10,
+    gridTemplateRows: "auto 58px",
+    gap: 12,
     alignItems: "stretch",
   },
   incompleteItem: {
     position: "relative",
     background: "linear-gradient(180deg, rgba(28,33,35,0.92), rgba(9,13,15,0.975))",
-    border: "1.6px solid rgba(246, 211, 139, 0.92)",
+    border: "1.55px solid rgba(246, 211, 139, 0.82)",
     borderRadius: 15,
-    padding: "9px 10px 9px",
+    padding: "10px 11px 10px",
     display: "grid",
     gridTemplateColumns: "1fr",
     gap: 5,
@@ -18396,11 +18394,11 @@ textarea: {
     position: "absolute",
     left: 28,
     right: 28,
-    bottom: "calc(50px + env(safe-area-inset-bottom, 0px))",
+    bottom: "calc(74px + env(safe-area-inset-bottom, 0px))",
     display: "grid",
     gridTemplateColumns: "repeat(9, 1fr)",
     justifyContent: "space-between",
-    gap: 8,
+    gap: 10,
     marginBottom: 0,
     paddingTop: 0,
   },
@@ -18436,8 +18434,9 @@ textarea: {
   moreScheduleCard: {
     position: "relative",
     gridColumn: "1 / -1",
-    background: "linear-gradient(180deg, rgba(22,27,29,0.88), rgba(11,15,17,0.96))",
-    border: "1.35px solid rgba(246, 211, 139, 0.78)",
+    minHeight: 58,
+    background: "linear-gradient(180deg, rgba(20,25,27,0.86), rgba(9,13,15,0.98))",
+    border: "1.2px solid rgba(246, 211, 139, 0.62)",
     borderRadius: 13,
     padding: "8px",
     minWidth: 0,
@@ -18447,7 +18446,7 @@ textarea: {
     justifyContent: "center",
     gap: 10,
     textAlign: "center",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 18px rgba(0,0,0,0.18), 0 0 11px rgba(246,211,139,0.10)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.055), 0 8px 18px rgba(0,0,0,0.16), 0 0 10px rgba(246,211,139,0.08)",
   },
   moreScheduleIcon: {
     display: "none",
