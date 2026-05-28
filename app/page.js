@@ -1405,16 +1405,82 @@ const [workoutExercises, setWorkoutExercises] = useState([
   function renderWorkoutPartIcon(value, size = 30) {
     const meta = getWorkoutPartMeta(value);
     const stroke = "currentColor";
-    const common = { fill: "none", stroke, strokeWidth: "1.85", strokeLinecap: "round", strokeLinejoin: "round" };
+    const common = { fill: "none", stroke, strokeWidth: "1.75", strokeLinecap: "round", strokeLinejoin: "round" };
+    const soft = { fill: "rgba(246,211,139,0.10)", stroke, strokeWidth: "1.55", strokeLinecap: "round", strokeLinejoin: "round" };
     const contentMap = {
-      "가슴": (<><path {...common} d="M9 20c1.6-5 4.1-7.3 7-7.3s5.4 2.3 7 7.3" /><path {...common} d="M16 12.5V22" /><path {...common} d="M10.5 20.5c1.5 1.1 3.3 1.7 5.5 1.7s4-.6 5.5-1.7" /></>),
-      "어깨": (<><path {...common} d="M8 18.5c1.5-4 4.2-6.2 8-6.2s6.5 2.2 8 6.2" /><path {...common} d="M7.5 19.5c2.1 1.8 5 2.7 8.5 2.7s6.4-.9 8.5-2.7" /><path {...common} d="M11 16.3c1.2-.9 2.9-1.4 5-1.4s3.8.5 5 1.4" /></>),
-      "등": (<><path {...common} d="M16 9v15" /><path {...common} d="M9 14c1.6 1.1 3.3 1.7 7 1.7s5.4-.6 7-1.7" /><path {...common} d="M10 22c1.2-3 3.1-4.7 6-4.7s4.8 1.7 6 4.7" /></>),
-      "팔": (<><path {...common} d="M11 12.5c2.2.1 3.5 1.4 3.7 3.5" /><path {...common} d="M14.7 16c.3 3 2 4.7 5.1 4.7" /><path {...common} d="M10.5 12.5c1.1-1.6 3.2-2.1 5-.9" /><path {...common} d="M19.8 20.7c1.1.2 2.1-.2 2.8-1" /></>),
-      "코어": (<><path {...common} d="M12 10.5h8" /><path {...common} d="M11.5 14h9" /><path {...common} d="M12 17.5h8" /><path {...common} d="M13 21h6" /><path {...common} d="M10 11.5c1.1 3 1.1 6 0 9" /><path {...common} d="M22 11.5c-1.1 3-1.1 6 0 9" /></>),
-      "하체": (<><path {...common} d="M13 10.5l-1 6.3-2.6 6" /><path {...common} d="M19 10.5l1 6.3 2.6 6" /><path {...common} d="M13.2 17h5.6" /><path {...common} d="M12.8 23h-3" /><path {...common} d="M22.2 23h-3" /></>),
-      "전신": (<><circle {...common} cx="16" cy="9.5" r="2" /><path {...common} d="M16 12v6" /><path {...common} d="M10 14.5l6-1.5 6 1.5" /><path {...common} d="M16 18l-4 5" /><path {...common} d="M16 18l4 5" /></>),
-      "유산소": (<><path {...common} d="M7.5 17c2.5-4.8 5-4.8 7.5 0s5 4.8 7.5 0" /><path {...common} d="M9 22h14" /><path {...common} d="M9.5 12.5h13" /></>),
+      "가슴": (
+        <>
+          <path {...common} d="M16 7.8v3.8" />
+          <path {...common} d="M10.2 13.2c1.5-1.8 3.4-2.6 5.8-2.6s4.3.8 5.8 2.6" />
+          <path {...soft} d="M8.7 15.2c1.7-1.1 4.1-1.5 7.3-.6 3.2-.9 5.6-.5 7.3.6-.7 3.3-2.7 5.3-7.3 5.3s-6.6-2-7.3-5.3Z" />
+          <path {...common} d="M16 14.7v6.1" />
+          <path {...common} d="M9.1 20.7c1.8 1.8 4.1 2.6 6.9 2.6s5.1-.8 6.9-2.6" />
+        </>
+      ),
+      "어깨": (
+        <>
+          <path {...common} d="M16 8.5v4" />
+          <path {...common} d="M8 16.2c2-3.7 4.7-5.4 8-5.4s6 1.7 8 5.4" />
+          <path {...soft} d="M7.2 18.3c2.3 2.1 5.2 3.2 8.8 3.2s6.5-1.1 8.8-3.2" />
+          <path {...common} d="M10.5 17.2c1.3-.9 3.1-1.4 5.5-1.4s4.2.5 5.5 1.4" />
+        </>
+      ),
+      "등": (
+        <>
+          <path {...common} d="M16 7.8v15.7" />
+          <path {...soft} d="M9 12.5c2 1.7 4.4 2.5 7 2.5s5-.8 7-2.5" />
+          <path {...common} d="M9.5 22.2c1.4-4 3.6-6.1 6.5-6.1s5.1 2.1 6.5 6.1" />
+          <path {...common} d="M11.3 15.8c-.8 2.7-1.2 5.1-1.2 7.2" />
+          <path {...common} d="M20.7 15.8c.8 2.7 1.2 5.1 1.2 7.2" />
+        </>
+      ),
+      "팔": (
+        <>
+          <path {...common} d="M11 12.3c1.9-.5 3.5.4 4.2 2.4" />
+          <path {...soft} d="M15.2 14.7c.2 3.5 2.2 5.6 5.9 5.7" />
+          <path {...common} d="M10.8 12.3c1-1.7 3.2-2.5 5.1-1.5" />
+          <path {...common} d="M20.9 20.4c1.1.1 2.1-.4 2.7-1.4" />
+          <path {...common} d="M13.5 15.8c-1.6.6-2.7 1.8-3.4 3.4" />
+        </>
+      ),
+      "코어": (
+        <>
+          <path {...common} d="M11.5 10.2h9" />
+          <path {...soft} d="M12 12.8h8" />
+          <path {...soft} d="M11.8 16h8.4" />
+          <path {...soft} d="M12.5 19.2h7" />
+          <path {...common} d="M10.4 11.3c.9 3.4.9 6.9 0 10.4" />
+          <path {...common} d="M21.6 11.3c-.9 3.4-.9 6.9 0 10.4" />
+          <path {...common} d="M16 12.8v9" />
+        </>
+      ),
+      "하체": (
+        <>
+          <path {...common} d="M12.1 9.4c1.2.5 2.5.8 3.9.8s2.7-.3 3.9-.8" />
+          <path {...soft} d="M12.3 10.5l-1.1 7.1-2.4 6.1" />
+          <path {...soft} d="M19.7 10.5l1.1 7.1 2.4 6.1" />
+          <path {...common} d="M13 17.1h6" />
+          <path {...common} d="M11 23.6H8.5" />
+          <path {...common} d="M23.5 23.6H21" />
+        </>
+      ),
+      "전신": (
+        <>
+          <circle {...common} cx="16" cy="8.4" r="1.9" />
+          <path {...common} d="M16 10.7v7" />
+          <path {...soft} d="M9.4 14.2l6.6-2.1 6.6 2.1" />
+          <path {...common} d="M16 17.7l-4.2 5.7" />
+          <path {...common} d="M16 17.7l4.2 5.7" />
+        </>
+      ),
+      "유산소": (
+        <>
+          <path {...common} d="M7.2 17c2.3-5 5-5 7.4 0s5.1 5 7.8 0" />
+          <path {...common} d="M8.3 22.5h15.4" />
+          <path {...common} d="M9.5 12.2h13" />
+          <path {...soft} d="M11.5 12.2l2.4-2.5 2.1 2.5 2.2-2.5 2.3 2.5" />
+        </>
+      ),
     };
     return (
       <svg width={size} height={size} viewBox="0 0 32 32" aria-label={meta.label} role="img">
@@ -8232,11 +8298,13 @@ async function saveMemberPreference() {
                     <strong style={styles.compactConditionText}>{condition.text}</strong>
                   </div>
 
-                  {lastIssueText && (
+                  {lastIssueText ? (
                     <div style={styles.compactIssueLine}>
                       <span style={styles.compactIssueIcon}>▣</span>
                       <span>지난 이슈: {lastIssueText}</span>
                     </div>
+                  ) : (
+                    <div style={styles.compactIssueLinePlaceholder} aria-hidden="true" />
                   )}
 
                   <div style={styles.scheduleStatusRow}>
@@ -9067,11 +9135,13 @@ async function saveMemberPreference() {
                         <strong style={styles.compactConditionText}>{condition.text}</strong>
                       </div>
 
-                      {lastIssueText && (
+                      {lastIssueText ? (
                         <div style={styles.compactIssueLine}>
                           <span style={styles.compactIssueIcon}>▣</span>
                           <span>지난 이슈: {lastIssueText}</span>
                         </div>
+                      ) : (
+                        <div style={styles.compactIssueLinePlaceholder} aria-hidden="true" />
                       )}
 
                       <div style={styles.scheduleStatusRow}>
@@ -18151,7 +18221,7 @@ textarea: {
     position: "relative",
     display: "flex",
     flexDirection: "column",
-    background: "radial-gradient(circle at 8% 0%, rgba(42,37,25,0.34) 0%, rgba(14,18,20,0.88) 34%, #050708 100%)",
+    background: "#050708",
     color: "#fff",
     padding: "14px 24px max(22px, env(safe-area-inset-bottom))",
     fontFamily: "Arial, sans-serif",
@@ -18420,6 +18490,12 @@ textarea: {
     fontSize: 10,
     flexShrink: 0,
   },
+  compactIssueLinePlaceholder: {
+    minHeight: 26,
+    borderTop: "1px solid rgba(255,255,255,0.07)",
+    borderBottom: "1px solid rgba(255,255,255,0.045)",
+    visibility: "hidden",
+  },
   scheduleStatusRow: {
     display: "flex",
     gap: 6,
@@ -18532,6 +18608,7 @@ textarea: {
     paddingTop: 0,
     paddingBottom: 0,
     flexShrink: 0,
+    transform: "translateY(8px)",
   },
   homeLauncherItem: {
     width: "100%",
