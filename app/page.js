@@ -8287,6 +8287,21 @@ async function saveMemberPreference() {
         )}
       </section>
 
+      {lastAction && (
+        <div style={styles.notice}>
+          <span>
+            <strong>{lastAction.memberName}</strong>
+            {lastAction.type === "pt" ? " PT 1회 차감됨" : " 출석 체크됨"}
+          </span>
+
+          {lastAction.type === "pt" && (
+            <button onClick={undo} style={styles.noticeButton}>
+              실행 취소
+            </button>
+          )}
+        </div>
+      )}
+
       <section style={styles.homeLauncherGrid}>
         <button type="button" onClick={() => openMemberListModal("회원 목록", true, false)} style={styles.homeLauncherItem}>
           <span style={{ ...styles.homeLauncherIcon, color: "#f6d38b" }}>◉</span>
@@ -11582,21 +11597,6 @@ ${link}`;
         </div>
       )}
 
-      {lastAction && (
-        <div style={styles.notice}>
-          <span>
-            <strong>{lastAction.memberName}</strong>
-            {lastAction.type === "pt" ? " PT 1회 차감됨" : " 출석 체크됨"}
-          </span>
-
-          {lastAction.type === "pt" && (
-            <button onClick={undo} style={styles.noticeButton}>
-              실행 취소
-            </button>
-          )}
-        </div>
-      )}
-
       <section style={styles.actionSearchGridThree}>
         <button onClick={() => setShowAddModal(true)} style={styles.actionBigCard}>
           <span style={{ ...styles.actionBigIcon, color: "#facc15" }}>👤</span>
@@ -12416,7 +12416,7 @@ const styles = {
   },
   salesValue: {
     color: "#fff",
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 900,
   },
   salesMiniText: {
@@ -13460,24 +13460,28 @@ const styles = {
     fontWeight: 900,
   },
   notice: {
-    background: "#272111",
-    border: "1px solid #facc15",
-    color: "#fde68a",
-    padding: 16,
-    borderRadius: 18,
-    marginBottom: 22,
+    background: "linear-gradient(90deg, rgba(82,59,14,0.72), rgba(32,25,14,0.86))",
+    border: "1.15px solid rgba(246,211,139,0.68)",
+    color: "#f6d38b",
+    padding: "8px 14px",
+    borderRadius: 14,
+    margin: "0 0 8px",
+    minHeight: 42,
     display: "flex",
     justifyContent: "space-between",
     gap: 12,
     alignItems: "center",
+    flexShrink: 0,
+    boxSizing: "border-box",
   },
   noticeButton: {
-    background: "#facc15",
+    background: "linear-gradient(180deg, #f9d977, #d89b2a)",
     color: "#111",
-    border: "none",
-    borderRadius: 12,
-    padding: "10px 14px",
-    fontWeight: 800,
+    border: "1px solid rgba(255,255,255,0.14)",
+    borderRadius: 11,
+    padding: "7px 12px",
+    fontWeight: 1000,
+    fontSize: 12,
   },
   modalOverlay: {
     position: "fixed",
@@ -14403,7 +14407,7 @@ textarea: {
     boxShadow: "0 14px 34px rgba(0,0,0,0.20)",
   },
   detailName: {
-    fontSize: 30,
+    fontSize: 29,
     margin: 0,
     letterSpacing: -0.5,
     color: "#111827",
@@ -18138,7 +18142,7 @@ textarea: {
     flexDirection: "column",
     background: "radial-gradient(circle at top left, #151b1d 0%, #0d1214 42%, #050708 100%)",
     color: "#fff",
-    padding: "12px 24px calc(92px + env(safe-area-inset-bottom, 0px))",
+    padding: "8px 20px calc(118px + env(safe-area-inset-bottom, 0px))",
     fontFamily: "Arial, sans-serif",
   },
   header: {
@@ -18146,7 +18150,7 @@ textarea: {
     justifyContent: "space-between",
     alignItems: "center",
     gap: 16,
-    marginBottom: 12,
+    marginBottom: 6,
     flexShrink: 0,
   },
   headerTitleRow: {
@@ -18162,8 +18166,8 @@ textarea: {
   },
   title: {
     margin: 0,
-    fontSize: 56,
-    lineHeight: 0.95,
+    fontSize: 54,
+    lineHeight: 0.92,
     fontWeight: 1000,
     letterSpacing: "-0.07em",
     textShadow: "0 10px 28px rgba(0,0,0,0.42)",
@@ -18212,9 +18216,9 @@ textarea: {
     background: "linear-gradient(180deg, rgba(24,29,31,0.965), rgba(10,14,16,0.99))",
     border: "1.7px solid rgba(246, 211, 139, 0.90)",
     borderRadius: 24,
-    padding: "18px 20px 16px",
-    marginBottom: 12,
-    height: "clamp(505px, calc(100dvh - 330px), 620px)",
+    padding: "16px 20px 14px",
+    marginBottom: 8,
+    height: "clamp(450px, calc(100dvh - 360px), 500px)",
     minHeight: 0,
     boxSizing: "border-box",
     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 1px rgba(255,255,255,0.03), 0 18px 42px rgba(0,0,0,0.24), 0 0 18px rgba(246,211,139,0.12)",
@@ -18225,7 +18229,7 @@ textarea: {
     justifyContent: "space-between",
     gap: 14,
     alignItems: "center",
-    marginBottom: 18,
+    marginBottom: 14,
   },
   incompleteTitle: {
     fontSize: 30,
@@ -18262,20 +18266,20 @@ textarea: {
   incompleteList: {
     display: "grid",
     gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-    gridTemplateRows: "minmax(275px, 1fr) 70px",
-    gap: 14,
+    gridTemplateRows: "minmax(245px, 1fr) 58px",
+    gap: 12,
     alignItems: "stretch",
-    height: "calc(100% - 86px)",
+    height: "calc(100% - 74px)",
   },
   incompleteItem: {
     position: "relative",
     background: "linear-gradient(180deg, rgba(28,33,35,0.92), rgba(9,13,15,0.975))",
     border: "1.45px solid rgba(246, 211, 139, 0.72)",
     borderRadius: 15,
-    padding: "14px 14px 13px",
+    padding: "11px 12px 10px",
     display: "grid",
     gridTemplateColumns: "1fr",
-    gap: 7,
+    gap: 5,
     alignItems: "stretch",
     minWidth: 0,
     minHeight: 0,
@@ -18283,7 +18287,7 @@ textarea: {
   },
   compactScheduleHead: {
     display: "grid",
-    gridTemplateColumns: "60px minmax(0, 1fr)",
+    gridTemplateColumns: "56px minmax(0, 1fr)",
     gap: 8,
     alignItems: "start",
     minWidth: 0,
@@ -18309,7 +18313,7 @@ textarea: {
   },
   compactMemberName: {
     color: "#fff",
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: 1000,
     letterSpacing: "-0.04em",
     overflow: "hidden",
@@ -18325,7 +18329,7 @@ textarea: {
     display: "flex",
     flexWrap: "wrap",
     gap: 4,
-    minHeight: 17,
+    minHeight: 0,
     maxHeight: 19,
     overflow: "hidden",
   },
@@ -18344,7 +18348,7 @@ textarea: {
     gridTemplateColumns: "42px minmax(42px, 1fr) 1px 32px auto",
     alignItems: "center",
     gap: 8,
-    minHeight: 52,
+    minHeight: 44,
   },
   compactBodyIcon: {
     width: 38,
@@ -18360,7 +18364,7 @@ textarea: {
     background: "rgba(246,211,139,0.045)",
   },
   compactBodyText: {
-    fontSize: 23,
+    fontSize: 22,
     fontWeight: 1000,
     color: "#fff",
     letterSpacing: "-0.05em",
@@ -18387,7 +18391,7 @@ textarea: {
   compactIssueLine: {
     borderTop: "1px solid rgba(255,255,255,0.08)",
     borderBottom: "1px solid rgba(255,255,255,0.06)",
-    padding: "4px 0",
+    padding: "3px 0",
     display: "flex",
     alignItems: "center",
     gap: 6,
@@ -18460,9 +18464,9 @@ textarea: {
     color: "#fff",
     border: "1px solid rgba(255,255,255,0.12)",
     borderRadius: 8,
-    padding: "6px 7px",
+    padding: "5px 7px",
     fontWeight: 1000,
-    fontSize: 11,
+    fontSize: 10,
     whiteSpace: "nowrap",
   },
   scheduleSmsButton: {
@@ -18513,7 +18517,7 @@ textarea: {
   },
   homeLauncherItem: {
     width: "100%",
-    height: 114,
+    height: 100,
     minHeight: 0,
     border: "1.25px solid rgba(246, 211, 139, 0.62)",
     background: "linear-gradient(180deg, rgba(30,35,37,0.88), rgba(14,18,20,0.97))",
@@ -18523,14 +18527,14 @@ textarea: {
     display: "grid",
     justifyItems: "center",
     alignContent: "center",
-    gap: 5,
+    gap: 4,
     textAlign: "center",
-    fontSize: 11,
+    fontSize: 10,
     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045), 0 8px 16px rgba(0,0,0,0.16), 0 0 10px rgba(246,211,139,0.08)",
   },
   homeLauncherIcon: {
-    height: 28,
-    minWidth: 28,
+    height: 24,
+    minWidth: 24,
     borderRadius: 8,
     display: "inline-flex",
     alignItems: "center",
@@ -18642,11 +18646,11 @@ textarea: {
   moreScheduleCard: {
     position: "relative",
     gridColumn: "1 / -1",
-    minHeight: 70,
+    minHeight: 56,
     background: "linear-gradient(180deg, rgba(20,25,27,0.72), rgba(9,13,15,0.96))",
     border: "1.15px solid rgba(246, 211, 139, 0.48)",
     borderRadius: 13,
-    padding: "10px",
+    padding: "8px",
     minWidth: 0,
     color: "#f6d38b",
     display: "flex",
