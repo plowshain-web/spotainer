@@ -264,13 +264,15 @@ function createEmptyWorkoutExercise(trainingType = "weight") {
 
 function TodayScheduleSectionV2({
   schedules,startTodaySMSQueue,getScheduleMember,getLatestConditionForMember,
-  getConditionPreviewText,renderScheduleQuickButtons
+  getConditionPreviewText,renderScheduleQuickButtons,getSchedulePreferenceTags,getScheduleMemberPtText
 }) {
   const bodyIcon = (text) => {
-    if ((text||"").includes("하체")) return "△";
-    if ((text||"").includes("등")) return "▽";
-    if ((text||"").includes("가슴")) return "◇";
-    if ((text||"").includes("코어")) return "○";
+    const value = text || "";
+    if (value.includes("하체")) return "△";
+    if (value.includes("등")) return "▽";
+    if (value.includes("가슴")) return "◇";
+    if (value.includes("코어") || value.includes("복부")) return "○";
+    if (value.includes("어깨")) return "⌃";
     return "•";
   };
 
@@ -292,52 +294,68 @@ function TodayScheduleSectionV2({
         </div>
       </div>
 
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {schedules.map((schedule)=>{
           const member=getScheduleMember(schedule)||{};
           const condition=getLatestConditionForMember(member);
           const body=condition?.todayWorkout || condition?.nextWorkout || "";
           const preview=getConditionPreviewText(condition);
+          const tags=(getSchedulePreferenceTags ? getSchedulePreferenceTags(schedule) : []).slice(0,3);
+          const ptText=getScheduleMemberPtText ? getScheduleMemberPtText(schedule) : `PT ${member.pt_remaining || member.remaining_pt || member.pt_count || 0}회`;
+          const statusText=preview ? `🙂 ${preview}` : `🙂 ${condition?.condition_level || "보통"}`;
 
           return (
             <div key={schedule.id} style={{
               display:"grid",
-              gridTemplateColumns:"110px 140px 1.8fr 1fr auto",
+              gridTemplateColumns:"105px 170px 1.6fr 128px auto",
               alignItems:"center",
-              padding:"14px 18px",
-              borderRadius:20,
+              gap:14,
+              padding:"12px 18px",
+              borderRadius:18,
               border:"1px solid rgba(255,255,255,.08)",
-              background:"rgba(255,255,255,.02)",
-              minHeight:110
+              background:"rgba(255,255,255,.025)",
+              minHeight:94
             }}>
-              <div style={{fontSize:22,color:"#e0ae49",fontWeight:900}}>
+              <div style={{fontSize:22,color:"#e0ae49",fontWeight:900,letterSpacing:-.5}}>
                 {formatTime(schedule.start_time)}
               </div>
 
-              <div style={{display:"flex",alignItems:"center",gap:12}}>
-                <div style={{fontSize:28,color:"#e0ae49"}}>{bodyIcon(body)}</div>
-                <div style={{fontSize:34,fontWeight:900,color:"#fff"}}>
-                  {body || <span style={{fontSize:20,color:"#777"}}>운동미정</span>}
+              <div style={{display:"flex",alignItems:"center",gap:12,minWidth:0}}>
+                <div style={{fontSize:22,color:"#e0ae49",width:24,textAlign:"center",fontWeight:900}}>{bodyIcon(body)}</div>
+                <div style={{minWidth:0}}>
+                  {body ? (
+                    <div style={{fontSize:28,fontWeight:900,color:"#fff",lineHeight:1.05,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{body}</div>
+                  ) : (
+                    <div style={{fontSize:18,fontWeight:800,color:"#a2a2a2",lineHeight:1.05}}>운동미정</div>
+                  )}
+                  <div style={{fontSize:12,color:"#d4a14a",marginTop:7,whiteSpace:"nowrap"}}>출석 전 · 차감 전</div>
                 </div>
               </div>
 
-              <div>
-                <div style={{fontSize:30,fontWeight:900,color:"#fff"}}>
-                  {member.name || "회원"}
-                  <span style={{fontSize:16,opacity:.7,marginLeft:10}}>
-                    PT {member.pt_count || member.remaining_pt || ""}
-                  </span>
+              <div style={{minWidth:0}}>
+                <div style={{display:"flex",alignItems:"baseline",gap:10,minWidth:0}}>
+                  <div style={{fontSize:26,fontWeight:900,color:"#fff",lineHeight:1.1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                    {member.name || "회원"}
+                  </div>
+                  <div style={{fontSize:15,color:"#cfcfcf",fontWeight:800,whiteSpace:"nowrap"}}>{ptText}</div>
                 </div>
-                <div style={{fontSize:15,color:"#cfcfcf",marginTop:4}}>
-                  {preview ? `🙂 ${preview}` : "🙂 보통"}
-                </div>
-                <div style={{fontSize:14,color:"#8f8f8f",marginTop:2}}>
+                {tags.length > 0 && (
+                  <div style={{display:"flex",gap:6,marginTop:7,overflow:"hidden"}}>
+                    {tags.map((tag)=>(
+                      <span key={tag} style={{fontSize:12,color:"#f2f2f2",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.08)",borderRadius:999,padding:"4px 8px",whiteSpace:"nowrap"}}>{tag}</span>
+                    ))}
+                  </div>
+                )}
+                <div style={{fontSize:14,color:"#cfcfcf",marginTop:6,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                  {statusText}
+                  <span style={{color:"#777",margin:"0 8px"}}>·</span>
                   지난 이슈 : {condition?.memo || "없음"}
                 </div>
               </div>
 
-              <div style={{fontSize:18,color:"#f2f2f2"}}>
-                {condition?.condition_level || "보통"}
+              <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"center"}}>
+                <div style={{fontSize:13,color:"#d4a14a",border:"1px solid rgba(212,161,74,.45)",borderRadius:999,padding:"5px 11px",whiteSpace:"nowrap"}}>출석 전</div>
+                <div style={{fontSize:13,color:"#d4a14a",border:"1px solid rgba(212,161,74,.45)",borderRadius:999,padding:"5px 11px",whiteSpace:"nowrap"}}>차감 전</div>
               </div>
 
               <div style={{display:"flex",gap:8,justifyContent:"flex-end",alignItems:"center"}}>
@@ -8050,6 +8068,8 @@ getScheduleMember={getScheduleMember}
 getLatestConditionForMember={getLatestConditionForMember}
 getConditionPreviewText={getConditionPreviewText}
 renderScheduleQuickButtons={renderScheduleQuickButtons}
+getSchedulePreferenceTags={getSchedulePreferenceTags}
+getScheduleMemberPtText={getScheduleMemberPtText}
 />
 
       <section style={styles.scheduleAddWideBox}>
