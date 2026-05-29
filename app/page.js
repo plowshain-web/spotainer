@@ -443,7 +443,6 @@ const [prefClassMood, setPrefClassMood] = useState([]);
   const [detailWorkoutSessions, setDetailWorkoutSessions] = useState([]);
   const [lastWorkoutMap, setLastWorkoutMap] = useState({});
   const [latestConditionMap, setLatestConditionMap] = useState({});
-  const [memberLatestWorkoutMap, setMemberLatestWorkoutMap] = useState({});
 
   useEffect(() => {
     if (!Array.isArray(members) || members.length === 0) {
@@ -470,7 +469,6 @@ const [prefClassMood, setPrefClassMood] = useState([]);
   const [completedTodayTodoKeys, setCompletedTodayTodoKeys] = useState({});
   const [activeTodayTodoKey, setActiveTodayTodoKey] = useState(null);
   const [showTodayTodoModal, setShowTodayTodoModal] = useState(false);
-  const [showTodayScheduleOnlyModal, setShowTodayScheduleOnlyModal] = useState(false);
   const [exerciseSuggestions, setExerciseSuggestions] = useState([]);
 const [activeExerciseIndex, setActiveExerciseIndex] = useState(null);
 const [workoutExercises, setWorkoutExercises] = useState([
@@ -525,7 +523,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [scheduleEndTime, setScheduleEndTime] = useState("");
   const [scheduleType, setScheduleType] = useState("pt");
   const [scheduleMemo, setScheduleMemo] = useState("");
-  const [scheduleWorkoutPart, setScheduleWorkoutPart] = useState("");
   const [exitToast, setExitToast] = useState("");
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [scheduleActionMenuId, setScheduleActionMenuId] = useState(null);
@@ -834,7 +831,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
     });
 
     setMembers(formatted);
-    loadLatestWorkoutsForMembers(formatted);
   }
 
   function getTodayDateString() {
@@ -1366,181 +1362,8 @@ const [workoutExercises, setWorkoutExercises] = useState([
   }
 
 
-
-
-  const workoutPartOptions = [
-    { key: "가슴", label: "가슴", short: "CH" },
-    { key: "어깨", label: "어깨", short: "SH" },
-    { key: "등", label: "등", short: "BK" },
-    { key: "팔", label: "팔", short: "AR" },
-    { key: "코어", label: "코어", short: "CR" },
-    { key: "복부", label: "코어", short: "CR" },
-    { key: "하체", label: "하체", short: "LG" },
-    { key: "전신", label: "전신", short: "ALL" },
-    { key: "유산소", label: "유산소", short: "CD" },
-  ];
-
-  function normalizeWorkoutPart(value = "") {
-    const text = String(value || "");
-    if (text.includes("가슴")) return "가슴";
-    if (text.includes("어깨")) return "어깨";
-    if (text.includes("등")) return "등";
-    if (text.includes("팔")) return "팔";
-    if (text.includes("코어") || text.includes("복부")) return "코어";
-    if (text.includes("하체")) return "하체";
-    if (text.includes("유산소") || text.includes("러닝") || text.includes("걷기")) return "유산소";
-    if (text.includes("전신") || text.includes("서킷")) return "전신";
-    return text.trim();
-  }
-
-  function getWorkoutPartMeta(value = "") {
-    const normalized = normalizeWorkoutPart(value);
-    return workoutPartOptions.find((item) => item.key === normalized || item.label === normalized) || {
-      key: normalized || "미정",
-      label: normalized || "미정",
-      short: normalized ? normalized.slice(0, 2).toUpperCase() : "PT",
-    };
-  }
-
-  function renderWorkoutPartIcon(value, size = 46) {
-    const meta = getWorkoutPartMeta(value);
-    const stroke = "currentColor";
-    const common = {
-      fill: "none",
-      stroke,
-      strokeWidth: "1.55",
-      strokeLinecap: "round",
-      strokeLinejoin: "round",
-      vectorEffect: "non-scaling-stroke",
-    };
-
-    const icons = {
-      "가슴": (
-        <>
-          <path {...common} d="M16 6.6v4.2" />
-          <path {...common} d="M9.2 14.2c1.7-2.6 4-3.8 6.8-3.8s5.1 1.2 6.8 3.8" />
-          <path {...common} d="M8.2 15.8c2.1-.8 4.7-.7 7.8.4 3.1-1.1 5.7-1.2 7.8-.4" />
-          <path {...common} d="M9.2 16.4c.9 4 3.1 6 6.8 6s5.9-2 6.8-6" />
-          <path {...common} d="M16 15.9v6.7" />
-          <path {...common} d="M11.4 21.2c1.3 1 2.8 1.5 4.6 1.5s3.3-.5 4.6-1.5" />
-        </>
-      ),
-      "하체": (
-        <>
-          <path {...common} d="M12.5 7.5c2.1.8 4.9.8 7 0" />
-          <path {...common} d="M12.6 9.2l-1.2 7.4-2.7 8" />
-          <path {...common} d="M19.4 9.2l1.2 7.4 2.7 8" />
-          <path {...common} d="M13.1 16.9h5.8" />
-          <path {...common} d="M10.3 24.8H8" />
-          <path {...common} d="M24 24.8h-2.3" />
-          <path {...common} d="M16 9.8v6.8" />
-        </>
-      ),
-      "등": (
-        <>
-          <path {...common} d="M16 6.8v17" />
-          <path {...common} d="M9.3 12.4c1.8 1.8 4.1 2.7 6.7 2.7s4.9-.9 6.7-2.7" />
-          <path {...common} d="M10.1 23.7c1.2-4.7 3.2-7 5.9-7s4.7 2.3 5.9 7" />
-          <path {...common} d="M11.2 15.2c-.9 2.8-1.4 5.8-1.4 8.8" />
-          <path {...common} d="M20.8 15.2c.9 2.8 1.4 5.8 1.4 8.8" />
-        </>
-      ),
-      "코어": (
-        <>
-          <path {...common} d="M12.3 9.6h7.4" />
-          <path {...common} d="M11.8 12.8h8.4" />
-          <path {...common} d="M11.8 16h8.4" />
-          <path {...common} d="M12.4 19.2h7.2" />
-          <path {...common} d="M13.2 22.3h5.6" />
-          <path {...common} d="M9.9 10.6c1.2 4 1.2 8 0 12" />
-          <path {...common} d="M22.1 10.6c-1.2 4-1.2 8 0 12" />
-          <path {...common} d="M16 12.8v9.5" />
-        </>
-      ),
-      "어깨": (
-        <>
-          <path {...common} d="M16 7.2v4" />
-          <path {...common} d="M7.6 16.6c2.3-3.9 5.1-5.8 8.4-5.8s6.1 1.9 8.4 5.8" />
-          <path {...common} d="M7.8 18.3c2.4 2.3 5.1 3.4 8.2 3.4s5.8-1.1 8.2-3.4" />
-          <path {...common} d="M10.7 16.7c1.3-1 3.1-1.5 5.3-1.5s4 .5 5.3 1.5" />
-        </>
-      ),
-      "팔": (
-        <>
-          <path {...common} d="M10.8 12.2c2-.4 3.6.5 4.3 2.6" />
-          <path {...common} d="M15.1 14.8c.3 3.8 2.3 5.9 6 6" />
-          <path {...common} d="M10.8 12.2c1-1.8 3.2-2.5 5.1-1.5" />
-          <path {...common} d="M21.1 20.8c1 .1 1.9-.3 2.6-1.2" />
-          <path {...common} d="M13.5 16c-1.6.5-2.8 1.7-3.6 3.4" />
-        </>
-      ),
-      "전신": (
-        <>
-          <circle {...common} cx="16" cy="8.4" r="1.9" />
-          <path {...common} d="M16 10.8v7.2" />
-          <path {...common} d="M9.3 14.5l6.7-2 6.7 2" />
-          <path {...common} d="M16 18l-4.2 5.8" />
-          <path {...common} d="M16 18l4.2 5.8" />
-        </>
-      ),
-      "유산소": (
-        <>
-          <path {...common} d="M7.5 17c2.4-5.1 5.1-5.1 7.5 0s5.1 5.1 7.5 0" />
-          <path {...common} d="M8.5 22.5h15" />
-          <path {...common} d="M9.5 12.2h13" />
-        </>
-      ),
-    };
-
-    return (
-      <svg width={size} height={size} viewBox="0 0 32 32" aria-label={meta.label} role="img">
-        {icons[meta.key] || icons["전신"]}
-      </svg>
-    );
-  }
-
-  function getScheduleBodyPartFromMemo(value = "") {
-    const text = String(value || "");
-    const match = text.match(/\[운동부위:\s*([^\]]+)\]/);
-    if (match?.[1]) return normalizeWorkoutPart(match[1]);
-    const keywords = ["가슴", "어깨", "등", "팔", "코어", "복부", "하체", "전신", "서킷", "유산소"];
-    const found = keywords.find((keyword) => text.includes(keyword));
-    return found ? normalizeWorkoutPart(found) : "";
-  }
-
-  function buildScheduleMemoWithBodyPart(memoText = "", bodyPart = "") {
-    const cleanMemo = cleanScheduleMemoText(memoText).replace(/\s*\[운동부위:\s*[^\]]+\]\s*/g, " ").replace(/\s{2,}/g, " ").trim();
-    const part = normalizeWorkoutPart(bodyPart);
-    return [part ? `[운동부위: ${part}]` : "", cleanMemo].filter(Boolean).join(" ");
-  }
-
-  async function loadLatestWorkoutsForMembers(memberList = []) {
-    const memberIds = Array.from(new Set((memberList || []).map((member) => member?.id).filter(Boolean)));
-    if (memberIds.length === 0) {
-      setMemberLatestWorkoutMap({});
-      return;
-    }
-    const { data, error } = await supabase
-      .from("workout_sessions")
-      .select("*")
-      .in("member_id", memberIds)
-      .order("workout_date", { ascending: false })
-      .order("created_at", { ascending: false });
-    if (error) {
-      console.error("회원 최근 운동 불러오기 실패:", error.message);
-      return;
-    }
-    const nextMap = {};
-    (data || []).forEach((session) => {
-      if (!session.member_id || nextMap[session.member_id]) return;
-      nextMap[session.member_id] = session;
-    });
-    setMemberLatestWorkoutMap(nextMap);
-  }
-
   function cleanScheduleMemoText(value = "") {
     return String(value || "")
-      .replace(/\s*\[운동부위:\s*[^\]]+\]\s*/g, " ")
       .replace(/\s*\[?\s*문자\s*완료\s*\]?\s*/g, " ")
       .replace(/\s*\[?\s*문자완료\s*\]?\s*/g, " ")
       .replace(/\s{2,}/g, " ")
@@ -1805,124 +1628,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
       noteLine,
       workoutDate: workout.workout_date,
     };
-  }
-
-
-  function normalizeCompactText(value, maxLength = 22) {
-    const text = String(value || "").replace(/\s+/g, " ").trim();
-    if (!text) return "";
-    return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
-  }
-
-  function getScheduleTodayBodyPart(schedule, workout) {
-    const explicitPart = getScheduleBodyPartFromMemo(schedule?.memo || "");
-    if (explicitPart) return explicitPart;
-
-    const candidates = [];
-
-    [
-      schedule?.today_body_part,
-      schedule?.todayBodyPart,
-      schedule?.body_part,
-      schedule?.bodyPart,
-      schedule?.workout_body_part,
-      schedule?.workoutBodyPart,
-      schedule?.planned_body_part,
-      schedule?.plannedBodyPart,
-    ].forEach((value) => {
-      if (Array.isArray(value)) candidates.push(value.join(", "));
-      else if (value) candidates.push(value);
-    });
-
-    candidates.push(schedule?.memo, schedule?.note, schedule?.description);
-
-    const keywords = ["가슴", "어깨", "등", "하체", "팔", "코어", "복부", "전신", "상체", "서킷", "유산소"];
-    const sourceText = candidates.filter(Boolean).join(" ");
-    const found = keywords.find((keyword) => sourceText.includes(keyword));
-    if (found) return normalizeWorkoutPart(found);
-
-    const lastBodyPart = getLastWorkoutSummary(workout)?.bodyPartText;
-    return normalizeWorkoutPart(lastBodyPart) || "미정";
-  }
-
-  function getBodyPartIcon(bodyPartText) {
-    return getWorkoutPartMeta(bodyPartText).short;
-  }
-
-  function getScheduleConditionCompact(schedule, member, workout) {
-    const latestCondition = member ? getLatestConditionForMember(member) : null;
-    const raw = workout?.condition || latestCondition?.condition || latestCondition?.status || "";
-    const text = getWorkoutConditionText(raw) || getConditionPreviewText(latestCondition)?.split(" · ")[0] || "보통";
-
-    if (String(text).includes("좋")) return { text: "좋음", icon: "🙂" };
-    if (String(text).includes("나쁨") || String(text).includes("안좋") || String(text).includes("불편")) return { text: "나쁨", icon: "😟" };
-    return { text: "보통", icon: "😐" };
-  }
-
-  function getScheduleLastIssueText(schedule, member, workout) {
-    const latestCondition = member ? getLatestConditionForMember(member) : null;
-    const bodyPartOnlyWords = ["가슴", "어깨", "등", "하체", "팔", "코어", "복부", "전신", "유산소", "서킷", "미정"];
-    const issueKeywords = [
-      "통증", "불편", "결림", "뻐근", "뻐근함", "저림", "긴장", "피로", "근육통",
-      "컨디션", "수면", "부족", "공복", "생리", "무릎", "허리", "발목", "손목", "목", "골반", "어깨"
-    ];
-
-    const structuredConditionParts = [];
-
-    if (latestCondition?.condition_level && !String(latestCondition.condition_level).includes("좋음") && latestCondition.condition_level !== "보통") {
-      structuredConditionParts.push(`컨디션 ${latestCondition.condition_level}`);
-    }
-    if (latestCondition?.pain_area && latestCondition.pain_area !== "없음") {
-      structuredConditionParts.push(`${latestCondition.pain_area} 불편`);
-    }
-    if (latestCondition?.sleep_status && String(latestCondition.sleep_status).includes("부족")) {
-      structuredConditionParts.push(`수면 ${latestCondition.sleep_status}`);
-    }
-    if (latestCondition?.muscle_soreness && latestCondition.muscle_soreness !== "없음") {
-      structuredConditionParts.push(`근육통 ${latestCondition.muscle_soreness}`);
-    }
-    if (latestCondition?.workout_burden && latestCondition.workout_burden !== "괜찮음") {
-      structuredConditionParts.push(`운동부담 ${latestCondition.workout_burden}`);
-    }
-
-    const candidates = [
-      structuredConditionParts.join(", "),
-      latestCondition?.memo,
-      workout?.issue,
-      workout?.trainer_note,
-    ];
-
-    function sanitizeIssueCandidate(value) {
-      let text = String(value || "").replace(/\s+/g, " ").trim();
-      if (!text) return "";
-
-      exerciseList.forEach((exerciseName) => {
-        const name = String(exerciseName || "").trim();
-        if (!name) return;
-        text = text.split(name).join("");
-      });
-
-      text = text
-        .replace(/외\s*\d+\s*개/g, "")
-        .replace(/지난\s*운동\s*부위/g, "")
-        .replace(/지난\s*운동/g, "")
-        .replace(/[·,，、]+/g, " ")
-        .replace(/\s{2,}/g, " ")
-        .trim();
-
-      if (!text) return "";
-      if (bodyPartOnlyWords.includes(text)) return "";
-      if (!issueKeywords.some((keyword) => text.includes(keyword))) return "";
-
-      return normalizeCompactText(text, 28);
-    }
-
-    for (const candidate of candidates) {
-      const issueText = sanitizeIssueCandidate(candidate);
-      if (issueText) return issueText;
-    }
-
-    return "";
   }
 
   function renderScheduleCheckItem(schedule, showDate = false) {
@@ -2539,7 +2244,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setScheduleEndTime("");
     setScheduleType("pt");
     setScheduleMemo("");
-    setScheduleWorkoutPart("");
     setSelectedDateSchedules([]);
   }
 
@@ -2570,7 +2274,6 @@ const [workoutExercises, setWorkoutExercises] = useState([
         : addMinutesToTime(schedule.start_time, 60)
     );
     setScheduleType(schedule.type || "pt");
-    setScheduleWorkoutPart(getScheduleBodyPartFromMemo(schedule.memo || "") || getScheduleTodayBodyPart(schedule, null) || "");
     setScheduleMemo(getScheduleDisplayMemo(schedule));
     setReturnToScheduleCheckAfterAdd(showScheduleCheckModal);
     setShowScheduleCheckModal(false);
@@ -2709,39 +2412,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   function openDetailFromMemberList(member) {
     setReturnToMemberListAfterDetail(true);
     setShowMemberListModal(false);
-
-    if (memberListTitle === "PT 사용/차감") {
-      openDetail(member, "pt");
-      return;
-    }
-
-    if (memberListTitle === "인바디 기록") {
-      openDetail(member, "inbody");
-      return;
-    }
-
-    if (memberListTitle === "운동 기록") {
-      setReturnToMemberListAfterDetail(false);
-      openWorkout(member, "memberList");
-      return;
-    }
-
-    if (memberListTitle === "상담 기록") {
-      setReturnToMemberListAfterDetail(false);
-      openContactModal(member, "pending");
-      return;
-    }
-
     openDetail(member, "menu");
-  }
-
-  function getMemberListModalDescription() {
-    if (showInactiveMembers) return "비활성 회원은 복구 후 다시 운영 목록에 표시됩니다.";
-    if (memberListTitle === "PT 사용/차감") return "회원을 누르면 PT 사용 기록 화면으로 바로 이동합니다.";
-    if (memberListTitle === "상담 기록") return "회원을 누르면 상담기록 입력창이 바로 열립니다.";
-    if (memberListTitle === "운동 기록") return "회원을 누르면 운동기록 화면으로 바로 이동합니다.";
-    if (memberListTitle === "인바디 기록") return "회원을 누르면 인바디 기록 화면으로 바로 이동합니다.";
-    return "회원을 검색하고 카드를 누르면 상세보기로 바로 이동합니다.";
   }
 
   async function saveScheduleRow(row, options = {}) {
@@ -2925,7 +2596,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
       start_time: scheduleStartTime,
       end_time: endTime,
       type: scheduleType,
-      memo: buildScheduleMemoWithBodyPart(scheduleMemo, scheduleWorkoutPart),
+      memo: cleanScheduleMemoText(scheduleMemo),
       allow_over_capacity: false,
     };
 
@@ -7522,16 +7193,6 @@ async function saveMemberPreference() {
     const ptStatus = getPtStatus(member);
     const visitStatus = getVisitStatus(member);
     const mainBadges = [ptStatus, visitStatus].filter(Boolean).slice(0, 2);
-    const latestWorkout = memberLatestWorkoutMap[member.id];
-    const latestWorkoutParts = Array.isArray(latestWorkout?.body_parts) && latestWorkout.body_parts.length > 0
-      ? latestWorkout.body_parts.map(normalizeWorkoutPart).filter(Boolean)
-      : [];
-    const latestPart = latestWorkoutParts[0] || "미정";
-    const latestCondition = getLatestConditionForMember(member);
-    const latestIssue = normalizeCompactText(
-      latestWorkout?.issue || latestWorkout?.next_plan || latestCondition?.memo || getConditionPreviewText(latestCondition),
-      30
-    ) || "특이사항 없음";
 
     return (
       <article
@@ -7587,30 +7248,22 @@ async function saveMemberPreference() {
             </div>
           </div>
         ) : (
-          <div onClick={() => openDetailFromMemberList(member)} style={styles.memberMainPremiumCard}>
-            <div style={styles.memberPremiumTopRow}>
-              <div style={styles.memberPremiumIdentity}>
-                <div style={styles.memberPremiumNameRow}>
-                  <h3 style={styles.memberPremiumName}>{member.name}</h3>
-                  <span
-                    style={{
-                      ...styles.memberPremiumPtPill,
-                      ...(member.pt_remaining || 0) <= 2
-                        ? styles.memberPremiumPtDanger
-                        : (member.pt_remaining || 0) <= 5
-                          ? styles.memberPremiumPtWarning
-                          : styles.memberPremiumPtNormal,
-                    }}
-                  >
-                    PT {member.pt_remaining || 0}
-                  </span>
-                </div>
-
-                <div style={styles.memberPremiumMetaLine}>
-                  <span>{getMemberStageText(member.member_stage)}</span>
-                  {member.is_vip && <span>VIP</span>}
-                  <span>{member.phone || "전화번호 없음"}</span>
-                </div>
+          <div onClick={() => openDetailFromMemberList(member)} style={styles.memberMainCompact}>
+            <div style={styles.memberCardHeaderCompact}>
+              <div style={styles.memberTitleLineCompact}>
+                <h3 style={styles.memberNameSmall}>{member.name}</h3>
+                <span
+                  style={{
+                    ...styles.ptCountPill,
+                    ...(member.pt_remaining || 0) <= 2
+                      ? styles.ptCountPillDanger
+                      : (member.pt_remaining || 0) <= 5
+                        ? styles.ptCountPillWarning
+                        : styles.ptCountPillNormal,
+                  }}
+                >
+                  PT {member.pt_remaining || 0}
+                </span>
               </div>
 
               <button
@@ -7619,53 +7272,124 @@ async function saveMemberPreference() {
                   closeMemberListModal();
                   openPtModal(member);
                 }}
-                style={styles.memberPremiumAddPassButton}
+                style={styles.cardPtAddButtonMini}
               >
-                이용권
+                + 이용권
               </button>
             </div>
 
-            <div style={styles.memberPremiumMiddleRow}>
-              <div style={styles.memberPremiumPartBlock}>
-                <span style={styles.memberPremiumPartIcon}>{renderWorkoutPartIcon(latestPart, 27)}</span>
-                <div style={styles.memberPremiumPartTextBox}>
-                  <strong style={styles.memberPremiumPartTitle}>{getWorkoutPartMeta(latestPart).label}</strong>
-                  <span style={styles.memberPremiumPartSub}>{latestWorkout?.workout_date ? `최근수업 ${formatDate(latestWorkout.workout_date)}` : `최근수업 ${formatDate(member.latest_pt)}`}</span>
-                </div>
-              </div>
-
-              <div style={styles.memberPremiumIssueBlock}>
-                <span style={styles.memberPremiumIssueLabel}>지난 이슈</span>
-                <strong style={styles.memberPremiumIssueText}>{latestIssue}</strong>
-              </div>
+            <div style={styles.memberMetaLineCompact}>
+              <span style={getMemberTypeStyle(member.member_type)}>
+                {getMemberTypeText(member.member_type)}
+              </span>
+              <span style={getMemberStageBadgeStyle(member.member_stage)}>{getMemberStageText(member.member_stage)}</span>
+              {member.is_vip && member.member_type !== "vip" && <span style={styles.vipBadge}>VIP</span>}
+              <span>{member.age ? `${member.age}세` : "나이 없음"}</span>
+              {member.height && <span>{member.height}cm</span>}
+              <span>{member.phone || "전화번호 없음"}</span>
             </div>
 
             {getPreferenceTags(member).length > 0 && (
-              <div style={styles.memberPremiumTagRow}>
-                {getPreferenceTags(member).slice(0, 4).map((tag) => (
-                  <span key={tag} style={styles.memberPremiumTag}>{tag}</span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                {getPreferenceTags(member).map((tag) => (
+                  <span
+                    key={tag}
+                    style={{
+                      background: "#f3f4f6",
+                      color: "#111",
+                      padding: "5px 9px",
+                      borderRadius: 999,
+                      fontSize: 11,
+                      fontWeight: 800,
+                    }}
+                  >
+                    {tag}
+                  </span>
                 ))}
               </div>
             )}
 
-            <div style={styles.memberPremiumBottomRow}>
-              <div style={styles.memberPremiumStatusGroup}>
+            {getLatestConditionForMember(member) && (
+              <div style={styles.lastWorkoutPreviewCompact}>
+                <span style={styles.lastWorkoutPreviewStrong}>
+                  최근컨디션: {getConditionPreviewText(getLatestConditionForMember(member))}
+                </span>
+                {getLatestConditionForMember(member)?.memo && (
+                  <span style={styles.lastWorkoutPreviewText}>
+                    {getLatestConditionForMember(member).memo}
+                  </span>
+                )}
+              </div>
+            )}
+
+            <div style={styles.compactInfoRow}>
+              <span>출석 {formatDate(member.latest_visit)}</span>
+              <span>PT {formatDate(member.latest_pt)}</span>
+            </div>
+
+            <div style={styles.memberActionLineCompact}>
+              <div style={styles.memberLeftActionsCompact}>
+                {/* member-card-v2: 컨디션 / 문자 / 피드백 / 더보기 버튼을 카드에 직접 노출 */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openConditionCheckModal(member);
+                  }}
+                  style={styles.conditionSmsButton}
+                  title="컨디션 기록"
+                >
+                  컨디션
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    sendFreeMemberSMS(member);
+                  }}
+                  style={styles.freeSmsButtonMini}
+                  title="일반 문자 직접 작성"
+                >
+                  문자
+                </button>
+
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await openMemberCardFeedback(member);
+                  }}
+                  style={shouldRecommendFeedback(member) ? styles.feedbackRecommendButtonMini : styles.feedbackButtonMini}
+                  title="피드백 추천"
+                >
+                  {shouldRecommendFeedback(member) ? "추천" : "피드백"}
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMemberActionMenuMember(member);
+                  }}
+                  style={styles.memberMoreButtonMini}
+                  title="추가 기능"
+                >
+                  ⋯
+                </button>
+
                 {mainBadges.map((badge, index) => (
-                  <span key={index} style={styles.memberPremiumStatusBadge}>{badge.text}</span>
+                  <span key={index} style={styles.compactStatusBadge}>{badge.text}</span>
                 ))}
               </div>
 
-              <div style={styles.memberPremiumActions}>
-                <button onClick={(e) => { e.stopPropagation(); openConditionCheckModal(member); }} style={styles.memberPremiumActionButton}>컨디션</button>
-                <button onClick={(e) => { e.stopPropagation(); sendFreeMemberSMS(member); }} style={styles.memberPremiumActionButton}>문자</button>
-                <button onClick={async (e) => { e.stopPropagation(); await openMemberCardFeedback(member); }} style={shouldRecommendFeedback(member) ? styles.memberPremiumActionRecommend : styles.memberPremiumActionButton}>
-                  {shouldRecommendFeedback(member) ? "추천" : "피드백"}
+              {member.is_active === false && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    reactivateMember(member);
+                  }}
+                  style={styles.cardRestoreButtonMini}
+                >
+                  복구
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); setMemberActionMenuMember(member); }} style={styles.memberPremiumMoreButton}>⋯</button>
-                {member.is_active === false && (
-                  <button onClick={(e) => { e.stopPropagation(); reactivateMember(member); }} style={styles.memberPremiumRestoreButton}>복구</button>
-                )}
-              </div>
+              )}
             </div>
           </div>
         )}
@@ -7676,7 +7400,6 @@ async function saveMemberPreference() {
   const hasOpenModal =
     memberActionMenuMember ||
     showTodayTodoModal ||
-    showTodayScheduleOnlyModal ||
     showInbodyModal ||
     showAllInbodyModal ||
     showAllWorkoutModal ||
@@ -7787,7 +7510,6 @@ async function saveMemberPreference() {
   function goToMain() {
     setShowExitConfirm(false);
     setShowTodayTodoModal(false);
-    setShowTodayScheduleOnlyModal(false);
     setShowSalesModal(false);
     setShowTrainerLogModal(false);
     setShowTrainerWorkoutHistoryModal(false);
@@ -8064,9 +7786,15 @@ async function saveMemberPreference() {
         <div>
           <div style={styles.headerTitleRow}>
             <h1 style={styles.title}>Spotainer</h1>
-            <span style={styles.headerDivider} />
-            <p style={styles.subtitle}>{centerName || "스포테이너 피트니스"}</p>
+            <button
+              type="button"
+              onClick={() => setShowSalesModal(true)}
+              style={styles.headerSalesButton}
+            >
+              매출 관리
+            </button>
           </div>
+          <p style={styles.subtitle}>{centerName || "여성전용 PT 회원관리"}</p>
         </div>
         <div style={styles.headerActions}>
           <button onClick={openTrainerLogModal} style={styles.trainerQuickButton}>
@@ -8078,6 +7806,31 @@ async function saveMemberPreference() {
         </div>
       </header>
 
+
+      <section style={styles.todayDashboardBox}>
+        <div style={styles.todayDashboardTop}>
+          <div>
+            <h2 style={styles.todayDashboardTitle}>오늘 할 일</h2>
+            <p style={styles.todayDashboardDesc}>메인은 깔끔하게 보고, 필요한 작업은 전체화면에서 처리합니다.</p>
+          </div>
+          <span style={styles.todayDashboardBadge}>{getTodayDateString()}</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowTodayTodoModal(true)}
+          style={styles.todayTodoOpenButton}
+        >
+          <span style={styles.todayTodoOpenTextWrap}>
+            <strong style={styles.todayTodoOpenTitle}>오늘 할 일 열기</strong>
+            <span style={styles.todayTodoOpenDesc}>
+              처리할 일 {pendingTodayTodoItems.length}건
+              {doneTodayTodoItems.length > 0 ? ` · 완료 ${doneTodayTodoItems.length}건` : ""}
+            </span>
+          </span>
+          <span style={styles.todayTodoOpenCount}>{pendingTodayTodoItems.length}건</span>
+        </button>
+      </section>
 
       {showTodayTodoModal && (
         <div style={styles.todayTodoPopupOverlay} onClick={() => setShowTodayTodoModal(false)}>
@@ -8260,86 +8013,110 @@ async function saveMemberPreference() {
           <p style={styles.muted}>오늘 등록된 스케줄이 없습니다.</p>
         ) : (
           <div style={styles.incompleteList}>
-            {(schedules.length > 5 ? schedules.slice(0, 5) : schedules).map((schedule) => {
+            {schedules.map((schedule) => {
               const member = getScheduleMember(schedule);
               const attended = !!schedule.attendance_checked;
               const ptUsed = !!schedule.pt_used;
               const isNoShow = schedule.status === "noshow";
               const isCancelled = schedule.status === "cancelled";
               const isCompleted = schedule.status === "completed" || (attended && ptUsed);
-              const lastWorkout = lastWorkoutMap[schedule.id];
-              const todayBodyPart = getScheduleTodayBodyPart(schedule, lastWorkout);
-              const condition = getScheduleConditionCompact(schedule, member, lastWorkout);
-              const lastIssueText = getScheduleLastIssueText(schedule, member, lastWorkout);
-              const preferenceTags = getSchedulePreferenceTags(schedule);
-              const memberPtText = getScheduleMemberPtText(schedule);
 
               return (
                 <div key={schedule.id} style={styles.incompleteItem}>
-                  <div style={styles.compactScheduleHead}>
-                    <div style={styles.compactScheduleTime}>
-                      <span>{formatTime(schedule.start_time).startsWith("오전") ? "오전" : "오후"}</span>
-                      <strong>{formatTime(schedule.start_time).replace(/^오후\s?/, "").replace(/^오전\s?/, "")}</strong>
-                    </div>
+                  <div style={styles.incompleteMain}>
+                    <div style={styles.scheduleTime}>{formatTime(schedule.start_time)}</div>
 
-                    <div style={styles.compactMemberBlock}>
-                      <div style={styles.compactMemberLine}>
-                        <strong style={styles.compactMemberName}>{getScheduleMemberNames(schedule)}</strong>
-                        {memberPtText && <span style={styles.compactPtText}>{memberPtText}</span>}
-                      </div>
+                    <div>
+                      <strong style={styles.scheduleMemberName}>
+                        {getScheduleTypeText(schedule.type)} · {getScheduleMemberNames(schedule)}
+                        {getScheduleMemberPtText(schedule) ? ` (${getScheduleMemberPtText(schedule)})` : ""}
+                      </strong>
 
-                      {preferenceTags.length > 0 && (
-                        <div style={styles.compactTagRow}>
-                          {preferenceTags.slice(0, 3).map((tag) => (
-                            <span key={tag} style={styles.compactTag}>
+                      {getSchedulePreferenceTags(schedule).length > 0 && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                          {getSchedulePreferenceTags(schedule).map((tag) => (
+                            <span
+                              key={tag}
+                              style={{
+                                background: "rgba(255,255,255,0.14)",
+                                color: "#f9fafb",
+                                border: "1px solid rgba(255,255,255,0.18)",
+                                padding: "4px 8px",
+                                borderRadius: 999,
+                                fontSize: 11,
+                                fontWeight: 800,
+                              }}
+                            >
                               {tag}
                             </span>
                           ))}
                         </div>
                       )}
+
+                      {getReRegisterAlert(member) && (
+                        <div style={styles.reRegisterInlineAlertDark}>
+                          <strong>{getReRegisterAlert(member).title}</strong>
+                          <span>{getReRegisterAlert(member).text}</span>
+                        </div>
+                      )}
+
+                      {getLastWorkoutSummary(lastWorkoutMap[schedule.id]) && (
+                        <div style={styles.lastWorkoutPreviewDark}>
+                          {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).bodyPartText && (
+                            <span>지난부위: {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).bodyPartText}</span>
+                          )}
+                          <span>지난운동: {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).exerciseText}</span>
+                          {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).conditionLine && (
+                            <span>{getLastWorkoutSummary(lastWorkoutMap[schedule.id]).conditionLine}</span>
+                          )}
+                          {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).noteLine && (
+                            <span>{getLastWorkoutSummary(lastWorkoutMap[schedule.id]).noteLine}</span>
+                          )}
+                        </div>
+                      )}
+
+                      {member && getLatestConditionForMember(member) && (
+                        <div style={styles.lastWorkoutPreviewDark}>
+                          <span>최근컨디션: {getConditionPreviewText(getLatestConditionForMember(member))}</span>
+                          {getLatestConditionForMember(member)?.memo && (
+                            <span>{getLatestConditionForMember(member).memo}</span>
+                          )}
+                        </div>
+                      )}
+
+                      <div style={styles.scheduleStatusRow}>
+                        {isScheduleSMSSent(schedule) && (
+                          <span style={styles.scheduleSmsDoneText}>문자 완료</span>
+                        )}
+                        {isCancelled ? (
+                          <>
+                            <span style={styles.scheduleCancelText}>취소</span>
+                            <span style={styles.scheduleWarningText}>출석 없음</span>
+                            <span style={styles.scheduleWarningText}>차감 없음</span>
+                          </>
+                        ) : isNoShow ? (
+                          <>
+                            <span style={styles.scheduleNoShowText}>노쇼</span>
+                            <span style={styles.scheduleWarningText}>출석 없음</span>
+                            <span style={styles.scheduleDoneText}>차감 완료</span>
+                          </>
+                        ) : (
+                          <>
+                            {attended ? (
+                              <span style={styles.scheduleDoneText}>출석 완료</span>
+                            ) : (
+                              <span style={styles.scheduleWarningText}>출석 전</span>
+                            )}
+
+                            {ptUsed ? (
+                              <span style={styles.scheduleDoneText}>차감 완료</span>
+                            ) : (
+                              <span style={styles.scheduleWarningText}>차감 전</span>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-
-                  <div style={styles.compactWorkoutRow}>
-                    <span style={styles.compactBodyIcon}>{renderWorkoutPartIcon(todayBodyPart, 46)}</span>
-                    <strong style={styles.compactBodyText}>{getWorkoutPartMeta(todayBodyPart).label}</strong>
-                    <span style={styles.compactDivider} />
-                    <span style={styles.compactConditionIcon}>{condition.icon}</span>
-                    <strong style={styles.compactConditionText}>{condition.text}</strong>
-                  </div>
-
-                  {lastIssueText ? (
-                    <div style={styles.compactIssueLine}>
-                      <span style={styles.compactIssueIcon}>▣</span>
-                      <span>지난 이슈: {lastIssueText}</span>
-                    </div>
-                  ) : (
-                    <div style={styles.compactIssueLinePlaceholder} aria-hidden="true" />
-                  )}
-
-                  <div style={styles.scheduleStatusRow}>
-                    {isScheduleSMSSent(schedule) && (
-                      <span style={styles.scheduleSmsDoneText}>문자 완료</span>
-                    )}
-                    {isCancelled ? (
-                      <span style={styles.scheduleCancelText}>취소</span>
-                    ) : isNoShow ? (
-                      <>
-                        <span style={styles.scheduleNoShowText}>노쇼</span>
-                        <span style={styles.scheduleDoneText}>차감 완료</span>
-                      </>
-                    ) : isCompleted ? (
-                      <span style={styles.scheduleDoneText}>완료</span>
-                    ) : (
-                      <>
-                        <span style={attended ? styles.scheduleDoneText : styles.scheduleWarningText}>
-                          {attended ? "출석 완료" : "출석 전"}
-                        </span>
-                        <span style={ptUsed ? styles.scheduleDoneText : styles.scheduleWarningText}>
-                          {ptUsed ? "차감 완료" : "차감 전"}
-                        </span>
-                      </>
-                    )}
                   </div>
 
                   <div style={styles.incompleteButtonGroup}>
@@ -8351,80 +8128,15 @@ async function saveMemberPreference() {
                 </div>
               );
             })}
-            <button
-              type="button"
-              onClick={() => setShowTodayScheduleOnlyModal(true)}
-              style={styles.moreScheduleCard}
-            >
-              <span style={styles.moreScheduleIcon}>▤</span>
-              <strong style={styles.moreScheduleCount}>{schedules.length > 5 ? `+${schedules.length - 5}개 더` : "더보기"}</strong>
-              <span style={styles.moreScheduleText}>{schedules.length > 5 ? "오늘 전체 스케줄 보기" : "오늘 전체 스케줄 보기"}</span>
-              <span style={styles.moreScheduleArrow}>⌄</span>
-            </button>
           </div>
         )}
       </section>
 
-      {lastAction && (
-        <div style={styles.notice}>
-          <span>
-            <strong>{lastAction.memberName}</strong>
-            {lastAction.type === "pt" ? " PT 1회 차감됨" : " 출석 체크됨"}
-          </span>
-
-          {lastAction.type === "pt" && (
-            <button onClick={undo} style={styles.noticeButton}>
-              실행 취소
-            </button>
-          )}
-        </div>
-      )}
-
-      <section style={styles.homeLauncherGrid}>
-        <button type="button" onClick={() => openMemberListModal("회원 목록", true, false)} style={styles.homeLauncherItem}>
-          <span style={{ ...styles.homeLauncherIcon, color: "#f6d38b" }}>◉</span>
-          <strong>회원 목록</strong>
-          <span>전체 회원 관리</span>
-        </button>
-        <button type="button" onClick={() => setShowAddModal(true)} style={styles.homeLauncherItem}>
-          <span style={{ ...styles.homeLauncherIcon, color: "#f6d38b" }}>＋</span>
-          <strong>신규 등록</strong>
-          <span>신규 회원 등록</span>
-        </button>
-        <button type="button" onClick={() => openMemberListModal("PT 사용/차감", true, false)} style={styles.homeLauncherItem}>
-          <span style={{ ...styles.homeLauncherIcon, color: "#f6d38b" }}>PT</span>
-          <strong>PT 사용/차감</strong>
-          <span>PT 이용 현황</span>
-        </button>
-        <button type="button" onClick={() => openMemberListModal("상담 기록", true, false)} style={styles.homeLauncherItem}>
-          <span style={{ ...styles.homeLauncherIcon, color: "#f6d38b" }}>…</span>
-          <strong>상담 기록</strong>
-          <span>상담 내역 관리</span>
-        </button>
-        <button type="button" onClick={() => openMemberListModal("운동 기록", true, false)} style={styles.homeLauncherItem}>
-          <span style={{ ...styles.homeLauncherIcon, color: "#f6d38b" }}>Ⅱ</span>
-          <strong>운동 기록</strong>
-          <span>운동 기록 작성</span>
-        </button>
-        <button type="button" onClick={() => openMemberListModal("인바디 기록", true, false)} style={styles.homeLauncherItem}>
-          <span style={{ ...styles.homeLauncherIcon, color: "#f6d38b" }}>▤</span>
-          <strong>인바디 기록</strong>
-          <span>인바디 결과</span>
-        </button>
-        <button type="button" onClick={openScheduleCheckModal} style={styles.homeLauncherItem}>
-          <span style={{ ...styles.homeLauncherIcon, color: "#f6d38b" }}>▣</span>
-          <strong>스케줄 관리</strong>
-          <span>일정 관리</span>
-        </button>
-        <button type="button" onClick={() => setShowTodayTodoModal(true)} style={styles.homeLauncherItem}>
-          <span style={{ ...styles.homeLauncherIcon, color: "#f6d38b" }}>✓</span>
-          <strong>오늘 할 일</strong>
-          <span>필요할 때만 확인</span>
-        </button>
-        <button type="button" onClick={() => setShowSalesModal(true)} style={styles.homeLauncherItem}>
-          <span style={{ ...styles.homeLauncherIcon, color: "#f6d38b" }}>▥</span>
-          <strong>매출 관리</strong>
-          <span>매출 현황 확인</span>
+      <section style={styles.scheduleAddWideBox}>
+        <button onClick={openScheduleCheckModal} style={styles.scheduleAddWideButton}>
+          <span style={styles.actionCardIcon}>☰</span>
+          <span>스케줄 확인 / 추가</span>
+          <span style={styles.actionCardArrow}>›</span>
         </button>
       </section>
 
@@ -9078,113 +8790,6 @@ async function saveMemberPreference() {
         </div>
       )}
 
-
-      {showTodayScheduleOnlyModal && (
-        <div style={styles.todayScheduleOnlyOverlay} onClick={() => setShowTodayScheduleOnlyModal(false)}>
-          <section style={styles.todayScheduleOnlyModal} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.todayScheduleOnlyHeader}>
-              <div>
-                <h2 style={styles.todayScheduleOnlyTitle}>오늘 전체 스케줄</h2>
-                <p style={styles.todayScheduleOnlyDesc}>메인에 보이지 않는 수업까지 오늘 일정만 확인합니다.</p>
-              </div>
-              <div style={styles.todayScheduleOnlyActions}>
-                <span style={styles.todayScheduleOnlyCount}>{schedules.length}건</span>
-                <button type="button" onClick={() => setShowTodayScheduleOnlyModal(false)} style={styles.todayScheduleOnlyCloseButton}>
-                  닫기
-                </button>
-              </div>
-            </div>
-
-            {schedules.length === 0 ? (
-              <div style={styles.todayScheduleOnlyEmpty}>오늘 등록된 스케줄이 없습니다.</div>
-            ) : (
-              <div style={styles.todayScheduleOnlyGrid}>
-                {schedules.map((schedule) => {
-                  const member = getScheduleMember(schedule);
-                  const attended = !!schedule.attendance_checked;
-                  const ptUsed = !!schedule.pt_used;
-                  const isNoShow = schedule.status === "noshow";
-                  const isCancelled = schedule.status === "cancelled";
-                  const isCompleted = schedule.status === "completed" || (attended && ptUsed);
-                  const lastWorkout = lastWorkoutMap[schedule.id];
-                  const todayBodyPart = getScheduleTodayBodyPart(schedule, lastWorkout);
-                  const condition = getScheduleConditionCompact(schedule, member, lastWorkout);
-                  const lastIssueText = getScheduleLastIssueText(schedule, member, lastWorkout);
-                  const preferenceTags = getSchedulePreferenceTags(schedule);
-                  const memberPtText = getScheduleMemberPtText(schedule);
-
-                  return (
-                    <div key={schedule.id} style={styles.todayScheduleOnlyCard}>
-                      <div style={styles.compactScheduleHead}>
-                        <div style={styles.compactScheduleTime}>
-                          <span>{formatTime(schedule.start_time).startsWith("오전") ? "오전" : "오후"}</span>
-                          <strong>{formatTime(schedule.start_time).replace(/^오후\s?/, "").replace(/^오전\s?/, "")}</strong>
-                        </div>
-
-                        <div style={styles.compactMemberBlock}>
-                          <div style={styles.compactMemberLine}>
-                            <strong style={styles.compactMemberName}>{getScheduleMemberNames(schedule)}</strong>
-                            {memberPtText && <span style={styles.compactPtText}>{memberPtText}</span>}
-                          </div>
-
-                          {preferenceTags.length > 0 && (
-                            <div style={styles.compactTagRow}>
-                              {preferenceTags.slice(0, 3).map((tag) => (
-                                <span key={tag} style={styles.compactTag}>{tag}</span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div style={styles.compactWorkoutRow}>
-                        <span style={styles.compactBodyIcon}>{renderWorkoutPartIcon(todayBodyPart, 46)}</span>
-                        <strong style={styles.compactBodyText}>{getWorkoutPartMeta(todayBodyPart).label}</strong>
-                        <span style={styles.compactDivider} />
-                        <span style={styles.compactConditionIcon}>{condition.icon}</span>
-                        <strong style={styles.compactConditionText}>{condition.text}</strong>
-                      </div>
-
-                      {lastIssueText ? (
-                        <div style={styles.compactIssueLine}>
-                          <span style={styles.compactIssueIcon}>▣</span>
-                          <span>지난 이슈: {lastIssueText}</span>
-                        </div>
-                      ) : (
-                        <div style={styles.compactIssueLinePlaceholder} aria-hidden="true" />
-                      )}
-
-                      <div style={styles.scheduleStatusRow}>
-                        {isScheduleSMSSent(schedule) && <span style={styles.scheduleSmsDoneText}>문자 완료</span>}
-                        {isCancelled ? (
-                          <span style={styles.scheduleCancelText}>취소</span>
-                        ) : isNoShow ? (
-                          <>
-                            <span style={styles.scheduleNoShowText}>노쇼</span>
-                            <span style={styles.scheduleDoneText}>차감 완료</span>
-                          </>
-                        ) : isCompleted ? (
-                          <span style={styles.scheduleDoneText}>완료</span>
-                        ) : (
-                          <>
-                            <span style={attended ? styles.scheduleDoneText : styles.scheduleWarningText}>{attended ? "출석 완료" : "출석 전"}</span>
-                            <span style={ptUsed ? styles.scheduleDoneText : styles.scheduleWarningText}>{ptUsed ? "차감 완료" : "차감 전"}</span>
-                          </>
-                        )}
-                      </div>
-
-                      <div style={styles.incompleteButtonGroup}>
-                        {renderScheduleQuickButtons(schedule, isNoShow || isCancelled || isCompleted)}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        </div>
-      )}
-
       {showScheduleCheckModal && (
         <div style={styles.scheduleFullOverlay}>
           <section style={styles.scheduleFullModalBox}>
@@ -9631,31 +9236,11 @@ async function saveMemberPreference() {
               <option value="consult">상담</option>
             </select>
 
-            <label style={styles.label}>오늘 운동 부위</label>
-            <div style={styles.schedulePartPickerGrid}>
-              {workoutPartOptions
-                .filter((item, index, array) => array.findIndex((target) => target.label === item.label) === index)
-                .map((part) => {
-                  const selected = scheduleWorkoutPart === part.key || scheduleWorkoutPart === part.label;
-                  return (
-                    <button
-                      key={part.key}
-                      type="button"
-                      onClick={() => setScheduleWorkoutPart(selected ? "" : part.key)}
-                      style={selected ? styles.schedulePartPickerButtonActive : styles.schedulePartPickerButton}
-                    >
-                      <span style={styles.schedulePartPickerIcon}>{renderWorkoutPartIcon(part.key, 28)}</span>
-                      <strong>{part.label}</strong>
-                    </button>
-                  );
-                })}
-            </div>
-
             <label style={styles.label}>메모</label>
             <textarea
               value={scheduleMemo}
               onChange={(e) => setScheduleMemo(e.target.value)}
-              placeholder="예: 체형상담, 보강수업, 당일 참고사항"
+              placeholder="예: 하체, 체형상담, 보강수업"
               style={styles.textarea}
             />
 
@@ -9898,7 +9483,7 @@ async function saveMemberPreference() {
       flexWrap: "wrap",
       gap: 6,
       marginTop: 8,
-      marginBottom: 6,
+      marginBottom: 8,
     }}
   >
     {getOtSummaryTags(selectedMember).map((tag) => (
@@ -9949,75 +9534,29 @@ async function saveMemberPreference() {
 
             {detailMode === "menu" && (
               <>
-                <div style={styles.detailOverviewGrid}>
-                  <div style={styles.detailSummaryPanel}>
-                    <div style={styles.detailPanelTopRow}>
-                      <div>
-                        <h3 style={styles.detailPanelTitle}>최근수업</h3>
-                        <p style={styles.detailPanelSub}>회원카드는 출석 대신 PT 사용 기준으로 봅니다.</p>
-                      </div>
-                      <span style={styles.detailMiniBadge}>CARE</span>
-                    </div>
-                    {(() => {
-                      const latestWorkout = detailWorkoutSessions?.[0];
-                      const latestCondition = getLatestConditionForMember(selectedMember);
-                      const pt = getPtSummary(selectedMember, ptLogList);
-                      const workoutSummary = getLastWorkoutSummary(latestWorkout);
-                      const issueText = normalizeCompactText(
-                        latestWorkout?.issue || latestCondition?.memo || selectedMember?.note || "특이사항 없음",
-                        34
-                      );
+                <h3 style={styles.subTitle}>상세 보기</h3>
 
-                      return (
-                        <div style={styles.detailSummaryMiniGrid}>
-                          <div style={styles.detailSummaryMiniCard}>
-                            <span style={styles.detailSummaryLabel}>PT</span>
-                            <strong style={styles.detailSummaryValue}>{pt.used}/{pt.total}</strong>
-                            <small style={styles.detailSummaryHint}>{pt.remain}회 남음</small>
-                          </div>
-                          <div style={styles.detailSummaryMiniCard}>
-                            <span style={styles.detailSummaryLabel}>부위</span>
-                            <strong style={styles.detailSummaryValue}>{workoutSummary?.bodyPartText || "미정"}</strong>
-                            <small style={styles.detailSummaryHint}>최근 기록</small>
-                          </div>
-                          <div style={styles.detailSummaryWideCard}>
-                            <span style={styles.detailSummaryLabel}>지난이슈</span>
-                            <strong style={styles.detailSummaryIssue}>{issueText}</strong>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  <div style={styles.detailPatternPanel}>
-                    {renderWorkoutPatternBox()}
-                  </div>
-                </div>
-
-                <div style={styles.detailLauncherHeaderRow}>
-                  <h3 style={styles.subTitleCompact}>빠른 관리</h3>
-                  <span style={styles.detailLauncherHint}>필요한 메뉴만 작게 눌러 이동</span>
-                </div>
+                {renderWorkoutPatternBox()}
 
                 <div style={styles.menuGrid}>
                   <button onClick={() => setDetailMode("info")} style={styles.menuButton}>
-                    <span style={styles.menuButtonIcon}>i</span><span>회원 정보</span>
+                    회원 정보
                   </button>
                   <button onClick={() => openContactModal(selectedMember, "pending")} style={styles.menuButton}>
-                    <span style={styles.menuButtonIcon}>✎</span><span>상담기록</span>
+                    상담기록
                   </button>
                   <button onClick={() => setDetailMode("preference")} style={styles.menuButton}>
-                    <span style={styles.menuButtonIcon}>#</span><span>성향 메모</span>
+                    성향 메모
                   </button>
                   <button onClick={() => setDetailMode("otCheck")} style={styles.menuButton}>
-                    <span style={styles.menuButtonIcon}>OT</span><span>OT 성향체크</span>
+                    OT 성향체크
                   </button>
                   <button
                     type="button"
                     style={styles.menuButton}
                     onClick={() => sendOtCheckSms(selectedMember)}
                   >
-                    <span style={styles.menuButtonIcon}>↗</span><span>OT 체크 문자</span>
+                    OT 성향체크 문자
                   </button>
                   <button
                     type="button"
@@ -10040,10 +9579,10 @@ ${link}`;
                       window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
                     }}
                   >
-                    <span style={styles.menuButtonIcon}>↗</span><span>성향체크 문자</span>
+                    성향체크 문자
                   </button>
                   <button onClick={() => setDetailMode("pt")} style={styles.menuButton}>
-                    <span style={styles.menuButtonIcon}>PT</span><span>PT 사용기록</span>
+                    PT 사용 기록
                   </button>
                   <button
                     onClick={() => {
@@ -10051,13 +9590,13 @@ ${link}`;
                     }}
                     style={styles.menuButton}
                   >
-                    <span style={styles.menuButtonIcon}>W</span><span>운동 기록</span>
+                    운동 기록
                   </button>
                   <button onClick={() => setDetailMode("inbody")} style={styles.menuButton}>
-                    <span style={styles.menuButtonIcon}>△</span><span>인바디 기록</span>
+                    인바디 기록
                   </button>
                   <button onClick={() => openMemberScheduleSearch(selectedMember)} style={styles.menuButton}>
-                    <span style={styles.menuButtonIcon}>⌘</span><span>스케줄 확인</span>
+                    스케줄 확인
                   </button>
                 </div>
               </>
@@ -11677,6 +11216,21 @@ ${link}`;
         </div>
       )}
 
+      {lastAction && (
+        <div style={styles.notice}>
+          <span>
+            <strong>{lastAction.memberName}</strong>
+            {lastAction.type === "pt" ? " PT 1회 차감됨" : " 출석 체크됨"}
+          </span>
+
+          {lastAction.type === "pt" && (
+            <button onClick={undo} style={styles.noticeButton}>
+              실행 취소
+            </button>
+          )}
+        </div>
+      )}
+
       <section style={styles.actionSearchGridThree}>
         <button onClick={() => setShowAddModal(true)} style={styles.actionBigCard}>
           <span style={{ ...styles.actionBigIcon, color: "#facc15" }}>👤</span>
@@ -11704,7 +11258,7 @@ ${link}`;
             <div style={styles.whiteModalTop}>
               <div>
                 <h2 style={styles.whiteModalTitle}>{memberListTitle}</h2>
-                <p style={styles.whiteMuted}>{getMemberListModalDescription()}</p>
+                <p style={styles.whiteMuted}>{showInactiveMembers ? "비활성 회원은 복구 후 다시 운영 목록에 표시됩니다." : "회원을 검색하고 카드를 누르면 상세보기로 바로 이동합니다."}</p>
               </div>
 
               <button onClick={closeMemberListModal} style={styles.whiteCloseButton}>
@@ -11880,7 +11434,7 @@ const styles = {
     border: "1px solid #333",
     borderRadius: 999,
     padding: "10px 14px",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
     boxShadow: "0 10px 24px rgba(0,0,0,0.22)",
   },
@@ -11935,7 +11489,7 @@ const styles = {
   },
   exitConfirmTitle: {
     display: "block",
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: 1000,
     marginBottom: 8,
   },
@@ -11955,7 +11509,7 @@ const styles = {
     border: "1px solid #ddd",
     background: "#f4f4f4",
     color: "#222",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "13px 12px",
     fontSize: 15,
     fontWeight: 1000,
@@ -11964,22 +11518,17 @@ const styles = {
     border: "1px solid #111",
     background: "#111",
     color: "#fff",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "13px 12px",
     fontSize: 15,
     fontWeight: 1000,
   },
   page: {
-    height: "100dvh",
-    minHeight: "100dvh",
-    overflow: "hidden",
-    background: "radial-gradient(circle at 50% -10%, rgba(246,211,139,0.08), transparent 34%), linear-gradient(180deg, #05080a 0%, #090d0f 100%)",
+    minHeight: "100vh",
+    background: "linear-gradient(180deg, #090909 0%, #111 100%)",
     color: "#fff",
-    padding: "18px 26px max(12px, env(safe-area-inset-bottom))",
-    boxSizing: "border-box",
+    padding: 24,
     fontFamily: "Arial, sans-serif",
-    display: "flex",
-    flexDirection: "column",
   },
 
   todayDashboardBox: {
@@ -12020,7 +11569,7 @@ const styles = {
     border: "1px solid rgba(255, 255, 255, 0.18)",
     borderRadius: 999,
     padding: "6px 10px",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 800,
   },
 
@@ -12041,12 +11590,12 @@ const styles = {
 
   todayTodoOpenTextWrap: {
     display: "grid",
-    gap: 6,
+    gap: 4,
     textAlign: "left",
   },
 
   todayTodoOpenTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: 1000,
     color: "#111827",
   },
@@ -12173,7 +11722,7 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr) auto",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
   },
 
   todayTodoModalItemDone: {
@@ -12237,7 +11786,7 @@ const styles = {
 
   todayTaskLabel: {
     color: "#334155",
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 800,
   },
 
@@ -12302,7 +11851,7 @@ const styles = {
     border: "1px solid #d1d5db",
     background: "#ffffff",
     color: "#111827",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "9px 10px",
     display: "grid",
     gridTemplateColumns: "auto minmax(0, 1fr) auto",
@@ -12477,13 +12026,13 @@ const styles = {
   summaryBox: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr 1fr",
-    gap: 10,
-    marginBottom: 11,
+    gap: 12,
+    marginBottom: 14,
   },
   salesBox: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: 10,
+    gap: 12,
     marginBottom: 22,
   },
   salesCard: {
@@ -12501,13 +12050,13 @@ const styles = {
   },
   salesValue: {
     color: "#fff",
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 900,
   },
   salesMiniText: {
     color: "#aaa",
     margin: "6px 0 0",
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 800,
   },
   salesModalGrid: {
@@ -12529,7 +12078,7 @@ const styles = {
   whiteSalesLabel: {
     color: "#4b5563",
     margin: "0 0 10px",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
   },
   whiteSalesValue: {
@@ -12549,7 +12098,7 @@ const styles = {
     border: "1px solid #272727",
     borderRadius: 24,
     padding: 0,
-    marginBottom: 11,
+    marginBottom: 14,
     boxShadow: "0 12px 32px rgba(0,0,0,.22)",
   },
   contactCardDefault: {
@@ -12587,7 +12136,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: 900,
     flexShrink: 0,
   },
@@ -12606,7 +12155,7 @@ const styles = {
     alignItems: "center",
     gap: 18,
     flexWrap: "wrap",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
   },
   legendItem: {
@@ -12614,7 +12163,7 @@ const styles = {
     alignItems: "center",
     gap: 8,
     color: "#bbb",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
   },
   legendBlue: {
@@ -12678,7 +12227,7 @@ const styles = {
     borderRadius: 16,
     padding: 14,
     display: "grid",
-    gap: 6,
+    gap: 4,
     textAlign: "center",
   },
   contactListRows: {
@@ -12692,7 +12241,7 @@ const styles = {
     padding: 14,
     display: "grid",
     gridTemplateColumns: "1fr auto",
-    gap: 10,
+    gap: 12,
     alignItems: "center",
   },
   contactListMain: {
@@ -12735,7 +12284,7 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
   },
   autoCareName: {
     color: "#fff",
@@ -12770,7 +12319,7 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "center",
     gap: 14,
-    marginBottom: 11,
+    marginBottom: 14,
   },
   todoTitle: {
     fontSize: 26,
@@ -12779,8 +12328,8 @@ const styles = {
   },
   todoDesc: {
     color: "#aaa",
-    margin: "4px 0 0",
-    fontSize: 13,
+    margin: "6px 0 0",
+    fontSize: 14,
   },
   todaySalesGood: {
     background: "#263a36",
@@ -12788,7 +12337,7 @@ const styles = {
     border: "1px solid #3f5f58",
     borderRadius: 999,
     padding: "9px 13px",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
     whiteSpace: "nowrap",
   },
@@ -12798,7 +12347,7 @@ const styles = {
     border: "1px solid #854d0e",
     borderRadius: 999,
     padding: "9px 13px",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
     whiteSpace: "nowrap",
   },
@@ -12832,7 +12381,7 @@ const styles = {
   todoCardDesc: {
     display: "block",
     color: "#777",
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 800,
   },
   summaryCardWithIcon: {
@@ -12844,7 +12393,7 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "1fr auto",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
     textAlign: "left",
   },
   summaryMainButton: {
@@ -12864,7 +12413,7 @@ const styles = {
     border: "1px solid #ffffff",
     borderRadius: 12,
     padding: "10px 14px",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
     whiteSpace: "nowrap",
   },
@@ -12875,7 +12424,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: 900,
   },
   summaryIconYellow: {
@@ -12889,7 +12438,7 @@ const styles = {
   },
   summaryTextWrap: {
     display: "grid",
-    gap: 6,
+    gap: 4,
     fontSize: 16,
     fontWeight: 900,
   },
@@ -12914,8 +12463,8 @@ const styles = {
   },
   scheduleDateText: {
     color: "#aaa",
-    margin: "4px 0 0",
-    fontSize: 13,
+    margin: "6px 0 0",
+    fontSize: 14,
   },
   scheduleAddButton: {
     background: "#f5f5f5",
@@ -12930,7 +12479,7 @@ const styles = {
   scheduleList: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: 10,
+    gap: 12,
   },
   scheduleItem: {
     background: "#202020",
@@ -13115,15 +12664,15 @@ const styles = {
     border: "1px solid #31524b",
     borderRadius: 18,
     padding: 12,
-    marginBottom: 11,
+    marginBottom: 14,
     display: "grid",
     gridTemplateColumns: "1fr auto",
-    gap: 10,
+    gap: 12,
     alignItems: "center",
   },
   smsQueueInfo: {
     display: "grid",
-    gap: 6,
+    gap: 4,
     minWidth: 0,
   },
   smsQueueTitle: {
@@ -13222,8 +12771,8 @@ const styles = {
   },
   incompleteDesc: {
     color: "#c9b27a",
-    margin: "4px 0 0",
-    fontSize: 13,
+    margin: "6px 0 0",
+    fontSize: 14,
   },
   incompleteCount: {
     background: "#facc15",
@@ -13256,7 +12805,7 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "auto 1fr",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
     minWidth: 0,
   },
   incompleteCompleteButton: {
@@ -13418,12 +12967,12 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
   },
   summaryMemberInfo: {
     color: "#aaa",
-    margin: "4px 0 0",
-    fontSize: 13,
+    margin: "6px 0 0",
+    fontSize: 14,
   },
   summaryActionGroup: {
     display: "grid",
@@ -13541,44 +13090,33 @@ const styles = {
     border: "none",
     background: "#ffffff",
     color: "#111",
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 900,
   },
   notice: {
-    position: "fixed",
-    left: "50%",
-    bottom: "calc(158px + env(safe-area-inset-bottom))",
-    transform: "translateX(-50%)",
-    zIndex: 50000,
-    minWidth: 420,
-    maxWidth: "calc(100vw - 48px)",
-    background: "linear-gradient(90deg, rgba(88,60,16,0.94), rgba(38,28,12,0.96))",
-    color: "#f6d38b",
-    border: "1px solid rgba(246,211,139,0.70)",
-    borderRadius: 14,
-    padding: "13px 16px",
+    background: "#272111",
+    border: "1px solid #facc15",
+    color: "#fde68a",
+    padding: 16,
+    borderRadius: 18,
+    marginBottom: 22,
     display: "flex",
-    alignItems: "center",
     justifyContent: "space-between",
-    gap: 16,
-    fontSize: 16,
-    fontWeight: 900,
-    boxShadow: "0 18px 36px rgba(0,0,0,0.34)",
+    gap: 12,
+    alignItems: "center",
   },
   noticeButton: {
-    background: "linear-gradient(180deg, #f9d977, #d89b2a)",
+    background: "#facc15",
     color: "#111",
-    border: "1px solid rgba(255,255,255,0.14)",
-    borderRadius: 11,
-    padding: "7px 12px",
-    fontWeight: 1000,
-    fontSize: 12,
+    border: "none",
+    borderRadius: 12,
+    padding: "10px 14px",
+    fontWeight: 800,
   },
   modalOverlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(17, 24, 39, .42)",
-    backdropFilter: "blur(8px)",
+    background: "rgba(0,0,0,.72)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
@@ -13591,12 +13129,12 @@ const styles = {
     height: "calc(100vh - 88px)",
     maxHeight: "none",
     overflowY: "auto",
-    background: "linear-gradient(180deg, #fffdf8 0%, #f8f5ed 100%)",
-    color: "#111827",
-    border: "1px solid rgba(191, 159, 104, .45)",
-    borderRadius: 28,
-    padding: 18,
-    boxShadow: "0 24px 70px rgba(15, 23, 42, .28)",
+    background: "#ffffff",
+    color: "#111",
+    border: "1px solid #e5e5e5",
+    borderRadius: 24,
+    padding: 22,
+    boxShadow: "0 20px 60px rgba(0,0,0,.45)",
   },
   modalTitle: {
     fontSize: 28,
@@ -13649,7 +13187,7 @@ const styles = {
     border: "1px solid #e5e5e5",
     borderRadius: 16,
     padding: 14,
-    marginBottom: 11,
+    marginBottom: 14,
   },
   ptOptionGridWhite: {
     display: "grid",
@@ -13690,13 +13228,13 @@ const styles = {
     border: "1px solid #e5e5e5",
     borderRadius: 16,
     padding: 14,
-    marginBottom: 11,
+    marginBottom: 14,
   },
   priceSummaryTitle: {
     margin: 0,
     marginBottom: 6,
     color: "#111",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
   },
   priceSummaryText: {
@@ -13728,12 +13266,12 @@ const styles = {
     gap: 8,
   },
   scheduleSlotButton: {
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "12px 10px",
     textAlign: "left",
     display: "grid",
     gap: 5,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
   },
   scheduleSlotEmpty: {
@@ -13762,7 +13300,7 @@ const styles = {
     border: "1px solid #facc15",
     borderRadius: 16,
     padding: 14,
-    marginBottom: 11,
+    marginBottom: 14,
   },
   conflictStrongBox: {
     background: "#fee2e2",
@@ -13770,12 +13308,12 @@ const styles = {
     border: "1px solid #fecaca",
     borderRadius: 16,
     padding: 14,
-    marginBottom: 11,
+    marginBottom: 14,
   },
   conflictList: {
     display: "grid",
     gap: 10,
-    marginBottom: 11,
+    marginBottom: 14,
   },
   conflictItem: {
     background: "#f3f3f3",
@@ -13814,7 +13352,7 @@ const styles = {
   schedulePreviewItem: {
     background: "#181818",
     border: "1px solid #333",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     display: "flex",
     justifyContent: "space-between",
@@ -13848,11 +13386,11 @@ const styles = {
     background: "#3f1111",
     color: "#fca5a5",
     border: "1px solid #7f1d1d",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     marginTop: -6,
     marginBottom: 16,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
   },
   autoEndTimeBox: {
@@ -13884,9 +13422,9 @@ const styles = {
     background: "#222",
     color: "#fff",
     border: "1px solid #444",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "12px 10px",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
   },
   exerciseSuggestBox: {
@@ -13894,7 +13432,7 @@ const styles = {
     flexWrap: "wrap",
     gap: 8,
     marginTop: -8,
-    marginBottom: 11,
+    marginBottom: 14,
   },
   exerciseSuggestButton: {
     background: "#111",
@@ -13911,7 +13449,7 @@ const styles = {
     borderRadius: 16,
     padding: 12,
     marginTop: -4,
-    marginBottom: 11,
+    marginBottom: 14,
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
@@ -13929,44 +13467,26 @@ const styles = {
   },
   menuGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-    gap: 10,
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 12,
   },
   menuButton: {
-    background: "rgba(255,255,255,.86)",
-    color: "#111827",
-    border: "1px solid rgba(191, 159, 104, .32)",
+    background: "#f7f7f7",
+    color: "#111",
+    border: "1px solid #dddddd",
     borderRadius: 18,
-    padding: "12px 10px",
-    fontSize: 14,
-    fontWeight: 950,
+    padding: 18,
+    fontSize: 18,
+    fontWeight: 900,
     marginBottom: 0,
-    display: "grid",
-    gap: 7,
-    justifyItems: "center",
-    alignItems: "center",
-    minHeight: 78,
-    boxShadow: "0 10px 24px rgba(17, 24, 39, .06)",
-  },
-  menuButtonIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 12,
-    background: "#111827",
-    color: "#fffaf0",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 12,
-    fontWeight: 1000,
   },
   recordHeader: {
     display: "flex",
     justifyContent: "space-between",
-    gap: 10,
+    gap: 12,
     alignItems: "center",
     marginTop: 22,
-    marginBottom: 11,
+    marginBottom: 14,
   },
   searchBox: {
     background: "#ffffff",
@@ -13984,7 +13504,7 @@ const styles = {
     background: "#333",
     color: "#fff",
     border: "1px solid #555",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "0 16px",
     fontWeight: 900,
     fontSize: 15,
@@ -13997,14 +13517,14 @@ const styles = {
     color: "#888",
   },
   sectionTitle: {
-    fontSize: 28,
-    marginBottom: 11,
+    fontSize: 30,
+    marginBottom: 18,
     fontWeight: 900,
   },
   membersGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: 10,
+    gap: 12,
     alignItems: "stretch",
   },
   label: {
@@ -14170,7 +13690,7 @@ textarea: {
   },
   memberSalesText: {
     color: "#facc15",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
   },
   vipBadge: {
@@ -14183,7 +13703,7 @@ textarea: {
   },
   compactInfoRow: {
     display: "flex",
-    gap: 10,
+    gap: 12,
     flexWrap: "wrap",
     color: "#111",
     fontSize: 14,
@@ -14285,7 +13805,7 @@ textarea: {
     gridTemplateColumns: "1.2fr 0.8fr",
     gap: 14,
     marginTop: 8,
-    marginBottom: 11,
+    marginBottom: 14,
   },
   cardPtAddButton: {
     background: "#f5f5f5",
@@ -14293,7 +13813,7 @@ textarea: {
     border: "1px solid #ffffff",
     borderRadius: 12,
     padding: "9px 12px",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
     width: "100%",
   },
@@ -14326,7 +13846,7 @@ textarea: {
     background: "#7f1d1d",
     color: "#fee2e2",
     border: "1px solid #991b1b",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "13px 14px",
     fontSize: 16,
     fontWeight: 900,
@@ -14335,7 +13855,7 @@ textarea: {
     background: "#f5f5f5",
     color: "#111",
     border: "1px solid #ffffff",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "13px 14px",
     fontSize: 16,
     fontWeight: 900,
@@ -14345,7 +13865,7 @@ textarea: {
     background: "#1d4ed8",
     color: "#fff",
     border: "1px solid #2563eb",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "14px",
     fontSize: 16,
     fontWeight: 900,
@@ -14355,7 +13875,7 @@ textarea: {
     background: "#202020",
     color: "#f5f5f5",
     border: "1px solid #3a3a3a",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "14px",
     fontSize: 16,
     fontWeight: 900,
@@ -14364,7 +13884,7 @@ textarea: {
     background: "#263a36",
     color: "#d7fff3",
     border: "1px solid #3f5f58",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "13px 14px",
     fontSize: 16,
     fontWeight: 900,
@@ -14376,7 +13896,7 @@ textarea: {
     background: "#181818",
     color: "#f5f5f5",
     border: "1px solid #4a4a4a",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "13px 14px",
     fontSize: 16,
     fontWeight: 900,
@@ -14385,7 +13905,7 @@ textarea: {
     background: "#181818",
     color: "#f5f5f5",
     border: "1px solid #444",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "13px 14px",
     fontSize: 16,
     fontWeight: 900,
@@ -14394,7 +13914,7 @@ textarea: {
     background: "#3f1111",
     color: "#fca5a5",
     border: "1px solid #7f1d1d",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "13px 14px",
     fontSize: 16,
     fontWeight: 900,
@@ -14425,13 +13945,9 @@ textarea: {
   detailTop: {
     display: "flex",
     justifyContent: "space-between",
-    gap: 14,
+    gap: 16,
     alignItems: "flex-start",
-    marginBottom: 12,
-    padding: "12px 14px",
-    borderRadius: 22,
-    background: "rgba(255,255,255,.78)",
-    border: "1px solid rgba(191, 159, 104, .28)",
+    marginBottom: 20,
   },
   detailHeaderLeft: {
     minWidth: 0,
@@ -14475,12 +13991,12 @@ textarea: {
     whiteSpace: "nowrap",
   },
   detailHeaderPassButton: {
-    border: "1px solid #111827",
-    background: "#111827",
-    color: "#fffaf0",
+    border: "1px solid #111",
+    background: "#111",
+    color: "#fff",
     borderRadius: 999,
-    padding: "7px 12px",
-    fontSize: 13,
+    padding: "9px 15px",
+    fontSize: 14,
     fontWeight: 1000,
   },
   detailFloatingBackButton: {
@@ -14488,20 +14004,18 @@ textarea: {
     right: 24,
     bottom: 24,
     zIndex: 100002,
-    border: "1px solid #111827",
-    background: "#111827",
-    color: "#fffaf0",
+    border: "1px solid #111",
+    background: "#111",
+    color: "#fff",
     borderRadius: 999,
-    padding: "11px 18px",
-    fontSize: 14,
+    padding: "14px 20px",
+    fontSize: 16,
     fontWeight: 1000,
-    boxShadow: "0 14px 34px rgba(0,0,0,0.20)",
+    boxShadow: "0 14px 34px rgba(0,0,0,0.26)",
   },
   detailName: {
-    fontSize: 29,
+    fontSize: 34,
     margin: 0,
-    letterSpacing: -0.5,
-    color: "#111827",
   },
   muted: {
     color: "#555",
@@ -14513,125 +14027,17 @@ textarea: {
     fontWeight: 900,
   },
   closeButton: {
-    background: "#ffffff",
-    color: "#111827",
-    border: "1px solid rgba(17,24,39,.18)",
-    borderRadius: 999,
-    padding: "9px 14px",
-    fontWeight: 1000,
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #444",
+    borderRadius: 14,
+    padding: "12px 16px",
+    fontWeight: 900,
   },
   subTitle: {
     fontSize: 22,
     marginTop: 22,
-    marginBottom: 11,
-  },
-  subTitleCompact: {
-    fontSize: 18,
-    margin: 0,
-    color: "#111827",
-    fontWeight: 1000,
-  },
-  detailOverviewGrid: {
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 1.1fr) minmax(280px, .9fr)",
-    gap: 10,
-    alignItems: "stretch",
-    marginBottom: 12,
-  },
-  detailSummaryPanel: {
-    background: "rgba(255,255,255,.86)",
-    border: "1px solid rgba(191, 159, 104, .32)",
-    borderRadius: 22,
-    padding: 14,
-    boxShadow: "0 12px 30px rgba(17,24,39,.06)",
-  },
-  detailPatternPanel: {
-    minWidth: 0,
-  },
-  detailPanelTopRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 10,
-    alignItems: "flex-start",
-    marginBottom: 10,
-  },
-  detailPanelTitle: {
-    margin: 0,
-    color: "#111827",
-    fontSize: 17,
-    fontWeight: 1000,
-  },
-  detailPanelSub: {
-    margin: "4px 0 0",
-    color: "#6b7280",
-    fontSize: 10,
-    fontWeight: 800,
-  },
-  detailMiniBadge: {
-    border: "1px solid rgba(191, 159, 104, .5)",
-    color: "#7c5a1f",
-    background: "#fff7e6",
-    borderRadius: 999,
-    padding: "5px 8px",
-    fontSize: 11,
-    fontWeight: 1000,
-  },
-  detailSummaryMiniGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 8,
-  },
-  detailSummaryMiniCard: {
-    background: "#fffaf0",
-    border: "1px solid rgba(191, 159, 104, .28)",
-    borderRadius: 16,
-    padding: "10px 11px",
-    display: "grid",
-    gap: 3,
-  },
-  detailSummaryWideCard: {
-    gridColumn: "1 / -1",
-    background: "#ffffff",
-    border: "1px solid rgba(17,24,39,.11)",
-    borderRadius: 16,
-    padding: "10px 11px",
-    display: "grid",
-    gap: 6,
-  },
-  detailSummaryLabel: {
-    color: "#7c5a1f",
-    fontSize: 11,
-    fontWeight: 1000,
-  },
-  detailSummaryValue: {
-    color: "#111827",
-    fontSize: 17,
-    fontWeight: 1000,
-  },
-  detailSummaryHint: {
-    color: "#6b7280",
-    fontSize: 10,
-    fontWeight: 800,
-  },
-  detailSummaryIssue: {
-    color: "#111827",
-    fontSize: 14,
-    fontWeight: 950,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  },
-  detailLauncherHeaderRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    margin: "6px 2px 10px",
-    gap: 10,
-  },
-  detailLauncherHint: {
-    color: "#6b7280",
-    fontSize: 10,
-    fontWeight: 800,
+    marginBottom: 14,
   },
   infoBlock: {
     background: "#222",
@@ -14648,7 +14054,7 @@ textarea: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
   },
   logDate: {
     fontSize: 16,
@@ -14771,7 +14177,7 @@ textarea: {
   },
   inbodyTrendLabel: {
     color: "#111",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
     paddingBottom: 10,
     whiteSpace: "nowrap",
@@ -14805,7 +14211,7 @@ textarea: {
     top: 0,
     transform: "translateX(-50%)",
     color: "#111",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
     lineHeight: "20px",
     textAlign: "center",
@@ -14856,7 +14262,7 @@ textarea: {
   },
   inbodyDeltaCaption: {
     color: "#444",
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 800,
   },
   inbodyDeltaGood: {
@@ -14906,7 +14312,7 @@ textarea: {
     background: "#111",
     color: "#fff",
     border: "none",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "16px 12px",
     fontWeight: 900,
     fontSize: 17,
@@ -14916,14 +14322,14 @@ textarea: {
     border: "1px solid #e5e5e5",
     borderRadius: 16,
     padding: 14,
-    marginBottom: 11,
+    marginBottom: 14,
     color: "#111",
   },
   contactResultGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(4, 1fr)",
     gap: 8,
-    marginBottom: 11,
+    marginBottom: 14,
   },
   contactResultButton: {
     background: "#f3f3f3",
@@ -14947,10 +14353,10 @@ textarea: {
     background: "#fef3c7",
     color: "#92400e",
     border: "1px solid #facc15",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
-    marginBottom: 11,
-    fontSize: 13,
+    marginBottom: 14,
+    fontSize: 14,
     fontWeight: 900,
   },
   scheduleCheckModalBox: {
@@ -14977,7 +14383,7 @@ textarea: {
     border: "none",
     borderRadius: 12,
     padding: "12px 14px",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
   },
   scheduleMiniCalendarBox: {
@@ -15013,7 +14419,7 @@ textarea: {
   scheduleMiniWeekRow: {
     display: "grid",
     gridTemplateColumns: "repeat(7, 1fr)",
-    gap: 6,
+    gap: 4,
     marginBottom: 4,
   },
   scheduleMiniWeekCell: {
@@ -15025,7 +14431,7 @@ textarea: {
   scheduleMiniCalendarGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(7, 1fr)",
-    gap: 6,
+    gap: 4,
   },
   scheduleMiniEmptyDay: {
     minHeight: 34,
@@ -15070,7 +14476,7 @@ textarea: {
     color: "#fff",
   },
   scheduleMiniDayNumber: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
     lineHeight: 1,
   },
@@ -15099,7 +14505,7 @@ textarea: {
     gridTemplateColumns: "1fr auto auto",
     gap: 10,
     alignItems: "center",
-    marginBottom: 11,
+    marginBottom: 14,
   },
   scheduleCheckTopActions: {
     display: "grid",
@@ -15146,7 +14552,7 @@ textarea: {
   scheduleCheckMember: {
     color: "#333",
     margin: "4px 0 0",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
   },
   scheduleCheckMemo: {
@@ -15261,7 +14667,7 @@ textarea: {
 
   feedbackCandidateList: {
     display: "grid",
-    gap: 10,
+    gap: 12,
   },
 
   feedbackCandidateSection: {
@@ -15322,7 +14728,7 @@ textarea: {
     borderRadius: 12,
     padding: "10px 12px",
     textAlign: "left",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
     lineHeight: 1.45,
     cursor: "pointer",
@@ -15416,7 +14822,7 @@ textarea: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
     textAlign: "left",
     cursor: "pointer",
   },
@@ -15460,7 +14866,7 @@ textarea: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: 8,
-    marginBottom: 11,
+    marginBottom: 14,
   },
   memberSortButton: {
     background: "#f3f3f3",
@@ -15468,7 +14874,7 @@ textarea: {
     border: "1px solid #ddd",
     borderRadius: 12,
     padding: "11px 12px",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
   },
   memberSortButtonActive: {
@@ -15477,13 +14883,13 @@ textarea: {
     border: "1px solid #111",
     borderRadius: 12,
     padding: "11px 12px",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
   },
   memberModalGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: 10,
+    gap: 12,
   },
   scheduleFullOverlay: {
     position: "fixed",
@@ -15549,7 +14955,7 @@ textarea: {
     background: "transparent",
     border: "none",
     color: "#111",
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: 1000,
     textAlign: "center",
     padding: "8px 4px",
@@ -15562,7 +14968,7 @@ textarea: {
     overflowY: "auto",
     background: "#fff",
     border: "1px solid #ddd",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 8,
     marginBottom: 10,
   },
@@ -15572,7 +14978,7 @@ textarea: {
     color: "#111",
     borderRadius: 10,
     padding: "10px 12px",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
     textAlign: "left",
   },
@@ -15582,7 +14988,7 @@ textarea: {
     color: "#fff",
     borderRadius: 10,
     padding: "10px 12px",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
     textAlign: "left",
   },
@@ -15604,7 +15010,7 @@ textarea: {
     alignItems: "center",
     background: "#111",
     color: "#fff",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "10px 12px",
     fontSize: 15,
     fontWeight: 900,
@@ -15619,7 +15025,7 @@ textarea: {
   scheduleSwipeHint: {
     margin: 0,
     color: "#777",
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 800,
     textAlign: "center",
   },
@@ -15713,7 +15119,7 @@ textarea: {
   memberActionMenuGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 10,
+    gap: 12,
     marginTop: 18,
   },
 
@@ -15862,7 +15268,7 @@ textarea: {
     background: "#111",
     color: "#fff",
     border: "none",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "12px 16px",
     fontWeight: 900,
   },
@@ -15955,12 +15361,12 @@ textarea: {
   whiteSessionTop: {
     display: "flex",
     justifyContent: "space-between",
-    gap: 10,
+    gap: 12,
     alignItems: "center",
     marginBottom: 8,
   },
   whiteWorkoutDate: {
-    fontSize: 28,
+    fontSize: 20,
     margin: 0,
     fontWeight: 900,
     color: "#111",
@@ -15968,7 +15374,7 @@ textarea: {
   whiteExerciseGroup: {
     background: "#ffffff",
     border: "1px solid #d4d4d4",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     marginBottom: 10,
   },
@@ -16035,7 +15441,7 @@ textarea: {
     background: "#111",
     color: "#fff",
     border: "none",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "14px 12px",
     fontWeight: 900,
     fontSize: 16,
@@ -16044,7 +15450,7 @@ textarea: {
     background: "#e5e5e5",
     color: "#111",
     border: "none",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "14px 12px",
     fontWeight: 900,
     fontSize: 16,
@@ -16108,7 +15514,7 @@ textarea: {
   workoutTypeGrid: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
-    gap: 10,
+    gap: 12,
     marginTop: 18,
     marginBottom: 18,
   },
@@ -16128,7 +15534,7 @@ textarea: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: 10,
+    gap: 12,
     marginBottom: 12,
   },
   workoutTypeLabel: {
@@ -16158,7 +15564,7 @@ textarea: {
     border: "1px solid #ffffff",
     borderRadius: 12,
     padding: "10px 14px",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
     whiteSpace: "nowrap",
   },
@@ -16306,7 +15712,7 @@ textarea: {
     border: "none",
     borderRadius: 10,
     padding: "7px 8px",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
     boxSizing: "border-box",
   },
@@ -16368,14 +15774,14 @@ textarea: {
   trainerJournalBox: {
     background: "#181818",
     border: "1px solid #333",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     marginTop: 10,
   },
   trainerJournalBoxLight: {
     background: "#fff",
     border: "1px solid #e5e5e5",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     marginTop: 10,
   },
@@ -16397,7 +15803,7 @@ textarea: {
     borderRadius: 18,
     padding: 16,
     marginTop: 14,
-    marginBottom: 11,
+    marginBottom: 14,
     color: "#fff",
   },
   recommendCalorieBoxLight: {
@@ -16406,7 +15812,7 @@ textarea: {
     borderRadius: 16,
     padding: 14,
     marginTop: 10,
-    marginBottom: 11,
+    marginBottom: 14,
     color: "#111",
   },
   recommendCalorieText: {
@@ -16455,7 +15861,7 @@ textarea: {
     minHeight: 0,
     display: "grid",
     gridTemplateColumns: "minmax(250px, 32%) minmax(0, 1fr)",
-    gap: 10,
+    gap: 12,
     overflow: "visible",
   },
   scheduleFullCalendarPanel: {
@@ -16561,7 +15967,7 @@ textarea: {
   },
   scheduleCheckMemberCompact: {
     color: "#333",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -16588,7 +15994,7 @@ textarea: {
     background: "#fff7ed",
     border: "1px solid #fed7aa",
     color: "#c2410c",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 800,
   },
   reRegisterInlineAlertDark: {
@@ -16603,13 +16009,13 @@ textarea: {
     background: "rgba(255, 247, 237, 0.95)",
     border: "1px solid #fed7aa",
     color: "#c2410c",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 800,
   },
   reRegisterWorkoutBox: {
     marginTop: 12,
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 14,
     background: "#fff7ed",
     border: "1px solid #fed7aa",
     display: "flex",
@@ -16672,7 +16078,7 @@ textarea: {
   },
   lastWorkoutPreviewText: {
     color: "#555",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 800,
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -16842,7 +16248,7 @@ textarea: {
   scheduleTimelineHeader: {
     background: "#111",
     color: "#fff",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 10,
     marginBottom: 8,
   },
@@ -17124,8 +16530,7 @@ textarea: {
   modalOverlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(17, 24, 39, .42)",
-    backdropFilter: "blur(8px)",
+    background: "rgba(0,0,0,.72)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
@@ -17138,57 +16543,49 @@ textarea: {
     height: "calc(100vh - 88px)",
     maxHeight: "none",
     overflowY: "auto",
-    background: "linear-gradient(180deg, #fffdf8 0%, #f8f5ed 100%)",
-    color: "#111827",
-    border: "1px solid rgba(191, 159, 104, .45)",
-    borderRadius: 28,
-    padding: 18,
-    boxShadow: "0 24px 70px rgba(15, 23, 42, .28)",
+    background: "#ffffff",
+    color: "#111",
+    border: "1px solid #e5e5e5",
+    borderRadius: 24,
+    padding: 22,
+    boxShadow: "0 20px 60px rgba(0,0,0,.45)",
   },
   detailTop: {
     display: "flex",
     justifyContent: "space-between",
-    gap: 14,
+    gap: 16,
     alignItems: "flex-start",
-    marginBottom: 12,
-    padding: "12px 14px",
-    borderRadius: 22,
-    background: "rgba(255,255,255,.78)",
-    border: "1px solid rgba(191, 159, 104, .28)",
+    marginBottom: 18,
+    paddingBottom: 14,
+    borderBottom: "1px solid #e5e5e5",
   },
   detailName: {
-    fontSize: 28,
+    fontSize: 34,
     margin: 0,
     fontWeight: 1000,
-    color: "#111827",
-    letterSpacing: -0.5,
+    color: "#111",
   },
   muted: {
-    color: "#4b5563",
+    color: "#555",
     margin: 0,
     marginBottom: 8,
     fontWeight: 800,
   },
   detailPt: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: 1000,
     color: "#111",
   },
   menuButton: {
-    background: "rgba(255,255,255,.86)",
-    color: "#111827",
-    border: "1px solid rgba(191, 159, 104, .32)",
+    background: "#ffffff",
+    color: "#111",
+    border: "1px solid #d4d4d4",
     borderRadius: 18,
-    padding: "12px 10px",
-    fontSize: 14,
-    fontWeight: 950,
+    padding: 18,
+    fontSize: 18,
+    fontWeight: 1000,
     marginBottom: 0,
-    display: "grid",
-    gap: 7,
-    justifyItems: "center",
-    alignItems: "center",
-    minHeight: 78,
-    boxShadow: "0 10px 24px rgba(17,24,39,.06)",
+    boxShadow: "0 4px 12px rgba(0,0,0,.04)",
   },
   infoBlock: {
     background: "#ffffff",
@@ -17208,7 +16605,7 @@ textarea: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
   },
   logDate: {
     fontSize: 16,
@@ -17230,7 +16627,7 @@ textarea: {
   todayWorkoutExerciseCard: {
     background: "#ffffff",
     border: "1px solid #d4d4d4",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     color: "#111",
   },
@@ -17255,7 +16652,7 @@ textarea: {
   workoutSaveActions: {
     display: "grid",
     gridTemplateColumns: "repeat(3, 1fr)",
-    gap: 10,
+    gap: 12,
     alignItems: "stretch",
     marginTop: 16,
   },
@@ -17267,7 +16664,7 @@ textarea: {
     border: "1px solid #111",
     background: "#111",
     color: "#fff",
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: 1000,
     boxShadow: "0 4px 12px rgba(0,0,0,.12)",
   },
@@ -17279,7 +16676,7 @@ textarea: {
     border: "1px solid #111",
     background: "#fff",
     color: "#111",
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: 1000,
     boxShadow: "0 4px 12px rgba(0,0,0,.08)",
   },
@@ -17291,7 +16688,7 @@ textarea: {
     border: "1px solid #111",
     background: "#111",
     color: "#fff",
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: 1000,
     boxShadow: "0 4px 12px rgba(0,0,0,.12)",
   },
@@ -17314,14 +16711,14 @@ textarea: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
     marginBottom: 12,
     color: "#111",
   },
   inbodyTrendLineRow: {
     display: "grid",
     gridTemplateColumns: "90px 1fr",
-    gap: 10,
+    gap: 12,
     alignItems: "center",
     borderTop: "1px solid #e5e5e5",
     padding: "10px 0",
@@ -17397,7 +16794,7 @@ textarea: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
     textAlign: "left",
     cursor: "pointer",
   },
@@ -17552,7 +16949,7 @@ textarea: {
     gap: 5,
     flexWrap: "wrap",
     color: "#333",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 800,
     lineHeight: 1.25,
   },
@@ -17730,7 +17127,7 @@ textarea: {
     display: "flex",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    gap: 10,
+    gap: 12,
     marginBottom: 12,
   },
   personalMiniInfo: {
@@ -17741,7 +17138,7 @@ textarea: {
   },
   personalReferenceBox: {
     border: "1px solid #d8d8d8",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: "10px 12px",
     background: "#f8fafc",
     color: "#111",
@@ -17750,7 +17147,7 @@ textarea: {
   trainerHistoryList: {
     display: "grid",
     gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 10,
+    gap: 12,
     maxHeight: "70vh",
     overflowY: "auto",
     paddingRight: 4,
@@ -17778,7 +17175,7 @@ textarea: {
   },
   personalSectionTitle: {
     margin: "0 0 14px",
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: 1000,
     color: "#111",
   },
@@ -17795,7 +17192,7 @@ textarea: {
   },
   whitePill: {
     padding: "10px 14px",
-    borderRadius: 12,
+    borderRadius: 14,
     border: "1px solid #d8d8d8",
     background: "#fff",
     color: "#111",
@@ -17803,7 +17200,7 @@ textarea: {
   },
   whitePillActive: {
     padding: "10px 14px",
-    borderRadius: 12,
+    borderRadius: 14,
     border: "1px solid #111",
     background: "#111",
     color: "#fff",
@@ -17920,19 +17317,18 @@ textarea: {
     fontWeight: 900,
   },
   workoutPatternBox: {
-    border: "1px solid rgba(191, 159, 104, .32)",
-    borderRadius: 22,
+    border: "1px solid #111",
+    borderRadius: 18,
     padding: 14,
-    margin: 0,
-    background: "rgba(255,255,255,.86)",
-    color: "#111827",
-    boxShadow: "0 12px 30px rgba(17,24,39,.06)",
+    margin: "12px 0 16px",
+    background: "#fff",
+    color: "#111",
   },
   workoutPatternHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: 10,
+    gap: 12,
     marginBottom: 10,
   },
   workoutPatternTitle: {
@@ -17959,7 +17355,7 @@ textarea: {
     margin: 0,
     padding: 12,
     border: "1px dashed #bdbdbd",
-    borderRadius: 12,
+    borderRadius: 14,
     background: "#fafafa",
     color: "#555",
     lineHeight: 1.5,
@@ -17980,16 +17376,16 @@ textarea: {
     color: "#111",
   },
   workoutPatternBarTrack: {
-    height: 8,
-    border: "1px solid rgba(191, 159, 104, .3)",
+    height: 10,
+    border: "1px solid #111",
     borderRadius: 999,
-    background: "#fffaf0",
+    background: "#fff",
     overflow: "hidden",
   },
   workoutPatternBar: {
     height: "100%",
     borderRadius: 999,
-    background: "linear-gradient(90deg, #111827, #a77b2a)",
+    background: "#111",
   },
   workoutPatternCount: {
     textAlign: "right",
@@ -18000,7 +17396,7 @@ textarea: {
   workoutPatternSuggestion: {
     margin: "12px 0 0",
     padding: "10px 12px",
-    borderRadius: 12,
+    borderRadius: 14,
     background: "#fff8dd",
     border: "1px solid #e2c96b",
     color: "#111",
@@ -18019,14 +17415,14 @@ textarea: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: 10,
+    gap: 12,
     marginBottom: 10,
   },
   recentBodyReferenceEmpty: {
     margin: 0,
     padding: 12,
     border: "1px dashed #bdbdbd",
-    borderRadius: 12,
+    borderRadius: 14,
     color: "#555",
     background: "#fafafa",
     lineHeight: 1.5,
@@ -18037,7 +17433,7 @@ textarea: {
   },
   recentBodyReferenceCard: {
     border: "1px solid #d8d8d8",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     background: "#fff",
   },
@@ -18090,14 +17486,14 @@ textarea: {
   },
   mobileEmergencyTitle: {
     margin: 0,
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: 1000,
     color: "#111",
     letterSpacing: "-0.4px",
   },
   mobileEmergencySubtitle: {
     margin: "3px 0 0",
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 800,
     color: "#555",
   },
@@ -18123,7 +17519,7 @@ textarea: {
     background: "#fff",
     color: "#111",
     borderRadius: 12,
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: 1000,
   },
   mobileEmergencyTodayButton: {
@@ -18182,7 +17578,7 @@ textarea: {
     marginBottom: 3,
   },
   mobileEmergencySubLine: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 800,
     color: "#666",
     lineHeight: 1.35,
@@ -18213,839 +17609,5 @@ textarea: {
     fontSize: 12,
     fontWeight: 1000,
   },
-
-
-  /* ====================================================
-     1차 메인화면 정리안 적용
-     - 오늘 할 일/요약 노출 제거
-     - 오늘 스케줄 중심
-     - 4열 x 2줄 기준 압축 카드
-     - 차콜 다크톤 + 카드 분리감
-     - 하단 런처형 메뉴
-  ==================================================== */
-  page: {
-    height: "100dvh",
-    minHeight: "100dvh",
-    overflow: "hidden",
-    boxSizing: "border-box",
-    position: "relative",
-    display: "flex",
-    flexDirection: "column",
-    background: "#050708",
-    color: "#fff",
-    padding: "20px 30px max(16px, env(safe-area-inset-bottom))",
-    fontFamily: "Arial, sans-serif",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 16,
-    marginBottom: 22,
-    flexShrink: 0,
-  },
-  headerTitleRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 18,
-  },
-  headerDivider: {
-    width: 1,
-    height: 36,
-    background: "rgba(246,211,139,0.78)",
-    boxShadow: "0 0 10px rgba(246,211,139,0.18)",
-  },
-  title: {
-    margin: 0,
-    fontSize: "clamp(42px, 4.2vw, 58px)",
-    lineHeight: 0.9,
-    fontWeight: 1000,
-    letterSpacing: "-0.07em",
-    textShadow: "0 10px 28px rgba(0,0,0,0.42)",
-  },
-  subtitle: {
-    margin: 0,
-    fontSize: "clamp(15px, 1.35vw, 20px)",
-    color: "#f4f4f5",
-    fontWeight: 900,
-    letterSpacing: "-0.02em",
-    whiteSpace: "nowrap",
-  },
-  headerSalesButton: {
-    border: "1px solid rgba(250,204,21,0.7)",
-    background: "rgba(250,204,21,0.06)",
-    color: "#facc15",
-    borderRadius: 999,
-    padding: "9px 17px",
-    fontSize: 15,
-    fontWeight: 1000,
-  },
-  headerActions: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-  },
-  trainerQuickButton: {
-    border: "1px solid rgba(255,255,255,0.18)",
-    background: "rgba(255,255,255,0.055)",
-    color: "#fff",
-    borderRadius: 14,
-    padding: "10px 18px",
-    fontSize: 14,
-    fontWeight: 1000,
-    minWidth: 116,
-  },
-  adminBadge: {
-    border: "1px solid rgba(255,255,255,0.18)",
-    background: "rgba(255,255,255,0.055)",
-    color: "#fff",
-    borderRadius: 14,
-    padding: "10px 18px",
-    fontSize: 14,
-    fontWeight: 1000,
-    minWidth: 96,
-  },
-  incompleteBox: {
-    background: "#080b0d",
-    border: "1.15px solid rgba(214,157,48,0.78)",
-    borderRadius: 18,
-    padding: "22px 22px 20px",
-    marginBottom: 0,
-    height: "min(500px, 58dvh)",
-    minHeight: 405,
-    boxSizing: "border-box",
-    boxShadow: "0 18px 42px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.04), 0 0 18px rgba(214,157,48,0.06)",
-    flexShrink: 0,
-  },
-  incompleteTop: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 14,
-    alignItems: "flex-start",
-    marginBottom: 18,
-  },
-  incompleteTitle: {
-    fontSize: "clamp(27px, 2.6vw, 38px)",
-    margin: 0,
-    fontWeight: 1000,
-    color: "#f6d38b",
-    letterSpacing: "-0.045em",
-  },
-  incompleteDesc: {
-    color: "#d4d4d8",
-    margin: "7px 0 0",
-    fontSize: 13,
-    fontWeight: 800,
-  },
-  todaySmsStartButton: {
-    background: "#d7fff3",
-    color: "#10201d",
-    border: "1px solid #9eead8",
-    borderRadius: 999,
-    padding: "10px 18px",
-    fontSize: 13,
-    fontWeight: 1000,
-    whiteSpace: "nowrap",
-    boxShadow: "0 8px 18px rgba(0,0,0,0.22)",
-  },
-  incompleteCount: {
-    background: "linear-gradient(180deg, #f9d977, #d89b2a)",
-    color: "#111",
-    borderRadius: 13,
-    padding: "10px 15px",
-    fontSize: 19,
-    fontWeight: 1000,
-    whiteSpace: "nowrap",
-    minWidth: 58,
-    textAlign: "center",
-  },
-  incompleteList: {
-    display: "grid",
-    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-    gridTemplateRows: "minmax(245px, 280px) 52px",
-    columnGap: 13,
-    rowGap: 18,
-    alignItems: "stretch",
-    alignContent: "start",
-    height: "auto",
-  },
-  incompleteItem: {
-    position: "relative",
-    background: "#06090b",
-    border: "1px solid rgba(214,157,48,0.78)",
-    borderRadius: 12,
-    padding: "13px 13px 11px",
-    display: "grid",
-    gridTemplateRows: "52px 62px 25px 30px 43px",
-    gap: 8,
-    alignItems: "stretch",
-    minWidth: 0,
-    minHeight: 0,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 10px 22px rgba(0,0,0,0.24), 0 0 8px rgba(214,157,48,0.055)",
-    overflow: "hidden",
-  },
-  compactScheduleHead: {
-    display: "grid",
-    gridTemplateColumns: "60px minmax(0, 1fr)",
-    gap: 9,
-    alignItems: "start",
-    minWidth: 0,
-    minHeight: 0,
-  },
-  compactScheduleTime: {
-    color: "#60a5fa",
-    fontWeight: 1000,
-    lineHeight: 1.05,
-    letterSpacing: "-0.02em",
-  },
-  compactMemberBlock: {
-    minWidth: 0,
-    display: "grid",
-    gap: 6,
-  },
-  compactMemberLine: {
-    display: "flex",
-    alignItems: "baseline",
-    gap: 7,
-    minWidth: 0,
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-  },
-  compactMemberName: {
-    color: "#fff",
-    fontSize: "clamp(18px, 1.5vw, 23px)",
-    fontWeight: 1000,
-    letterSpacing: "-0.045em",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-  },
-  compactPtText: {
-    color: "#d4d4d8",
-    fontSize: 12,
-    fontWeight: 800,
-    flexShrink: 0,
-  },
-  compactTagRow: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 6,
-    minHeight: 0,
-    maxHeight: 19,
-    overflow: "hidden",
-  },
-  compactTag: {
-    background: "rgba(255,255,255,0.12)",
-    color: "#f4f4f5",
-    border: "1px solid rgba(255,255,255,0.10)",
-    padding: "2px 6px",
-    borderRadius: 999,
-    fontSize: 9,
-    fontWeight: 900,
-    lineHeight: 1.1,
-  },
-  compactWorkoutRow: {
-    display: "grid",
-    gridTemplateColumns: "54px minmax(54px, 1fr) 1px 30px 42px",
-    alignItems: "center",
-    gap: 9,
-    minHeight: 0,
-    overflow: "hidden",
-  },
-  compactBodyIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 0,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    border: "none",
-    color: "#d69d30",
-    background: "transparent",
-    flexShrink: 0,
-  },
-  compactBodyText: {
-    fontSize: "clamp(22px, 1.8vw, 28px)",
-    fontWeight: 1000,
-    color: "#fff",
-    letterSpacing: "-0.055em",
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-  },
-  compactDivider: {
-    width: 1,
-    height: 26,
-    background: "rgba(255,255,255,0.10)",
-  },
-  compactConditionIcon: {
-    color: "#f6d38b",
-    fontSize: 25,
-    lineHeight: 1,
-  },
-  compactConditionText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: 900,
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-  },
-  compactIssueLine: {
-    borderTop: "1px solid rgba(255,255,255,0.075)",
-    borderBottom: "1px solid rgba(255,255,255,0.045)",
-    padding: "3px 0",
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-    color: "#f4f4f5",
-    fontSize: 11,
-    fontWeight: 800,
-    minWidth: 0,
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    minHeight: 25,
-    boxSizing: "border-box",
-  },
-  compactIssueIcon: {
-    color: "#e5e7eb",
-    fontSize: 10,
-    flexShrink: 0,
-  },
-  compactIssueLinePlaceholder: {
-    height: 25,
-    minHeight: 25,
-    borderTop: "1px solid rgba(255,255,255,0.075)",
-    borderBottom: "1px solid rgba(255,255,255,0.045)",
-    visibility: "hidden",
-  },
-  scheduleStatusRow: {
-    display: "flex",
-    gap: 6,
-    flexWrap: "wrap",
-    marginTop: 0,
-    minHeight: 30,
-    alignItems: "center",
-    alignContent: "center",
-  },
-  scheduleDoneText: {
-    color: "#d7fff3",
-    background: "rgba(32,92,78,0.42)",
-    border: "1px solid rgba(62,151,130,0.5)",
-    borderRadius: 999,
-    padding: "5px 9px",
-    fontSize: 11,
-    fontWeight: 1000,
-    lineHeight: 1,
-    whiteSpace: "nowrap",
-  },
-  scheduleSmsDoneText: {
-    fontSize: 10,
-    fontWeight: 1000,
-    color: "#2563eb",
-    background: "#dbeafe",
-    borderRadius: 999,
-    padding: "3px 7px",
-  },
-  scheduleWarningText: {
-    color: "#f6d38b",
-    background: "rgba(70,48,12,0.45)",
-    border: "1px solid rgba(214,157,48,0.50)",
-    borderRadius: 999,
-    padding: "5px 9px",
-    fontSize: 11,
-    fontWeight: 1000,
-    lineHeight: 1,
-    whiteSpace: "nowrap",
-  },
-  scheduleNoShowText: {
-    color: "#fca5a5",
-    background: "rgba(63,17,17,0.7)",
-    border: "1px solid rgba(127,29,29,0.8)",
-    borderRadius: 999,
-    padding: "3px 7px",
-    fontSize: 10,
-    fontWeight: 1000,
-  },
-  scheduleCancelText: {
-    color: "#bdbdbd",
-    background: "rgba(36,36,36,0.7)",
-    border: "1px solid rgba(80,80,80,0.9)",
-    borderRadius: 999,
-    padding: "3px 7px",
-    fontSize: 10,
-    fontWeight: 1000,
-  },
-  incompleteCompleteButton: {
-    background: "rgba(255,255,255,0.10)",
-    color: "#fff",
-    border: "1px solid rgba(255,255,255,0.14)",
-    borderRadius: 8,
-    padding: "9px 10px",
-    fontWeight: 1000,
-    fontSize: 13,
-    whiteSpace: "nowrap",
-  },
-  scheduleSmsButton: {
-    background: "rgba(19,78,74,0.72)",
-    color: "#d7fff3",
-    border: "1px solid rgba(45,115,105,0.78)",
-    borderRadius: 8,
-    padding: "9px 10px",
-    fontWeight: 1000,
-    fontSize: 13,
-    whiteSpace: "nowrap",
-  },
-  scheduleDisabledButton: {
-    background: "rgba(255,255,255,0.08)",
-    color: "#9ca3af",
-    border: "1px solid rgba(255,255,255,0.08)",
-    borderRadius: 8,
-    padding: "8px 9px",
-    fontWeight: 1000,
-    fontSize: 12,
-    whiteSpace: "nowrap",
-  },
-  scheduleQuickButtonWrap: {
-    position: "relative",
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr 48px",
-    gap: 8,
-    width: "100%",
-    alignSelf: "end",
-  },
-  scheduleMoreButton: {
-    background: "rgba(0,0,0,0.34)",
-    color: "#fff",
-    border: "1px solid rgba(255,255,255,0.13)",
-    borderRadius: 8,
-    padding: "6px 7px",
-    fontWeight: 1000,
-    fontSize: 15,
-    lineHeight: 1,
-    whiteSpace: "nowrap",
-  },
-  homeLauncherGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(9, minmax(0, 1fr))",
-    gap: 12,
-    marginTop: "auto",
-    paddingTop: 0,
-    paddingBottom: "max(2px, env(safe-area-inset-bottom))",
-    flexShrink: 0,
-  },
-  homeLauncherItem: {
-    width: "100%",
-    height: "clamp(104px, 9.1vw, 132px)",
-    minHeight: 0,
-    border: "1px solid rgba(246,211,139,0.58)",
-    background: "#090d0f",
-    color: "#fff",
-    borderRadius: 12,
-    padding: "10px 8px",
-    display: "grid",
-    justifyItems: "center",
-    alignContent: "center",
-    gap: 5,
-    textAlign: "center",
-    fontSize: 11,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045), 0 10px 20px rgba(0,0,0,0.18), 0 0 8px rgba(246,211,139,0.06)",
-  },
-  homeLauncherIcon: {
-    height: 34,
-    minWidth: 34,
-    borderRadius: 8,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 30,
-    fontWeight: 1000,
-    marginBottom: 2,
-  },
-
-
-  todayScheduleOnlyOverlay: {
-    position: "fixed",
-    inset: 0,
-    zIndex: 99999,
-    background: "rgba(0,0,0,0.62)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "22px",
-    boxSizing: "border-box",
-    backdropFilter: "blur(8px)",
-  },
-  todayScheduleOnlyModal: {
-    width: "min(1420px, 96vw)",
-    maxHeight: "min(760px, 88dvh)",
-    overflow: "hidden",
-    background: "linear-gradient(180deg, rgba(20,25,27,0.98), rgba(8,11,13,0.99))",
-    border: "1.8px solid rgba(246,211,139,0.82)",
-    borderRadius: 24,
-    padding: "18px 22px 22px",
-    color: "#fff",
-    boxShadow: "0 24px 80px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 24px rgba(246,211,139,0.12)",
-    boxSizing: "border-box",
-  },
-  todayScheduleOnlyHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 16,
-    marginBottom: 16,
-  },
-  todayScheduleOnlyTitle: {
-    margin: 0,
-    fontSize: 28,
-    fontWeight: 1000,
-    color: "#f6d38b",
-    letterSpacing: "-0.04em",
-  },
-  todayScheduleOnlyDesc: {
-    margin: "5px 0 0",
-    fontSize: 13,
-    fontWeight: 800,
-    color: "#d4d4d8",
-  },
-  todayScheduleOnlyActions: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-  },
-  todayScheduleOnlyCount: {
-    background: "linear-gradient(180deg, #f9d977, #d89b2a)",
-    color: "#111",
-    borderRadius: 999,
-    padding: "9px 14px",
-    fontSize: 15,
-    fontWeight: 1000,
-    whiteSpace: "nowrap",
-  },
-  todayScheduleOnlyCloseButton: {
-    border: "1px solid rgba(255,255,255,0.18)",
-    background: "rgba(255,255,255,0.065)",
-    color: "#fff",
-    borderRadius: 12,
-    padding: "9px 16px",
-    fontSize: 13,
-    fontWeight: 1000,
-  },
-  todayScheduleOnlyEmpty: {
-    border: "1px solid rgba(246,211,139,0.45)",
-    borderRadius: 18,
-    padding: 32,
-    color: "#d4d4d8",
-    fontWeight: 900,
-    textAlign: "center",
-  },
-  todayScheduleOnlyGrid: {
-    maxHeight: "calc(88dvh - 120px)",
-    overflowY: "auto",
-    overscrollBehavior: "contain",
-    WebkitOverflowScrolling: "touch",
-    display: "grid",
-    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-    gap: 10,
-    paddingRight: 4,
-  },
-  todayScheduleOnlyCard: {
-    position: "relative",
-    background: "linear-gradient(180deg, rgba(28,33,35,0.92), rgba(9,13,15,0.975))",
-    border: "1.35px solid rgba(246, 211, 139, 0.68)",
-    borderRadius: 15,
-    padding: "10px 11px 10px",
-    display: "grid",
-    gridTemplateColumns: "1fr",
-    gap: 5,
-    minWidth: 0,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 18px rgba(0,0,0,0.18), 0 0 10px rgba(246,211,139,0.08)",
-  },
-
-  moreScheduleCard: {
-    position: "relative",
-    gridColumn: "1 / -1",
-    minHeight: 52,
-    background: "#090d0f",
-    border: "1px solid rgba(246,211,139,0.34)",
-    borderRadius: 10,
-    padding: "5px",
-    minWidth: 0,
-    color: "#f6d38b",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    textAlign: "center",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 18px rgba(0,0,0,0.13)",
-  },
-  moreScheduleIcon: {
-    display: "none",
-  },
-  moreScheduleCount: {
-    color: "#ffffff",
-    fontSize: 20,
-    fontWeight: 900,
-    letterSpacing: "-0.04em",
-  },
-  moreScheduleText: {
-    display: "none",
-  },
-  moreScheduleArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 999,
-    border: "1px solid rgba(246, 211, 139, 0.56)",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 18,
-    fontWeight: 1000,
-    lineHeight: 1,
-  },
-  actionSearchGridThree: {
-    display: "none",
-  },
-
-
-  /* v20: 회원상세 팝업 한 화면 진입용 압축 오버라이드 */
-  modalOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(17, 24, 39, .38)",
-    backdropFilter: "blur(8px)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 10000,
-    padding: 8,
-  },
-  modalBox: {
-    width: "calc(100vw - 18px)",
-    maxWidth: "none",
-    height: "calc(100vh - 54px)",
-    maxHeight: "none",
-    overflowY: "auto",
-    background: "linear-gradient(180deg, #fffdf8 0%, #f8f5ed 100%)",
-    color: "#111827",
-    border: "1px solid rgba(191, 159, 104, .42)",
-    borderRadius: 28,
-    padding: 14,
-    boxShadow: "0 22px 64px rgba(15, 23, 42, .26)",
-  },
-  detailTop: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 10,
-    alignItems: "flex-start",
-    marginBottom: 10,
-    padding: "10px 14px",
-    borderRadius: 22,
-    background: "rgba(255,255,255,.82)",
-    border: "1px solid rgba(191, 159, 104, .25)",
-  },
-  detailNameLine: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    flexWrap: "wrap",
-    marginBottom: 6,
-  },
-  detailName: {
-    fontSize: 28,
-    margin: 0,
-    fontWeight: 1000,
-    color: "#111827",
-    letterSpacing: -0.5,
-  },
-  detailHeaderPassButton: {
-    border: "1px solid #111827",
-    background: "#111827",
-    color: "#fffaf0",
-    borderRadius: 999,
-    padding: "7px 12px",
-    fontSize: 13,
-    fontWeight: 1000,
-  },
-  closeButton: {
-    background: "#ffffff",
-    color: "#111827",
-    border: "1px solid rgba(17,24,39,.18)",
-    borderRadius: 999,
-    padding: "8px 13px",
-    fontWeight: 1000,
-  },
-  muted: {
-    color: "#4b5563",
-    margin: 0,
-    marginBottom: 6,
-    fontWeight: 800,
-    fontSize: 14,
-  },
-  detailOverviewGrid: {
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 1.08fr) minmax(280px, .92fr)",
-    gap: 10,
-    alignItems: "stretch",
-    marginBottom: 10,
-  },
-  detailSummaryPanel: {
-    background: "rgba(255,255,255,.88)",
-    border: "1px solid rgba(191, 159, 104, .30)",
-    borderRadius: 20,
-    padding: 12,
-    boxShadow: "0 10px 24px rgba(17,24,39,.045)",
-  },
-  detailPanelTopRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 10,
-    alignItems: "flex-start",
-    marginBottom: 8,
-  },
-  detailPanelTitle: {
-    margin: 0,
-    color: "#111827",
-    fontSize: 17,
-    fontWeight: 1000,
-  },
-  detailPanelSub: {
-    margin: "3px 0 0",
-    color: "#6b7280",
-    fontSize: 10,
-    fontWeight: 800,
-  },
-  detailSummaryMiniGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 8,
-  },
-  detailSummaryMiniCard: {
-    background: "#fffaf0",
-    border: "1px solid rgba(191, 159, 104, .25)",
-    borderRadius: 15,
-    padding: "9px 11px",
-    display: "grid",
-    gap: 2,
-  },
-  detailSummaryWideCard: {
-    gridColumn: "1 / -1",
-    background: "#ffffff",
-    border: "1px solid rgba(17,24,39,.10)",
-    borderRadius: 15,
-    padding: "9px 11px",
-    display: "grid",
-    gap: 3,
-  },
-  detailSummaryValue: {
-    color: "#111827",
-    fontSize: 17,
-    fontWeight: 1000,
-  },
-  detailSummaryHint: {
-    color: "#6b7280",
-    fontSize: 10,
-    fontWeight: 800,
-  },
-  detailSummaryIssue: {
-    color: "#111827",
-    fontSize: 15,
-    fontWeight: 950,
-    lineHeight: 1.45,
-  },
-  detailLauncherHeaderRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 10,
-    margin: "6px 2px 8px",
-  },
-  detailLauncherHint: {
-    color: "#6b7280",
-    fontSize: 10,
-    fontWeight: 800,
-  },
-  subTitleCompact: {
-    fontSize: 17,
-    margin: 0,
-    color: "#111827",
-    fontWeight: 1000,
-  },
-  menuGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-    gap: 8,
-  },
-  menuButton: {
-    background: "rgba(255,255,255,.88)",
-    color: "#111827",
-    border: "1px solid rgba(191, 159, 104, .28)",
-    borderRadius: 16,
-    padding: "9px 8px",
-    fontSize: 13,
-    fontWeight: 950,
-    marginBottom: 0,
-    display: "grid",
-    gridTemplateColumns: "24px 1fr",
-    gap: 7,
-    justifyItems: "start",
-    alignItems: "center",
-    minHeight: 52,
-    boxShadow: "0 8px 18px rgba(17,24,39,.045)",
-    textAlign: "left",
-  },
-  menuButtonIcon: {
-    width: 22,
-    height: 22,
-    borderRadius: 9,
-    background: "#111827",
-    color: "#fffaf0",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 10,
-    fontWeight: 1000,
-  },
-
-  memberMainPremiumCard: {
-    padding: "13px 14px",
-    borderRadius: 18,
-    background: "linear-gradient(135deg, #fffaf0 0%, #ffffff 62%, #f8f1e6 100%)",
-    border: "1px solid rgba(191, 159, 104, .24)",
-    boxShadow: "0 12px 28px rgba(17,24,39,.075)",
-    cursor: "pointer",
-  },
-  memberPremiumTopRow: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 },
-  memberPremiumIdentity: { minWidth: 0, flex: 1 },
-  memberPremiumNameRow: { display: "flex", alignItems: "center", gap: 8, minWidth: 0 },
-  memberPremiumName: { margin: 0, color: "#111827", fontSize: 18, lineHeight: 1.1, fontWeight: 1000, letterSpacing: "-.3px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-  memberPremiumPtPill: { borderRadius: 999, padding: "4px 9px", fontSize: 12, fontWeight: 1000, border: "1px solid transparent", whiteSpace: "nowrap" },
-  memberPremiumPtNormal: { background: "#ecfdf5", color: "#047857", borderColor: "rgba(4,120,87,.14)" },
-  memberPremiumPtWarning: { background: "#fffbeb", color: "#92400e", borderColor: "rgba(146,64,14,.18)" },
-  memberPremiumPtDanger: { background: "#fef2f2", color: "#b91c1c", borderColor: "rgba(185,28,28,.16)" },
-  memberPremiumMetaLine: { marginTop: 5, display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center", color: "#6b7280", fontSize: 11, fontWeight: 850 },
-  memberPremiumAddPassButton: { border: "1px solid rgba(17,24,39,.10)", background: "#111827", color: "#fffaf0", borderRadius: 12, padding: "7px 10px", fontSize: 12, fontWeight: 1000, whiteSpace: "nowrap", boxShadow: "0 8px 18px rgba(17,24,39,.16)" },
-  memberPremiumMiddleRow: { marginTop: 11, display: "grid", gridTemplateColumns: "minmax(128px, .85fr) minmax(0, 1.15fr)", gap: 9, alignItems: "stretch" },
-  memberPremiumPartBlock: { display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 15, background: "rgba(17,24,39,.045)", border: "1px solid rgba(17,24,39,.06)", color: "#111827", minWidth: 0 },
-  memberPremiumPartIcon: { width: 32, height: 32, borderRadius: 12, background: "#111827", color: "#d4af37", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" },
-  memberPremiumPartTextBox: { display: "flex", flexDirection: "column", gap: 2, minWidth: 0 },
-  memberPremiumPartTitle: { color: "#111827", fontSize: 13, fontWeight: 1000, lineHeight: 1.05 },
-  memberPremiumPartSub: { color: "#6b7280", fontSize: 10, fontWeight: 850, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-  memberPremiumIssueBlock: { padding: "8px 10px", borderRadius: 15, background: "rgba(191,159,104,.10)", border: "1px solid rgba(191,159,104,.18)", minWidth: 0, display: "flex", flexDirection: "column", gap: 3 },
-  memberPremiumIssueLabel: { color: "#92400e", fontSize: 10, fontWeight: 950 },
-  memberPremiumIssueText: { color: "#111827", fontSize: 12, fontWeight: 950, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-  memberPremiumTagRow: { display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 },
-  memberPremiumTag: { borderRadius: 999, background: "rgba(17,24,39,.055)", color: "#374151", border: "1px solid rgba(17,24,39,.055)", padding: "4px 8px", fontSize: 10, fontWeight: 900 },
-  memberPremiumBottomRow: { marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 },
-  memberPremiumStatusGroup: { display: "flex", flexWrap: "wrap", gap: 5, minWidth: 0 },
-  memberPremiumStatusBadge: { borderRadius: 999, padding: "4px 7px", background: "#f3f4f6", color: "#4b5563", fontSize: 10, fontWeight: 900, whiteSpace: "nowrap" },
-  memberPremiumActions: { display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 5, flexWrap: "wrap" },
-  memberPremiumActionButton: { border: "1px solid rgba(17,24,39,.10)", background: "#ffffff", color: "#111827", borderRadius: 11, padding: "6px 8px", fontSize: 11, fontWeight: 950 },
-  memberPremiumActionRecommend: { border: "1px solid rgba(191,159,104,.35)", background: "#fff7ed", color: "#92400e", borderRadius: 11, padding: "6px 8px", fontSize: 11, fontWeight: 1000 },
-  memberPremiumMoreButton: { border: "1px solid rgba(17,24,39,.10)", background: "#111827", color: "#fffaf0", borderRadius: 11, padding: "6px 9px", fontSize: 14, lineHeight: 1, fontWeight: 1000 },
-  memberPremiumRestoreButton: { border: "1px solid rgba(5,150,105,.25)", background: "#ecfdf5", color: "#047857", borderRadius: 11, padding: "6px 8px", fontSize: 11, fontWeight: 950 },
-  schedulePartPickerGrid: { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, margin: "8px 0 14px" },
-  schedulePartPickerButton: { border: "1px solid rgba(17,24,39,.10)", background: "#ffffff", color: "#111827", borderRadius: 16, padding: "10px 8px", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 12, fontWeight: 950, boxShadow: "0 6px 14px rgba(17,24,39,.045)" },
-  schedulePartPickerButtonActive: { border: "1px solid rgba(191,159,104,.55)", background: "#111827", color: "#d4af37", borderRadius: 16, padding: "10px 8px", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 12, fontWeight: 1000, boxShadow: "0 10px 22px rgba(17,24,39,.14)" },
-  schedulePartPickerIcon: { width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" },
 
 };
