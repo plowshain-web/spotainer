@@ -259,6 +259,49 @@ function createEmptyWorkoutExercise(trainingType = "weight") {
   };
 }
 
+
+
+function TodayScheduleSectionV2({
+  schedules,smsMode,getCurrentSMSSchedule,smsIndex,smsQueue,
+  getCurrentSMSTargetMember,formatScheduleRange,
+  sendCurrentScheduleSMS,markCurrentSMSSentAndNext,skipCurrentSMS,stopTodaySMSQueue,
+  startTodaySMSQueue,getScheduleMember,getLatestConditionForMember,
+  getConditionPreviewText,renderScheduleQuickButtons
+}) {
+  const bodyIcon = (text) => {
+    if ((text||"").includes("하체")) return "🦵";
+    if ((text||"").includes("등")) return "🏋️";
+    if ((text||"").includes("가슴")) return "💪";
+    if ((text||"").includes("코어")) return "⭕";
+    return "🏋️";
+  };
+  return (
+    <section style={{border:"1px solid rgba(212,161,74,.7)",borderRadius:28,padding:24,background:"#050505",boxShadow:"0 0 30px rgba(212,161,74,.15)"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+        <div><h2 style={{fontSize:42,color:"#e0ae49",margin:0}}>오늘 스케줄</h2><div style={{color:"#ddd"}}>출석과 PT 차감 상태를 한 번에 확인하세요.</div></div>
+        <div style={{display:"flex",gap:12,alignItems:"center"}}>
+          <button onClick={startTodaySMSQueue} style={{padding:"16px 24px",borderRadius:14,background:"#111",color:"#fff",border:"1px solid #d4a14a"}}>오늘 문자 시작</button>
+          <div style={{padding:"16px 20px",borderRadius:14,background:"#d4a14a",fontWeight:700}}>{schedules.length}건</div>
+        </div>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      {schedules.map((schedule)=>{
+        const member=getScheduleMember(schedule)||{};
+        const condition=getLatestConditionForMember(member);
+        const body=condition?.todayWorkout || condition?.nextWorkout || "미정";
+        return <div key={schedule.id} style={{display:"grid",gridTemplateColumns":"140px 140px 1.5fr 1fr auto",alignItems:"center",padding:"18px",borderRadius:18,border:"1px solid rgba(255,255,255,.08)",background:"rgba(255,255,255,.02)"}}>
+          <div style={{fontSize:26,color:"#e0ae49",fontWeight:700}}>{schedule.start_time}</div>
+          <div style={{fontSize:48}}>{bodyIcon(body)} <span style={{fontSize:24,color:"#fff"}}>{body}</span></div>
+          <div><div style={{fontSize:34,fontWeight:700}}>{member.name||"회원"} <span style={{fontSize:18,opacity:.7}}>PT {member.pt_count||member.remaining_pt||""}</span></div><div style={{opacity:.8}}>지난 이슈 : {condition?.memo || "없음"}</div></div>
+          <div style={{fontSize:24}}>🙂 {getConditionPreviewText(condition)||"보통"}</div>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>{renderScheduleQuickButtons(schedule,false)}</div>
+        </div>
+      })}
+      </div>
+    </section>
+  )
+}
+
 export default function Page() {
   const [mounted, setMounted] = useState(false);
   const [members, setMembers] = useState([]);
@@ -7778,267 +7821,6 @@ async function saveMemberPreference() {
     );
   }
 
-
-  function ScheduleHeroCardV2Preview() {
-    const schedule = schedules[0];
-
-    function pickPart(summary) {
-      const value = String(summary?.bodyPartText || "");
-      if (value.includes("하체")) return "하체";
-      if (value.includes("등")) return "등";
-      if (value.includes("어깨")) return "어깨";
-      if (value.includes("코어") || value.includes("복부")) return "코어";
-      if (value.includes("팔")) return "팔";
-      if (value.includes("전신")) return "전신";
-      if (value.includes("가슴")) return "가슴";
-      return "가슴";
-    }
-
-    function BodyLineIcon({ part }) {
-      const props = {
-        width: 58,
-        height: 58,
-        viewBox: "0 0 64 64",
-        fill: "none",
-        stroke: "#d79a2e",
-        strokeWidth: 2.2,
-        strokeLinecap: "round",
-        strokeLinejoin: "round",
-        style: { display: "block" },
-      };
-
-      if (part === "하체") {
-        return (
-          <svg {...props}>
-            <path d="M24 9c2.5 8 3.2 16 2.2 24L22 55" />
-            <path d="M40 9c-2.5 8-3.2 16-2.2 24L42 55" />
-            <path d="M26 18c4 2 8 2 12 0" />
-            <path d="M28 34h8" />
-          </svg>
-        );
-      }
-
-      if (part === "등") {
-        return (
-          <svg {...props}>
-            <path d="M23 11c-5 9-7 19-7 32" />
-            <path d="M41 11c5 9 7 19 7 32" />
-            <path d="M32 10v43" />
-            <path d="M20 25c8 4 16 4 24 0" />
-            <path d="M22 39c7 3 13 3 20 0" />
-          </svg>
-        );
-      }
-
-      if (part === "어깨") {
-        return (
-          <svg {...props}>
-            <path d="M16 37c4-13 12-21 16-21s12 8 16 21" />
-            <path d="M15 39c8-3 14-2 18 3" />
-            <path d="M49 39c-8-3-14-2-18 3" />
-            <path d="M25 20c3 3 11 3 14 0" />
-          </svg>
-        );
-      }
-
-      if (part === "코어") {
-        return (
-          <svg {...props}>
-            <path d="M24 11c-4 9-5 19-4 42" />
-            <path d="M40 11c4 9 5 19 4 42" />
-            <path d="M24 21h16" />
-            <path d="M23 31h18" />
-            <path d="M22 41h20" />
-            <path d="M29 21v25" />
-            <path d="M35 21v25" />
-          </svg>
-        );
-      }
-
-      if (part === "전신") {
-        return (
-          <svg {...props}>
-            <circle cx="32" cy="10" r="4" />
-            <path d="M32 15v23" />
-            <path d="M18 23h28" />
-            <path d="M32 38l-12 17" />
-            <path d="M32 38l12 17" />
-          </svg>
-        );
-      }
-
-      return (
-        <svg {...props}>
-          <path d="M22 22c-5 4-8 10-9 18" />
-          <path d="M42 22c5 4 8 10 9 18" />
-          <path d="M22 22c3 7 6 12 10 15" />
-          <path d="M42 22c-3 7-6 12-10 15" />
-          <path d="M24 42c5-3 11-3 16 0" />
-          <path d="M32 14v24" />
-          <path d="M25 16c3 3 11 3 14 0" />
-        </svg>
-      );
-    }
-
-    if (!schedule) {
-      return (
-        <section style={styles.heroScheduleShell}>
-          <div style={styles.heroScheduleTop}>
-            <div style={styles.heroScheduleTitleGroup}>
-              <div style={styles.heroScheduleIcon}>▣</div>
-              <div>
-                <h2 style={styles.heroScheduleTitle}>오늘 스케줄</h2>
-                <p style={styles.heroScheduleDesc}>출석과 PT 차감 상태를 한 번에 확인하세요.</p>
-              </div>
-            </div>
-            <div style={styles.heroScheduleActions}>
-              <button type="button" onClick={startTodaySMSQueue} style={styles.heroSmsButton}>
-                오늘 문자 시작
-              </button>
-              <div style={styles.heroCountBadge}>0건</div>
-            </div>
-          </div>
-          <p style={styles.muted}>오늘 등록된 스케줄이 없습니다.</p>
-        </section>
-      );
-    }
-
-    const member = getScheduleMember(schedule);
-    const attended = !!schedule.attendance_checked;
-    const ptUsed = !!schedule.pt_used;
-    const isNoShow = schedule.status === "noshow";
-    const isCancelled = schedule.status === "cancelled";
-    const isCompleted = schedule.status === "completed" || (attended && ptUsed);
-    const summary = getLastWorkoutSummary(lastWorkoutMap[schedule.id]);
-    const part = pickPart(summary);
-    const latestCondition = member ? getLatestConditionForMember(member) : null;
-    const conditionText = latestCondition ? getConditionPreviewText(latestCondition) : "";
-    const issueText = [summary?.conditionLine || "", summary?.noteLine || "", summary?.bodyPartText || ""]
-      .filter(Boolean)
-      .join(" · ");
-
-    return (
-      <section style={styles.heroScheduleShell}>
-        <div style={styles.heroScheduleTop}>
-          <div style={styles.heroScheduleTitleGroup}>
-            <div style={styles.heroScheduleIcon}>▣</div>
-            <div>
-              <h2 style={styles.heroScheduleTitle}>오늘 스케줄</h2>
-              <p style={styles.heroScheduleDesc}>출석과 PT 차감 상태를 한 번에 확인하세요.</p>
-            </div>
-          </div>
-          <div style={styles.heroScheduleActions}>
-            <button type="button" onClick={startTodaySMSQueue} style={styles.heroSmsButton}>
-              오늘 문자 시작
-            </button>
-            <div style={styles.heroCountBadge}>{schedules.length}건</div>
-          </div>
-        </div>
-
-        <div style={styles.heroPreviewRow}>
-          <article style={styles.heroScheduleCard}>
-            <div style={styles.heroCardHeader}>
-              <div style={styles.heroTimeText}>{formatTime(schedule.start_time)}</div>
-              <div style={styles.heroNameWrap}>
-                <strong style={styles.heroMemberName}>{getScheduleMemberNames(schedule)}</strong>
-                {getScheduleMemberPtText(schedule) && (
-                  <span style={styles.heroPtText}>{getScheduleMemberPtText(schedule)}</span>
-                )}
-              </div>
-            </div>
-
-            <div style={styles.heroTagRow}>
-              {getSchedulePreferenceTags(schedule).slice(0, 3).map((tag) => (
-                <span key={tag} style={styles.heroTag}>{tag}</span>
-              ))}
-            </div>
-
-            <div style={styles.heroBodyRow}>
-              <div style={styles.heroPartIcon}><BodyLineIcon part={part} /></div>
-              <strong style={styles.heroPartText}>{part}</strong>
-              <span style={styles.heroDivider} />
-              <span style={styles.heroMoodIcon}>🙂</span>
-              <strong style={styles.heroMoodText}>{conditionText || "보통"}</strong>
-            </div>
-
-            <div style={styles.heroIssueText}>
-              ▣ 지난 이슈: {issueText || part}
-            </div>
-
-            <div style={styles.heroStatusRow}>
-              {isScheduleSMSSent(schedule) && <span style={styles.scheduleSmsDoneText}>문자 완료</span>}
-              {isCancelled ? (
-                <>
-                  <span style={styles.scheduleCancelText}>취소</span>
-                  <span style={styles.scheduleWarningText}>출석 없음</span>
-                  <span style={styles.scheduleWarningText}>차감 없음</span>
-                </>
-              ) : isNoShow ? (
-                <>
-                  <span style={styles.scheduleNoShowText}>노쇼</span>
-                  <span style={styles.scheduleWarningText}>출석 없음</span>
-                  <span style={styles.scheduleDoneText}>차감 완료</span>
-                </>
-              ) : (
-                <>
-                  {attended ? (
-                    <span style={styles.scheduleDoneText}>완료</span>
-                  ) : (
-                    <span style={styles.scheduleWarningText}>출석 전</span>
-                  )}
-                  {ptUsed ? (
-                    <span style={styles.scheduleDoneText}>차감 완료</span>
-                  ) : (
-                    <span style={styles.scheduleWarningText}>차감 전</span>
-                  )}
-                </>
-              )}
-            </div>
-
-            <div style={styles.heroButtonRow}>
-              {scheduleActionMenuId === schedule.id && renderScheduleMoreMenu(schedule)}
-              {isCompleted || isNoShow || isCancelled ? (
-                <button style={styles.heroDoneButton} disabled>
-                  {schedule.status === "cancelled"
-                    ? "취소됨"
-                    : schedule.status === "noshow"
-                      ? "노쇼"
-                      : "완료됨"}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => completeScheduleClass(schedule)}
-                  style={styles.heroCompleteButton}
-                >
-                  완료
-                </button>
-              )}
-              <button type="button" onClick={() => sendScheduleSMS(schedule)} style={styles.heroTextButton}>
-                문자
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setScheduleActionMenuId((current) =>
-                    current === schedule.id ? null : schedule.id
-                  )
-                }
-                style={styles.heroMoreButton}
-              >
-                ⋯
-              </button>
-            </div>
-          </article>
-        </div>
-
-        <button type="button" onClick={openScheduleCheckModal} style={styles.heroMoreBar}>
-          더보기 <span style={styles.heroMoreCircle}>⌄</span>
-        </button>
-      </section>
-    );
-  }
-
   if (!mounted) return null;
 
   return (
@@ -8202,7 +7984,24 @@ async function saveMemberPreference() {
         </div>
       )}
 
-      <ScheduleHeroCardV2Preview />
+      <TodayScheduleSectionV2
+schedules={schedules}
+smsMode={smsMode}
+getCurrentSMSSchedule={getCurrentSMSSchedule}
+smsIndex={smsIndex}
+smsQueue={smsQueue}
+getCurrentSMSTargetMember={getCurrentSMSTargetMember}
+formatScheduleRange={formatScheduleRange}
+sendCurrentScheduleSMS={sendCurrentScheduleSMS}
+markCurrentSMSSentAndNext={markCurrentSMSSentAndNext}
+skipCurrentSMS={skipCurrentSMS}
+stopTodaySMSQueue={stopTodaySMSQueue}
+startTodaySMSQueue={startTodaySMSQueue}
+getScheduleMember={getScheduleMember}
+getLatestConditionForMember={getLatestConditionForMember}
+getConditionPreviewText={getConditionPreviewText}
+renderScheduleQuickButtons={renderScheduleQuickButtons}
+/>
 
       <section style={styles.scheduleAddWideBox}>
         <button onClick={openScheduleCheckModal} style={styles.scheduleAddWideButton}>
@@ -12804,274 +12603,6 @@ const styles = {
     fontWeight: 900,
     whiteSpace: "nowrap",
   },
-
-  heroScheduleShell: {
-    background: "#050607",
-    border: "1px solid rgba(216,151,39,0.74)",
-    borderRadius: 24,
-    padding: 22,
-    marginBottom: 28,
-    boxShadow: "0 18px 34px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,0.03)",
-  },
-  heroScheduleTop: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 16,
-    marginBottom: 20,
-  },
-  heroScheduleTitleGroup: {
-    display: "flex",
-    alignItems: "center",
-    gap: 16,
-  },
-  heroScheduleIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: "50%",
-    border: "1px solid rgba(216,151,39,0.78)",
-    color: "#f0b73f",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 22,
-    fontWeight: 900,
-    boxShadow: "inset 0 0 18px rgba(216,151,39,0.08)",
-  },
-  heroScheduleTitle: {
-    margin: 0,
-    color: "#f7c95c",
-    fontSize: 30,
-    fontWeight: 900,
-    lineHeight: 1,
-  },
-  heroScheduleDesc: {
-    margin: "9px 0 0",
-    color: "#e9dfc7",
-    fontSize: 14,
-    fontWeight: 700,
-  },
-  heroScheduleActions: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-  },
-  heroSmsButton: {
-    background: "#d7fff3",
-    color: "#10201d",
-    border: "1px solid #9eead8",
-    borderRadius: 999,
-    padding: "12px 20px",
-    fontSize: 15,
-    fontWeight: 900,
-    whiteSpace: "nowrap",
-    boxShadow: "0 8px 20px rgba(144,255,225,0.12)",
-  },
-  heroCountBadge: {
-    background: "linear-gradient(180deg, #ffe28a 0%, #e2a72f 100%)",
-    color: "#111",
-    borderRadius: 16,
-    padding: "12px 18px",
-    fontSize: 18,
-    fontWeight: 900,
-    whiteSpace: "nowrap",
-    boxShadow: "0 8px 18px rgba(226,167,47,0.18)",
-  },
-  heroPreviewRow: {
-    display: "flex",
-    alignItems: "stretch",
-    gap: 14,
-  },
-  heroScheduleCard: {
-    width: 292,
-    height: 335,
-    background: "#07090b",
-    border: "1px solid rgba(216,151,39,0.74)",
-    borderRadius: 16,
-    padding: "15px 15px",
-    display: "grid",
-    gridTemplateRows: "42px 28px 86px 38px 30px 48px",
-    gap: 7,
-    overflow: "hidden",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 10px 24px rgba(0,0,0,0.28)",
-  },
-  heroCardHeader: {
-    display: "grid",
-    gridTemplateColumns: "64px 1fr",
-    gap: 10,
-    alignItems: "start",
-    minWidth: 0,
-  },
-  heroTimeText: {
-    color: "#f0b73f",
-    fontSize: 17,
-    fontWeight: 900,
-    lineHeight: 1.15,
-    whiteSpace: "pre-line",
-  },
-  heroNameWrap: {
-    display: "flex",
-    alignItems: "center",
-    gap: 7,
-    minWidth: 0,
-  },
-  heroMemberName: {
-    color: "#fff",
-    fontSize: 19,
-    fontWeight: 900,
-    lineHeight: 1.15,
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-  },
-  heroPtText: {
-    color: "#e4e4e4",
-    fontSize: 13,
-    fontWeight: 800,
-    whiteSpace: "nowrap",
-  },
-  heroTagRow: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 5,
-    alignItems: "flex-start",
-    overflow: "hidden",
-  },
-  heroTag: {
-    background: "rgba(255,255,255,0.13)",
-    color: "#f6f6f6",
-    border: "1px solid rgba(255,255,255,0.16)",
-    padding: "5px 8px",
-    borderRadius: 999,
-    fontSize: 10,
-    fontWeight: 800,
-    lineHeight: 1,
-    whiteSpace: "nowrap",
-  },
-  heroBodyRow: {
-    display: "grid",
-    gridTemplateColumns: "58px minmax(64px,1fr) 1px 34px 44px",
-    gap: 8,
-    alignItems: "center",
-    minWidth: 0,
-  },
-  heroPartIcon: {
-    width: 58,
-    height: 58,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  heroPartText: {
-    color: "#fff",
-    fontSize: 26,
-    fontWeight: 900,
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-  },
-  heroDivider: {
-    width: 1,
-    height: 38,
-    background: "rgba(255,255,255,0.14)",
-  },
-  heroMoodIcon: {
-    fontSize: 27,
-    lineHeight: 1,
-  },
-  heroMoodText: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: 900,
-    whiteSpace: "nowrap",
-  },
-  heroIssueText: {
-    color: "#f5e9d0",
-    borderTop: "1px solid rgba(255,255,255,0.10)",
-    borderBottom: "1px solid rgba(255,255,255,0.07)",
-    padding: "8px 0",
-    fontSize: 12,
-    fontWeight: 800,
-    lineHeight: 1.25,
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-  },
-  heroStatusRow: {
-    display: "flex",
-    gap: 6,
-    flexWrap: "wrap",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  heroButtonRow: {
-    position: "relative",
-    display: "grid",
-    gridTemplateColumns: "1.05fr 1fr 44px",
-    gap: 8,
-    width: "100%",
-  },
-  heroCompleteButton: {
-    background: "linear-gradient(180deg, #2b3033 0%, #1d2022 100%)",
-    color: "#fff",
-    border: "1px solid rgba(255,255,255,0.16)",
-    borderRadius: 10,
-    fontSize: 13,
-    fontWeight: 900,
-  },
-  heroDoneButton: {
-    background: "linear-gradient(180deg, #2b3033 0%, #1d2022 100%)",
-    color: "#a7adb5",
-    border: "1px solid rgba(255,255,255,0.12)",
-    borderRadius: 10,
-    fontSize: 13,
-    fontWeight: 900,
-  },
-  heroTextButton: {
-    background: "#06463f",
-    color: "#fff",
-    border: "1px solid rgba(56,189,171,0.35)",
-    borderRadius: 10,
-    fontSize: 13,
-    fontWeight: 900,
-  },
-  heroMoreButton: {
-    background: "#050607",
-    color: "#fff",
-    border: "1px solid rgba(255,255,255,0.16)",
-    borderRadius: 10,
-    fontSize: 18,
-    fontWeight: 900,
-    lineHeight: 1,
-  },
-  heroMoreBar: {
-    width: "100%",
-    height: 58,
-    marginTop: 16,
-    background: "#07090b",
-    border: "1px solid rgba(255,255,255,0.14)",
-    borderRadius: 14,
-    color: "#fff",
-    fontSize: 21,
-    fontWeight: 900,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 14,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
-  },
-  heroMoreCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: "50%",
-    border: "1px solid rgba(255,255,255,0.18)",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 20,
-    lineHeight: 1,
-  },
-
   incompleteBox: {
     background: "#1f1a12",
     border: "1px solid #5b4320",
