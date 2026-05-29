@@ -12489,9 +12489,10 @@ const styles = {
     borderRadius: 22,
     padding: 12,
     display: "grid",
-    gridTemplateColumns: "1fr",
+    gridTemplateRows: "1fr auto",
     gap: 8,
-    minHeight: 260,
+    height: 320,
+    overflow: "hidden",
   },
   scheduleItemNoShow: {
     background: "linear-gradient(180deg, #211b1b 0%, #1c1414 100%)",
@@ -12868,11 +12869,13 @@ const styles = {
     width: "100%",
   },
   scheduleQuickButtonWrap: {
+
     position: "relative",
     display: "grid",
     gridTemplateColumns: "1.15fr 1fr 44px",
     gap: 8,
     width: "100%",
+    marginTop: "auto",
   },
   scheduleMoreButton: {
     background: "#111",
@@ -16107,9 +16110,10 @@ textarea: {
   },
   lastWorkoutPreviewDark: {
 
-    display: "flex",
-    flexDirection: "column",
-    gap: 2,
+    display: "-webkit-box",
+    WebkitLineClamp: 4,
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden",
     marginTop: 4,
     padding: "6px 8px",
     background: "#17130e",
@@ -16119,6 +16123,8 @@ textarea: {
     fontSize: 11,
     fontWeight: 800,
     lineHeight: 1.25,
+    minHeight: 56,
+    maxHeight: 82,
   },
   scheduleStatusRowCompact: {
     display: "flex",
