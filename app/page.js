@@ -12477,18 +12477,21 @@ const styles = {
     whiteSpace: "nowrap",
   },
   scheduleList: {
+
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: 12,
+    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gap: 10,
   },
   scheduleItem: {
-    background: "#202020",
-    border: "1px solid #333",
-    borderRadius: 18,
-    padding: 14,
+
+    background: "#11100d",
+    border: "1px solid rgba(216,151,39,0.45)",
+    borderRadius: 22,
+    padding: 12,
     display: "grid",
     gridTemplateColumns: "1fr",
-    gap: 10,
+    gap: 8,
+    minHeight: 260,
   },
   scheduleItemNoShow: {
     background: "linear-gradient(180deg, #211b1b 0%, #1c1414 100%)",
@@ -12500,21 +12503,26 @@ const styles = {
     opacity: 0.62,
   },
   scheduleMain: {
+
     display: "flex",
-    alignItems: "center",
-    gap: 14,
+    alignItems: "flex-start",
+    gap: 10,
     flex: 1,
     cursor: "pointer",
   },
   scheduleTime: {
-    minWidth: 72,
+
+    minWidth: 62,
     color: "#93c5fd",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 900,
+    lineHeight: 1.15,
   },
   scheduleMemberName: {
+
     color: "#fff",
-    fontSize: 17,
+    fontSize: 15,
+    fontWeight: 900,
   },
   scheduleMemo: {
     color: "#aaa",
@@ -12522,10 +12530,11 @@ const styles = {
     margin: "5px 0 0",
   },
   scheduleStatusRow: {
+
     display: "flex",
-    gap: 8,
+    gap: 6,
     flexWrap: "wrap",
-    marginTop: 8,
+    marginTop: 4,
   },
   scheduleDoneText: {
     color: "#d7fff3",
@@ -16097,18 +16106,19 @@ textarea: {
     whiteSpace: "nowrap",
   },
   lastWorkoutPreviewDark: {
+
     display: "flex",
     flexDirection: "column",
-    gap: 3,
-    marginTop: 7,
-    padding: "7px 8px",
-    background: "#1b1711",
-    border: "1px solid #3d321f",
+    gap: 2,
+    marginTop: 4,
+    padding: "6px 8px",
+    background: "#17130e",
+    border: "1px solid #302518",
     borderRadius: 10,
     color: "#f5e9d0",
-    fontSize: 12,
-    fontWeight: 900,
-    lineHeight: 1.35,
+    fontSize: 11,
+    fontWeight: 800,
+    lineHeight: 1.25,
   },
   scheduleStatusRowCompact: {
     display: "flex",
