@@ -7783,18 +7783,10 @@ async function saveMemberPreference() {
   return (
     <main style={styles.page}>
       <header style={styles.header}>
-        <div>
-          <div style={styles.headerTitleRow}>
-            <h1 style={styles.title}>Spotainer</h1>
-            <button
-              type="button"
-              onClick={() => setShowSalesModal(true)}
-              style={styles.headerSalesButton}
-            >
-              매출 관리
-            </button>
-          </div>
-          <p style={styles.subtitle}>{centerName || "여성전용 PT 회원관리"}</p>
+        <div style={styles.approvedBrandRow}>
+          <h1 style={styles.title}>Spotainer</h1>
+          <span style={styles.approvedBrandDivider} />
+          <p style={styles.subtitle}>{centerName || "스포테이너 피트니스"}</p>
         </div>
         <div style={styles.headerActions}>
           <button onClick={openTrainerLogModal} style={styles.trainerQuickButton}>
@@ -7807,147 +7799,14 @@ async function saveMemberPreference() {
       </header>
 
 
-      <section style={styles.todayDashboardBox}>
-        <div style={styles.todayDashboardTop}>
-          <div>
-            <h2 style={styles.todayDashboardTitle}>오늘 할 일</h2>
-            <p style={styles.todayDashboardDesc}>메인은 깔끔하게 보고, 필요한 작업은 전체화면에서 처리합니다.</p>
-          </div>
-          <span style={styles.todayDashboardBadge}>{getTodayDateString()}</span>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setShowTodayTodoModal(true)}
-          style={styles.todayTodoOpenButton}
-        >
-          <span style={styles.todayTodoOpenTextWrap}>
-            <strong style={styles.todayTodoOpenTitle}>오늘 할 일 열기</strong>
-            <span style={styles.todayTodoOpenDesc}>
-              처리할 일 {pendingTodayTodoItems.length}건
-              {doneTodayTodoItems.length > 0 ? ` · 완료 ${doneTodayTodoItems.length}건` : ""}
-            </span>
-          </span>
-          <span style={styles.todayTodoOpenCount}>{pendingTodayTodoItems.length}건</span>
-        </button>
-      </section>
-
-      {showTodayTodoModal && (
-        <div style={styles.todayTodoPopupOverlay} onClick={() => setShowTodayTodoModal(false)}>
-          <div style={styles.todayTodoPopupModal} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.todayTodoModalHeader}>
-              <div>
-                <h2 style={styles.todayTodoModalTitle}>오늘 할 일</h2>
-                <p style={styles.todayTodoModalDesc}>문자, 상담기록, 완료 처리를 여기서 바로 끝냅니다.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowTodayTodoModal(false)}
-                style={styles.whiteCloseButton}
-              >
-                닫기
-              </button>
+      <section style={styles.approvedSchedulePanel}>
+        <div style={styles.approvedScheduleTop}>
+          <div style={styles.approvedScheduleTitleWrap}>
+            <div style={styles.approvedCalendarIcon}>▣</div>
+            <div>
+              <h2 style={styles.incompleteTitle}>오늘 스케줄</h2>
+              <p style={styles.incompleteDesc}>출석과 PT 차감 상태를 한 번에 확인하세요.</p>
             </div>
-
-            <div style={styles.todayTodoModalSummaryRow}>
-              <div style={styles.todayTodoModalSummaryCard}>
-                <span>처리할 일</span>
-                <strong>{pendingTodayTodoItems.length}건</strong>
-              </div>
-              <div style={styles.todayTodoModalSummaryCard}>
-                <span>완료 표시</span>
-                <strong>{doneTodayTodoItems.length}건</strong>
-              </div>
-              <div style={styles.todayTodoModalSummaryCard}>
-                <span>오늘 수업</span>
-                <strong>{schedules.length}건</strong>
-              </div>
-            </div>
-
-            {todayTodoItems.length === 0 ? (
-              <div style={styles.todayTodoModalEmpty}>
-                오늘 즉시 처리할 항목이 없습니다.
-              </div>
-            ) : (
-              <div style={styles.todayTodoModalList}>
-                {todayTodoItems.map((item) => (
-                  <div
-                    key={item.key}
-                    style={{
-                      ...styles.todayTodoModalItem,
-                      ...(item.done ? styles.todayTodoModalItemDone : {}),
-                    }}
-                  >
-                    <div style={styles.todayTodoModalLeft}>
-                      <span style={{
-                        ...styles.todayTodoBadge,
-                        ...(item.tone === "danger" ? styles.todayTodoBadgeDanger : {}),
-                        ...(item.tone === "warn" ? styles.todayTodoBadgeWarn : {}),
-                        ...(item.tone === "sms" ? styles.todayTodoBadgeSms : {}),
-                        ...(item.done ? styles.todayTodoBadgeDone : {}),
-                      }}>
-                        {item.done ? "오늘 처리 완료" : item.badge}
-                      </span>
-                      <div style={styles.todayTodoTextWrap}>
-                        <strong style={styles.todayTodoModalName}>{item.title}</strong>
-                        <span style={styles.todayTodoModalDescText}>{item.desc}</span>
-                      </div>
-                    </div>
-
-                    {item.done ? (
-                      <span style={styles.todayTodoDoneText}>완료 표시 유지</span>
-                    ) : (
-                      <div style={styles.todayTodoActionRow}>
-                        {item.type === "sms" ? (
-                          <button
-                            type="button"
-                            onClick={() => sendTodayTodoScheduleSMS(item)}
-                            style={styles.todayTodoActionButtonPrimary}
-                          >
-                            문자
-                          </button>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => openTodayTodoFreeSms(item)}
-                              style={styles.todayTodoActionButton}
-                            >
-                              문자
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openTodayTodoContact(item, "pending")}
-                              style={styles.todayTodoActionButtonPrimary}
-                            >
-                              상담기록
-                            </button>
-                          </>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => markTodayTodoDone(item)}
-                          style={styles.todayTodoActionButtonSoft}
-                        >
-                          완료
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      <section style={styles.incompleteBox}>
-        <div style={styles.incompleteTop}>
-          <div>
-            <h2 style={styles.incompleteTitle}>오늘 스케줄</h2>
-            <p style={styles.incompleteDesc}>
-              출석과 PT 차감 상태를 한 번에 확인하세요.
-            </p>
           </div>
 
           <div style={styles.incompleteTopActions}>
@@ -7971,172 +7830,136 @@ async function saveMemberPreference() {
               <span style={styles.smsQueueTarget}>
                 현재 대상: {getCurrentSMSTargetMember(getCurrentSMSSchedule())?.name || "회원"} · {formatScheduleRange(getCurrentSMSSchedule())}
               </span>
-              <span style={styles.smsQueueHint}>
-                문자앱에서 전송 후 돌아와서 ‘보낸 처리’를 누르면 다음 회원으로 넘어갑니다.
-              </span>
             </div>
-
             <div style={styles.smsQueueActions}>
-              <button
-                type="button"
-                onClick={sendCurrentScheduleSMS}
-                style={styles.smsQueuePrimaryButton}
-              >
-                문자 보내기
-              </button>
-              <button
-                type="button"
-                onClick={markCurrentSMSSentAndNext}
-                style={styles.smsQueueDoneButton}
-              >
-                보낸 처리
-              </button>
-              <button
-                type="button"
-                onClick={skipCurrentSMS}
-                style={styles.smsQueueSkipButton}
-              >
-                건너뛰기
-              </button>
-              <button
-                type="button"
-                onClick={stopTodaySMSQueue}
-                style={styles.smsQueueCloseButton}
-              >
-                종료
-              </button>
+              <button type="button" onClick={sendCurrentScheduleSMS} style={styles.smsQueuePrimaryButton}>문자 보내기</button>
+              <button type="button" onClick={markCurrentSMSSentAndNext} style={styles.smsQueueDoneButton}>보낸 처리</button>
+              <button type="button" onClick={stopTodaySMSQueue} style={styles.smsQueueCloseButton}>종료</button>
             </div>
           </div>
         )}
 
         {schedules.length === 0 ? (
-          <p style={styles.muted}>오늘 등록된 스케줄이 없습니다.</p>
+          <p style={styles.approvedEmptyText}>오늘 등록된 스케줄이 없습니다.</p>
         ) : (
-          <div style={styles.incompleteList}>
-            {schedules.map((schedule) => {
+          <div style={styles.approvedScheduleGrid}>
+            {schedules.slice(0, 5).map((schedule) => {
               const member = getScheduleMember(schedule);
               const attended = !!schedule.attendance_checked;
               const ptUsed = !!schedule.pt_used;
               const isNoShow = schedule.status === "noshow";
               const isCancelled = schedule.status === "cancelled";
               const isCompleted = schedule.status === "completed" || (attended && ptUsed);
+              const lastSummary = getLastWorkoutSummary(lastWorkoutMap[schedule.id]);
+              const workoutPart =
+                getScheduleBodyPartFromMemo(schedule.memo) ||
+                lastSummary?.bodyPartText ||
+                getScheduleDisplayMemo(schedule) ||
+                "전신";
+              const issueText = [
+                lastSummary?.noteLine,
+                lastSummary?.bodyPartText ? lastSummary.bodyPartText : "",
+              ].filter(Boolean)[0];
 
               return (
-                <div key={schedule.id} style={styles.incompleteItem}>
-                  <div style={styles.incompleteMain}>
-                    <div style={styles.scheduleTime}>{formatTime(schedule.start_time)}</div>
-
-                    <div>
-                      <strong style={styles.scheduleMemberName}>
-                        {getScheduleTypeText(schedule.type)} · {getScheduleMemberNames(schedule)}
-                        {getScheduleMemberPtText(schedule) ? ` (${getScheduleMemberPtText(schedule)})` : ""}
-                      </strong>
-
-                      {getSchedulePreferenceTags(schedule).length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                          {getSchedulePreferenceTags(schedule).map((tag) => (
-                            <span
-                              key={tag}
-                              style={{
-                                background: "rgba(255,255,255,0.14)",
-                                color: "#f9fafb",
-                                border: "1px solid rgba(255,255,255,0.18)",
-                                padding: "4px 8px",
-                                borderRadius: 999,
-                                fontSize: 11,
-                                fontWeight: 800,
-                              }}
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {getReRegisterAlert(member) && (
-                        <div style={styles.reRegisterInlineAlertDark}>
-                          <strong>{getReRegisterAlert(member).title}</strong>
-                          <span>{getReRegisterAlert(member).text}</span>
-                        </div>
-                      )}
-
-                      {getLastWorkoutSummary(lastWorkoutMap[schedule.id]) && (
-                        <div style={styles.lastWorkoutPreviewDark}>
-                          {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).bodyPartText && (
-                            <span>지난부위: {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).bodyPartText}</span>
-                          )}
-                          <span>지난운동: {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).exerciseText}</span>
-                          {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).conditionLine && (
-                            <span>{getLastWorkoutSummary(lastWorkoutMap[schedule.id]).conditionLine}</span>
-                          )}
-                          {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).noteLine && (
-                            <span>{getLastWorkoutSummary(lastWorkoutMap[schedule.id]).noteLine}</span>
-                          )}
-                        </div>
-                      )}
-
-                      {member && getLatestConditionForMember(member) && (
-                        <div style={styles.lastWorkoutPreviewDark}>
-                          <span>최근컨디션: {getConditionPreviewText(getLatestConditionForMember(member))}</span>
-                          {getLatestConditionForMember(member)?.memo && (
-                            <span>{getLatestConditionForMember(member).memo}</span>
-                          )}
-                        </div>
-                      )}
-
-                      <div style={styles.scheduleStatusRow}>
-                        {isScheduleSMSSent(schedule) && (
-                          <span style={styles.scheduleSmsDoneText}>문자 완료</span>
-                        )}
-                        {isCancelled ? (
-                          <>
-                            <span style={styles.scheduleCancelText}>취소</span>
-                            <span style={styles.scheduleWarningText}>출석 없음</span>
-                            <span style={styles.scheduleWarningText}>차감 없음</span>
-                          </>
-                        ) : isNoShow ? (
-                          <>
-                            <span style={styles.scheduleNoShowText}>노쇼</span>
-                            <span style={styles.scheduleWarningText}>출석 없음</span>
-                            <span style={styles.scheduleDoneText}>차감 완료</span>
-                          </>
-                        ) : (
-                          <>
-                            {attended ? (
-                              <span style={styles.scheduleDoneText}>출석 완료</span>
-                            ) : (
-                              <span style={styles.scheduleWarningText}>출석 전</span>
-                            )}
-
-                            {ptUsed ? (
-                              <span style={styles.scheduleDoneText}>차감 완료</span>
-                            ) : (
-                              <span style={styles.scheduleWarningText}>차감 전</span>
-                            )}
-                          </>
-                        )}
-                      </div>
+                <article key={schedule.id} style={styles.approvedScheduleCard}>
+                  <div style={styles.approvedCardHead}>
+                    <div style={styles.approvedTimeBox}>{formatTime(schedule.start_time)}</div>
+                    <div style={styles.approvedMemberBlock}>
+                      <strong style={styles.approvedMemberName}>{getScheduleMemberNames(schedule)}</strong>
+                      <span style={styles.approvedPtText}>{getScheduleMemberPtText(schedule) || getScheduleTypeText(schedule.type)}</span>
                     </div>
                   </div>
 
-                  <div style={styles.incompleteButtonGroup}>
-                    {renderScheduleQuickButtons(
-                      schedule,
-                      isNoShow || isCancelled || isCompleted
-                    )}
+                  {getSchedulePreferenceTags(schedule).length > 0 && (
+                    <div style={styles.approvedTagRow}>
+                      {getSchedulePreferenceTags(schedule).slice(0, 3).map((tag) => (
+                        <span key={tag} style={styles.approvedTag}>{tag}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div style={styles.approvedPartRow}>
+                    <div style={styles.approvedPartIcon}>{renderWorkoutPartIcon(workoutPart, 52)}</div>
+                    <strong style={styles.approvedPartName}>{getWorkoutPartMeta(workoutPart).label}</strong>
+                    <span style={styles.approvedDividerLine} />
+                    <span style={styles.approvedMoodIcon}>{workoutCondition === "bad" ? "😐" : "🙂"}</span>
+                    <span style={styles.approvedMoodText}>{lastSummary?.conditionLine ? lastSummary.conditionLine.replace("컨디션 ", "") : "보통"}</span>
                   </div>
-                </div>
+
+                  <div style={styles.approvedIssueLine}>
+                    {issueText ? `▣ 지난 이슈 : ${issueText}` : ""}
+                  </div>
+
+                  <div style={styles.approvedStatusRow}>
+                    {isScheduleSMSSent(schedule) && <span style={styles.approvedSoftDone}>완료</span>}
+                    {!isScheduleSMSSent(schedule) && <span style={styles.approvedStatusSpacer} />}
+                  </div>
+
+                  <div style={styles.approvedButtonRow}>
+                    {renderScheduleQuickButtons(schedule, isNoShow || isCancelled || isCompleted)}
+                  </div>
+                </article>
               );
             })}
           </div>
         )}
+
+        <button
+          type="button"
+          onClick={openScheduleCheckModal}
+          style={styles.approvedMoreBar}
+        >
+          <span>{schedules.length > 5 ? `+${schedules.length - 5}개 더` : "더보기"}</span>
+          <span style={styles.approvedMoreCircle}>⌄</span>
+        </button>
       </section>
 
-      <section style={styles.scheduleAddWideBox}>
-        <button onClick={openScheduleCheckModal} style={styles.scheduleAddWideButton}>
-          <span style={styles.actionCardIcon}>☰</span>
-          <span>스케줄 확인 / 추가</span>
-          <span style={styles.actionCardArrow}>›</span>
+      <section style={styles.approvedLauncherGrid}>
+        <button type="button" onClick={() => openMemberListModal("회원 목록", true, false)} style={styles.approvedLauncherCard}>
+          <span style={styles.approvedLauncherIcon}>👥</span>
+          <strong>회원 목록</strong>
+          <small>전체 회원 관리</small>
+        </button>
+        <button type="button" onClick={() => setShowAddModal(true)} style={styles.approvedLauncherCard}>
+          <span style={styles.approvedLauncherIcon}>＋</span>
+          <strong>신규 등록</strong>
+          <small>신규 회원 등록</small>
+        </button>
+        <button type="button" onClick={() => openMemberListModal("PT 사용/차감", true, false)} style={styles.approvedLauncherCard}>
+          <span style={styles.approvedLauncherIconText}>PT</span>
+          <strong>PT 사용/차감</strong>
+          <small>PT 이용 현황</small>
+        </button>
+        <button type="button" onClick={() => openMemberListModal("상담 기록", true, false)} style={styles.approvedLauncherCard}>
+          <span style={styles.approvedLauncherIcon}>•••</span>
+          <strong>상담 기록</strong>
+          <small>상담 내역 관리</small>
+        </button>
+        <button type="button" onClick={() => openMemberListModal("운동 기록", true, false)} style={styles.approvedLauncherCard}>
+          <span style={styles.approvedLauncherIcon}>Ⅱ</span>
+          <strong>운동 기록</strong>
+          <small>운동 기록 작성</small>
+        </button>
+        <button type="button" onClick={() => openMemberListModal("인바디 기록", true, false)} style={styles.approvedLauncherCard}>
+          <span style={styles.approvedLauncherIcon}>▤</span>
+          <strong>인바디 기록</strong>
+          <small>인바디 결과</small>
+        </button>
+        <button type="button" onClick={openScheduleCheckModal} style={styles.approvedLauncherCard}>
+          <span style={styles.approvedLauncherIcon}>▣</span>
+          <strong>스케줄 관리</strong>
+          <small>일정 관리</small>
+        </button>
+        <button type="button" onClick={() => setShowTodayTodoModal(true)} style={styles.approvedLauncherCard}>
+          <span style={styles.approvedLauncherIcon}>✓</span>
+          <strong>오늘 할 일</strong>
+          <small>필요할 때만 확인</small>
+        </button>
+        <button type="button" onClick={() => setShowSalesModal(true)} style={styles.approvedLauncherCard}>
+          <span style={styles.approvedLauncherIcon}>▥</span>
+          <strong>매출 관리</strong>
+          <small>매출 현황 확인</small>
         </button>
       </section>
 
@@ -11230,27 +11053,6 @@ ${link}`;
           )}
         </div>
       )}
-
-      <section style={styles.actionSearchGridThree}>
-        <button onClick={() => setShowAddModal(true)} style={styles.actionBigCard}>
-          <span style={{ ...styles.actionBigIcon, color: "#facc15" }}>👤</span>
-          <span>
-            <strong>회원 추가</strong>
-            <p>새로운 회원을 등록합니다</p>
-          </span>
-          <span style={styles.actionCardArrow}>›</span>
-        </button>
-
-        <button onClick={() => openMemberListModal("회원 목록", true, false)} style={styles.actionBigCard}>
-          <span style={{ ...styles.actionBigIcon, color: "#38bdf8" }}>☰</span>
-          <span>
-            <strong>회원 목록 / 검색</strong>
-            <p>활성 회원을 보고 바로 검색합니다</p>
-          </span>
-          <span style={styles.actionCardArrow}>›</span>
-        </button>
-
-      </section>
 
       {showMemberListModal && (
         <div style={styles.whiteModalOverlay}>
@@ -17607,6 +17409,454 @@ textarea: {
     borderRadius: 999,
     padding: "8px 12px",
     fontSize: 12,
+    fontWeight: 1000,
+  },
+
+  /* 승인된 메인 디자인 고정: v16 기능 유지 + 메인 화면만 프리미엄 다크/골드 적용 */
+  page: {
+    height: "100dvh",
+    minHeight: "100dvh",
+    overflow: "hidden",
+    background: "#050708",
+    color: "#fff",
+    padding: "26px 30px calc(18px + env(safe-area-inset-bottom, 0px))",
+    fontFamily: "Arial, sans-serif",
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  approvedBrandRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 22,
+    minWidth: 0,
+  },
+  title: {
+    fontSize: 48,
+    lineHeight: 1,
+    margin: 0,
+    fontWeight: 1000,
+    letterSpacing: -2.2,
+    color: "#ffffff",
+    textShadow: "0 12px 32px rgba(0,0,0,0.45)",
+  },
+  approvedBrandDivider: {
+    width: 1,
+    height: 40,
+    background: "linear-gradient(180deg, rgba(245,183,68,0.15), rgba(245,183,68,0.95), rgba(245,183,68,0.18))",
+  },
+  subtitle: {
+    color: "#ffffff",
+    margin: 0,
+    fontSize: 21,
+    fontWeight: 900,
+    letterSpacing: -0.7,
+  },
+  headerActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: 16,
+  },
+  trainerQuickButton: {
+    background: "linear-gradient(180deg, rgba(31,35,39,0.96), rgba(12,15,18,0.96))",
+    border: "1px solid rgba(255,255,255,0.20)",
+    padding: "15px 28px",
+    borderRadius: 14,
+    fontWeight: 1000,
+    color: "#ffffff",
+    cursor: "pointer",
+    boxShadow: "0 16px 28px rgba(0,0,0,0.25)",
+    fontSize: 16,
+  },
+  adminBadge: {
+    background: "linear-gradient(180deg, rgba(31,35,39,0.96), rgba(12,15,18,0.96))",
+    border: "1px solid rgba(255,255,255,0.20)",
+    padding: "15px 28px",
+    borderRadius: 14,
+    fontWeight: 1000,
+    color: "#ffffff",
+    cursor: "pointer",
+    boxShadow: "0 16px 28px rgba(0,0,0,0.25)",
+    fontSize: 16,
+  },
+  approvedSchedulePanel: {
+    border: "1.2px solid rgba(218,146,28,0.92)",
+    borderRadius: 22,
+    padding: "26px 20px 18px",
+    background: "#070b0d",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 1px rgba(255,255,255,0.02)",
+    marginBottom: 70,
+  },
+  approvedScheduleTop: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 18,
+    marginBottom: 22,
+    padding: "0 4px",
+  },
+  approvedScheduleTitleWrap: {
+    display: "flex",
+    alignItems: "center",
+    gap: 18,
+  },
+  approvedCalendarIcon: {
+    width: 62,
+    height: 62,
+    borderRadius: 999,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#f3b441",
+    border: "1px solid rgba(218,146,28,0.85)",
+    fontSize: 26,
+    fontWeight: 1000,
+  },
+  incompleteTitle: {
+    fontSize: 34,
+    lineHeight: 1.05,
+    margin: 0,
+    fontWeight: 1000,
+    color: "#f4c76e",
+    letterSpacing: -1.4,
+  },
+  incompleteDesc: {
+    color: "#f5f0e4",
+    margin: "9px 0 0",
+    fontSize: 15,
+    fontWeight: 800,
+    opacity: 0.95,
+  },
+  incompleteTopActions: {
+    display: "flex",
+    gap: 14,
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  todaySmsStartButton: {
+    background: "#d7fff3",
+    color: "#10201d",
+    border: "1px solid #9eead8",
+    borderRadius: 14,
+    padding: "14px 24px",
+    fontSize: 16,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+    boxShadow: "0 14px 30px rgba(0,0,0,0.25)",
+  },
+  incompleteCount: {
+    minWidth: 74,
+    height: 54,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "linear-gradient(135deg, #ffe38f 0%, #e5a527 55%, #d99015 100%)",
+    color: "#111",
+    borderRadius: 14,
+    fontSize: 24,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+    boxShadow: "0 12px 26px rgba(0,0,0,0.28)",
+  },
+  approvedScheduleGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+    gap: 14,
+  },
+  approvedScheduleCard: {
+    height: 338,
+    minWidth: 0,
+    overflow: "hidden",
+    border: "1px solid rgba(218,146,28,0.90)",
+    borderRadius: 14,
+    background: "#05090b",
+    padding: "18px 16px 14px",
+    display: "flex",
+    flexDirection: "column",
+    boxShadow: "0 18px 34px rgba(0,0,0,0.22)",
+  },
+  approvedCardHead: {
+    display: "grid",
+    gridTemplateColumns: "72px 1fr",
+    gap: 8,
+    alignItems: "start",
+    marginBottom: 4,
+  },
+  approvedTimeBox: {
+    color: "#61a6ff",
+    fontSize: 21,
+    lineHeight: 1.05,
+    fontWeight: 1000,
+    whiteSpace: "pre-line",
+  },
+  approvedMemberBlock: {
+    minWidth: 0,
+    display: "flex",
+    alignItems: "baseline",
+    gap: 8,
+    overflow: "hidden",
+  },
+  approvedMemberName: {
+    color: "#fff",
+    fontSize: 21,
+    fontWeight: 1000,
+    letterSpacing: -0.8,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  approvedPtText: {
+    color: "rgba(255,255,255,0.86)",
+    fontSize: 14,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  approvedTagRow: {
+    display: "flex",
+    gap: 6,
+    flexWrap: "wrap",
+    paddingLeft: 80,
+    minHeight: 26,
+    marginBottom: 10,
+  },
+  approvedTag: {
+    background: "linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06))",
+    color: "#ffffff",
+    border: "1px solid rgba(255,255,255,0.12)",
+    padding: "5px 9px",
+    borderRadius: 999,
+    fontSize: 11,
+    lineHeight: 1,
+    fontWeight: 900,
+    boxShadow: "0 4px 10px rgba(0,0,0,0.24)",
+  },
+  approvedPartRow: {
+    display: "grid",
+    gridTemplateColumns: "54px minmax(54px, 1fr) 1px 36px auto",
+    gap: 11,
+    alignItems: "center",
+    minHeight: 78,
+    marginTop: 2,
+  },
+  approvedPartIcon: {
+    width: 54,
+    height: 54,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#e6a835",
+    flexShrink: 0,
+  },
+  approvedPartName: {
+    color: "#fff",
+    fontSize: 28,
+    lineHeight: 1,
+    fontWeight: 1000,
+    letterSpacing: -1.4,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  approvedDividerLine: {
+    width: 1,
+    height: 34,
+    background: "rgba(255,255,255,0.12)",
+  },
+  approvedMoodIcon: {
+    fontSize: 26,
+    lineHeight: 1,
+  },
+  approvedMoodText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: 1000,
+    whiteSpace: "nowrap",
+  },
+  approvedIssueLine: {
+    height: 42,
+    display: "flex",
+    alignItems: "center",
+    borderTop: "1px solid rgba(255,255,255,0.08)",
+    borderBottom: "1px solid rgba(255,255,255,0.05)",
+    color: "#ffffff",
+    opacity: 0.94,
+    fontSize: 13,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  approvedStatusRow: {
+    height: 38,
+    display: "flex",
+    alignItems: "center",
+  },
+  approvedSoftDone: {
+    background: "rgba(13, 92, 78, 0.68)",
+    color: "#e9fff9",
+    border: "1px solid rgba(103, 219, 193, 0.35)",
+    borderRadius: 999,
+    padding: "7px 12px",
+    fontSize: 12,
+    fontWeight: 1000,
+  },
+  approvedStatusSpacer: {
+    display: "block",
+    width: 1,
+    height: 1,
+  },
+  approvedButtonRow: {
+    marginTop: "auto",
+  },
+  scheduleQuickButtonWrap: {
+    position: "relative",
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 50px",
+    gap: 8,
+    width: "100%",
+  },
+  incompleteCompleteButton: {
+    height: 42,
+    background: "linear-gradient(180deg, #2b3033, #1b2023)",
+    color: "#fff",
+    border: "1px solid rgba(255,255,255,0.14)",
+    borderRadius: 8,
+    padding: "0 10px",
+    fontWeight: 1000,
+    fontSize: 14,
+    whiteSpace: "nowrap",
+  },
+  scheduleDisabledButton: {
+    height: 42,
+    background: "linear-gradient(180deg, #2a2f32, #1a1f22)",
+    color: "rgba(255,255,255,0.55)",
+    border: "1px solid rgba(255,255,255,0.10)",
+    borderRadius: 8,
+    padding: "0 10px",
+    fontWeight: 1000,
+    fontSize: 14,
+    whiteSpace: "nowrap",
+  },
+  scheduleSmsButton: {
+    height: 42,
+    background: "linear-gradient(180deg, rgba(11,88,77,0.92), rgba(5,64,57,0.92))",
+    color: "#ffffff",
+    border: "1px solid rgba(57,184,160,0.45)",
+    borderRadius: 8,
+    padding: "0 10px",
+    fontWeight: 1000,
+    fontSize: 14,
+    whiteSpace: "nowrap",
+  },
+  scheduleMoreButton: {
+    height: 42,
+    background: "#050607",
+    color: "#fff",
+    border: "1px solid rgba(255,255,255,0.16)",
+    borderRadius: 8,
+    padding: "0 10px",
+    fontWeight: 1000,
+    fontSize: 20,
+    lineHeight: 1,
+    whiteSpace: "nowrap",
+  },
+  approvedMoreBar: {
+    width: "100%",
+    height: 66,
+    marginTop: 22,
+    background: "linear-gradient(180deg, rgba(19,25,28,0.86), rgba(7,10,12,0.92))",
+    color: "#ffffff",
+    border: "1px solid rgba(255,255,255,0.14)",
+    borderRadius: 10,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+    fontSize: 26,
+    fontWeight: 1000,
+  },
+  approvedMoreCircle: {
+    width: 31,
+    height: 31,
+    borderRadius: 999,
+    border: "1px solid rgba(218,146,28,0.72)",
+    color: "#f4c76e",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 16,
+  },
+  approvedEmptyText: {
+    color: "#fff",
+    fontWeight: 900,
+    opacity: 0.8,
+  },
+  approvedLauncherGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(9, minmax(0, 1fr))",
+    gap: 12,
+    alignItems: "stretch",
+  },
+  approvedLauncherCard: {
+    height: 132,
+    minWidth: 0,
+    border: "1px solid rgba(218,146,28,0.78)",
+    borderRadius: 12,
+    background: "linear-gradient(180deg, rgba(17,23,25,0.96), rgba(5,7,8,0.98))",
+    color: "#fff",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+    boxShadow: "0 16px 32px rgba(0,0,0,0.24)",
+    cursor: "pointer",
+    overflow: "hidden",
+  },
+  approvedLauncherIcon: {
+    color: "#f0bd55",
+    fontSize: 34,
+    lineHeight: 1,
+    fontWeight: 1000,
+  },
+  approvedLauncherIconText: {
+    color: "#f0bd55",
+    fontSize: 34,
+    lineHeight: 1,
+    fontWeight: 1000,
+    letterSpacing: -1,
+  },
+  "approvedLauncherCard strong": {
+    color: "#ffffff",
+  },
+  notice: {
+    position: "fixed",
+    left: "50%",
+    bottom: "calc(152px + env(safe-area-inset-bottom, 0px))",
+    transform: "translateX(-50%)",
+    zIndex: 100000,
+    width: "min(520px, 70vw)",
+    background: "linear-gradient(90deg, rgba(86,55,9,0.96), rgba(34,25,14,0.96))",
+    border: "1px solid rgba(245,183,68,0.78)",
+    color: "#fde68a",
+    padding: "14px 18px",
+    borderRadius: 14,
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "center",
+    boxShadow: "0 20px 50px rgba(0,0,0,0.42)",
+    pointerEvents: "auto",
+  },
+  noticeButton: {
+    background: "linear-gradient(135deg, #ffe38f, #e5a527)",
+    color: "#111",
+    border: "none",
+    borderRadius: 10,
+    padding: "10px 14px",
     fontWeight: 1000,
   },
 
