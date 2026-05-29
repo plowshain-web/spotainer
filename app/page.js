@@ -8013,110 +8013,113 @@ async function saveMemberPreference() {
           <p style={styles.muted}>오늘 등록된 스케줄이 없습니다.</p>
         ) : (
           <div style={styles.incompleteList}>
-            {schedules.map((schedule) => {
+            {schedules.slice(0, 5).map((schedule) => {
               const member = getScheduleMember(schedule);
               const attended = !!schedule.attendance_checked;
               const ptUsed = !!schedule.pt_used;
               const isNoShow = schedule.status === "noshow";
               const isCancelled = schedule.status === "cancelled";
               const isCompleted = schedule.status === "completed" || (attended && ptUsed);
+              const workoutSummary = getLastWorkoutSummary(lastWorkoutMap[schedule.id]);
+              const bodyPartText = workoutSummary?.bodyPartText || "";
+              const issueText = workoutSummary?.conditionLine || workoutSummary?.noteLine || bodyPartText || "";
+              const conditionText = member && getLatestConditionForMember(member)
+                ? getConditionPreviewText(getLatestConditionForMember(member))
+                : "";
+              const mainPart = bodyPartText.includes("하체")
+                ? "하체"
+                : bodyPartText.includes("등")
+                ? "등"
+                : bodyPartText.includes("코어") || bodyPartText.includes("복부")
+                ? "코어"
+                : bodyPartText.includes("팔")
+                ? "팔"
+                : bodyPartText.includes("어깨")
+                ? "어깨"
+                : bodyPartText.includes("전신")
+                ? "전신"
+                : bodyPartText.includes("가슴")
+                ? "가슴"
+                : "가슴";
+              const partIcon = mainPart === "하체"
+                ? "⌁"
+                : mainPart === "등"
+                ? "⋇"
+                : mainPart === "코어"
+                ? "▦"
+                : mainPart === "팔"
+                ? "⌒"
+                : mainPart === "전신"
+                ? "♁"
+                : mainPart === "어깨"
+                ? "⌃"
+                : "◠";
 
               return (
                 <div key={schedule.id} style={styles.incompleteItem}>
-                  <div style={styles.incompleteMain}>
+                  <div style={styles.scheduleCardTopLine}>
                     <div style={styles.scheduleTime}>{formatTime(schedule.start_time)}</div>
-
-                    <div>
+                    <div style={styles.scheduleNameBlock}>
                       <strong style={styles.scheduleMemberName}>
-                        {getScheduleTypeText(schedule.type)} · {getScheduleMemberNames(schedule)}
-                        {getScheduleMemberPtText(schedule) ? ` (${getScheduleMemberPtText(schedule)})` : ""}
+                        {getScheduleMemberNames(schedule)}
                       </strong>
-
-                      {getSchedulePreferenceTags(schedule).length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                          {getSchedulePreferenceTags(schedule).map((tag) => (
-                            <span
-                              key={tag}
-                              style={{
-                                background: "rgba(255,255,255,0.14)",
-                                color: "#f9fafb",
-                                border: "1px solid rgba(255,255,255,0.18)",
-                                padding: "4px 8px",
-                                borderRadius: 999,
-                                fontSize: 11,
-                                fontWeight: 800,
-                              }}
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
+                      {getScheduleMemberPtText(schedule) && (
+                        <span style={styles.schedulePtText}>{getScheduleMemberPtText(schedule)}</span>
                       )}
-
-                      {getReRegisterAlert(member) && (
-                        <div style={styles.reRegisterInlineAlertDark}>
-                          <strong>{getReRegisterAlert(member).title}</strong>
-                          <span>{getReRegisterAlert(member).text}</span>
-                        </div>
-                      )}
-
-                      {getLastWorkoutSummary(lastWorkoutMap[schedule.id]) && (
-                        <div style={styles.lastWorkoutPreviewDark}>
-                          {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).bodyPartText && (
-                            <span>지난부위: {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).bodyPartText}</span>
-                          )}
-                          <span>지난운동: {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).exerciseText}</span>
-                          {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).conditionLine && (
-                            <span>{getLastWorkoutSummary(lastWorkoutMap[schedule.id]).conditionLine}</span>
-                          )}
-                          {getLastWorkoutSummary(lastWorkoutMap[schedule.id]).noteLine && (
-                            <span>{getLastWorkoutSummary(lastWorkoutMap[schedule.id]).noteLine}</span>
-                          )}
-                        </div>
-                      )}
-
-                      {member && getLatestConditionForMember(member) && (
-                        <div style={styles.lastWorkoutPreviewDark}>
-                          <span>최근컨디션: {getConditionPreviewText(getLatestConditionForMember(member))}</span>
-                          {getLatestConditionForMember(member)?.memo && (
-                            <span>{getLatestConditionForMember(member).memo}</span>
-                          )}
-                        </div>
-                      )}
-
-                      <div style={styles.scheduleStatusRow}>
-                        {isScheduleSMSSent(schedule) && (
-                          <span style={styles.scheduleSmsDoneText}>문자 완료</span>
-                        )}
-                        {isCancelled ? (
-                          <>
-                            <span style={styles.scheduleCancelText}>취소</span>
-                            <span style={styles.scheduleWarningText}>출석 없음</span>
-                            <span style={styles.scheduleWarningText}>차감 없음</span>
-                          </>
-                        ) : isNoShow ? (
-                          <>
-                            <span style={styles.scheduleNoShowText}>노쇼</span>
-                            <span style={styles.scheduleWarningText}>출석 없음</span>
-                            <span style={styles.scheduleDoneText}>차감 완료</span>
-                          </>
-                        ) : (
-                          <>
-                            {attended ? (
-                              <span style={styles.scheduleDoneText}>출석 완료</span>
-                            ) : (
-                              <span style={styles.scheduleWarningText}>출석 전</span>
-                            )}
-
-                            {ptUsed ? (
-                              <span style={styles.scheduleDoneText}>차감 완료</span>
-                            ) : (
-                              <span style={styles.scheduleWarningText}>차감 전</span>
-                            )}
-                          </>
-                        )}
-                      </div>
                     </div>
+                  </div>
+
+                  {getSchedulePreferenceTags(schedule).length > 0 && (
+                    <div style={styles.scheduleTagRow}>
+                      {getSchedulePreferenceTags(schedule).slice(0, 3).map((tag) => (
+                        <span key={tag} style={styles.scheduleTagPill}>{tag}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div style={styles.scheduleBodyLine}>
+                    <span style={styles.schedulePartIcon}>{partIcon}</span>
+                    <strong style={styles.scheduleBodyPartText}>{mainPart}</strong>
+                    <span style={styles.scheduleDivider} />
+                    <span style={styles.scheduleMoodIcon}>🙂</span>
+                    <strong style={styles.scheduleMoodText}>{conditionText || "보통"}</strong>
+                  </div>
+
+                  {issueText && (
+                    <div style={styles.scheduleIssueLine}>▣ 지난 이슈: {issueText}</div>
+                  )}
+
+                  <div style={styles.scheduleStatusRow}>
+                    {isScheduleSMSSent(schedule) && (
+                      <span style={styles.scheduleSmsDoneText}>문자 완료</span>
+                    )}
+                    {isCancelled ? (
+                      <>
+                        <span style={styles.scheduleCancelText}>취소</span>
+                        <span style={styles.scheduleWarningText}>출석 없음</span>
+                        <span style={styles.scheduleWarningText}>차감 없음</span>
+                      </>
+                    ) : isNoShow ? (
+                      <>
+                        <span style={styles.scheduleNoShowText}>노쇼</span>
+                        <span style={styles.scheduleWarningText}>출석 없음</span>
+                        <span style={styles.scheduleDoneText}>차감 완료</span>
+                      </>
+                    ) : (
+                      <>
+                        {attended ? (
+                          <span style={styles.scheduleDoneText}>완료</span>
+                        ) : (
+                          <span style={styles.scheduleWarningText}>출석 전</span>
+                        )}
+
+                        {ptUsed ? (
+                          <span style={styles.scheduleDoneText}>차감 완료</span>
+                        ) : (
+                          <span style={styles.scheduleWarningText}>차감 전</span>
+                        )}
+                      </>
+                    )}
                   </div>
 
                   <div style={styles.incompleteButtonGroup}>
@@ -8128,6 +8131,16 @@ async function saveMemberPreference() {
                 </div>
               );
             })}
+
+            {schedules.length > 5 && (
+              <button
+                type="button"
+                onClick={openScheduleCheckModal}
+                style={styles.todayScheduleMoreBar}
+              >
+                +{schedules.length - 5}개 더
+              </button>
+            )}
           </div>
         )}
       </section>
@@ -12477,22 +12490,18 @@ const styles = {
     whiteSpace: "nowrap",
   },
   scheduleList: {
-
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-    gap: 10,
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: 12,
   },
   scheduleItem: {
-
-    background: "#11100d",
-    border: "1px solid rgba(216,151,39,0.45)",
-    borderRadius: 22,
-    padding: 12,
+    background: "#202020",
+    border: "1px solid #333",
+    borderRadius: 18,
+    padding: 14,
     display: "grid",
-    gridTemplateRows: "1fr auto",
-    gap: 8,
-    height: 320,
-    overflow: "hidden",
+    gridTemplateColumns: "1fr",
+    gap: 10,
   },
   scheduleItemNoShow: {
     background: "linear-gradient(180deg, #211b1b 0%, #1c1414 100%)",
@@ -12504,26 +12513,29 @@ const styles = {
     opacity: 0.62,
   },
   scheduleMain: {
-
     display: "flex",
-    alignItems: "flex-start",
-    gap: 10,
+    alignItems: "center",
+    gap: 14,
     flex: 1,
     cursor: "pointer",
   },
   scheduleTime: {
 
-    minWidth: 62,
-    color: "#93c5fd",
-    fontSize: 14,
+    color: "#f0b73f",
+    fontSize: 16,
     fontWeight: 900,
-    lineHeight: 1.15,
+    lineHeight: 1.18,
+    whiteSpace: "pre-line",
   },
   scheduleMemberName: {
 
     color: "#fff",
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: 900,
+    lineHeight: 1.15,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
   scheduleMemo: {
     color: "#aaa",
@@ -12535,7 +12547,9 @@ const styles = {
     display: "flex",
     gap: 6,
     flexWrap: "wrap",
-    marginTop: 4,
+    marginTop: 2,
+    minHeight: 28,
+    alignItems: "center",
   },
   scheduleDoneText: {
     color: "#d7fff3",
@@ -12779,15 +12793,17 @@ const styles = {
     boxShadow: "0 8px 18px rgba(144,255,225,0.10)",
   },
   incompleteTitle: {
-    fontSize: 22,
+
+    fontSize: 24,
     margin: 0,
     fontWeight: 900,
-    color: "#fde68a",
+    color: "#f7c95c",
   },
   incompleteDesc: {
-    color: "#c9b27a",
+
+    color: "#e8dcc2",
     margin: "6px 0 0",
-    fontSize: 14,
+    fontSize: 13,
   },
   incompleteCount: {
 
@@ -12801,22 +12817,26 @@ const styles = {
     boxShadow: "0 8px 18px rgba(226,167,47,0.16)",
   },
   incompleteList: {
+
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-    gap: 10,
+    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+    gap: 12,
     alignItems: "stretch",
   },
   incompleteItem: {
+
     position: "relative",
-    background: "#241f17",
-    border: "1px solid #4a3a1f",
-    borderRadius: 18,
-    padding: "12px 14px",
+    background: "#07090b",
+    border: "1px solid rgba(216,151,39,0.66)",
+    borderRadius: 16,
+    padding: "14px 14px",
     display: "grid",
-    gridTemplateColumns: "1fr",
-    gap: 10,
-    alignItems: "stretch",
+    gridTemplateRows: "auto auto 1fr auto auto",
+    gap: 8,
     minWidth: 0,
+    minHeight: 300,
+    overflow: "hidden",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03), 0 10px 22px rgba(0,0,0,0.24)",
   },
   incompleteMain: {
     display: "grid",
@@ -12866,16 +12886,17 @@ const styles = {
     whiteSpace: "nowrap",
   },
   incompleteButtonGroup: {
+
     width: "100%",
+    marginTop: "auto",
   },
   scheduleQuickButtonWrap: {
 
     position: "relative",
     display: "grid",
-    gridTemplateColumns: "1.15fr 1fr 44px",
+    gridTemplateColumns: "1.05fr 1fr 44px",
     gap: 8,
     width: "100%",
-    marginTop: "auto",
   },
   scheduleMoreButton: {
     background: "#111",
@@ -13038,9 +13059,102 @@ const styles = {
     padding: "9px 12px",
     fontWeight: 800,
   },
-  scheduleAddWideBox: {
 
-    marginBottom: 24,
+  scheduleCardTopLine: {
+    display: "grid",
+    gridTemplateColumns: "58px 1fr",
+    gap: 10,
+    alignItems: "start",
+  },
+  scheduleNameBlock: {
+    minWidth: 0,
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+  },
+  schedulePtText: {
+    color: "#d9d9d9",
+    fontSize: 13,
+    fontWeight: 800,
+    whiteSpace: "nowrap",
+  },
+  scheduleTagRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 5,
+    minHeight: 24,
+  },
+  scheduleTagPill: {
+    background: "rgba(255,255,255,0.13)",
+    color: "#f6f6f6",
+    border: "1px solid rgba(255,255,255,0.16)",
+    padding: "4px 8px",
+    borderRadius: 999,
+    fontSize: 10,
+    fontWeight: 800,
+    lineHeight: 1,
+  },
+  scheduleBodyLine: {
+    display: "grid",
+    gridTemplateColumns: "42px 1fr 1px 36px 44px",
+    gap: 8,
+    alignItems: "center",
+    minHeight: 74,
+  },
+  schedulePartIcon: {
+    color: "#d89a2d",
+    fontSize: 28,
+    fontWeight: 900,
+    lineHeight: 1,
+    textAlign: "center",
+  },
+  scheduleBodyPartText: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  scheduleDivider: {
+    width: 1,
+    height: 34,
+    background: "rgba(255,255,255,0.12)",
+  },
+  scheduleMoodIcon: {
+    fontSize: 25,
+    lineHeight: 1,
+  },
+  scheduleMoodText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  scheduleIssueLine: {
+    color: "#f5e9d0",
+    borderTop: "1px solid rgba(255,255,255,0.10)",
+    borderBottom: "1px solid rgba(255,255,255,0.07)",
+    padding: "7px 0",
+    fontSize: 12,
+    fontWeight: 800,
+    lineHeight: 1.25,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  todayScheduleMoreBar: {
+    gridColumn: "1 / -1",
+    width: "100%",
+    height: 60,
+    background: "#07090b",
+    border: "1px solid rgba(255,255,255,0.14)",
+    borderRadius: 14,
+    color: "#fff",
+    fontSize: 21,
+    fontWeight: 900,
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+  },
+  scheduleAddWideBox: {
+    marginBottom: 22,
   },
   scheduleActionWideGrid: {
     display: "grid",
@@ -16109,22 +16223,18 @@ textarea: {
     whiteSpace: "nowrap",
   },
   lastWorkoutPreviewDark: {
-
-    display: "-webkit-box",
-    WebkitLineClamp: 4,
-    WebkitBoxOrient: "vertical",
-    overflow: "hidden",
-    marginTop: 4,
-    padding: "6px 8px",
-    background: "#17130e",
-    border: "1px solid #302518",
+    display: "flex",
+    flexDirection: "column",
+    gap: 3,
+    marginTop: 7,
+    padding: "7px 8px",
+    background: "#1b1711",
+    border: "1px solid #3d321f",
     borderRadius: 10,
     color: "#f5e9d0",
-    fontSize: 11,
-    fontWeight: 800,
-    lineHeight: 1.25,
-    minHeight: 56,
-    maxHeight: 82,
+    fontSize: 12,
+    fontWeight: 900,
+    lineHeight: 1.35,
   },
   scheduleStatusRowCompact: {
     display: "flex",
