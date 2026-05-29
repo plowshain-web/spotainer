@@ -261,42 +261,91 @@ function createEmptyWorkoutExercise(trainingType = "weight") {
 
 
 
+
 function TodayScheduleSectionV2({
-  schedules,smsMode,getCurrentSMSSchedule,smsIndex,smsQueue,
-  getCurrentSMSTargetMember,formatScheduleRange,
-  sendCurrentScheduleSMS,markCurrentSMSSentAndNext,skipCurrentSMS,stopTodaySMSQueue,
-  startTodaySMSQueue,getScheduleMember,getLatestConditionForMember,
+  schedules,startTodaySMSQueue,getScheduleMember,getLatestConditionForMember,
   getConditionPreviewText,renderScheduleQuickButtons
 }) {
   const bodyIcon = (text) => {
-    if ((text||"").includes("하체")) return "🦵";
-    if ((text||"").includes("등")) return "🏋️";
-    if ((text||"").includes("가슴")) return "💪";
-    if ((text||"").includes("코어")) return "⭕";
-    return "🏋️";
+    if ((text||"").includes("하체")) return "△";
+    if ((text||"").includes("등")) return "▽";
+    if ((text||"").includes("가슴")) return "◇";
+    if ((text||"").includes("코어")) return "○";
+    return "•";
   };
+
+  const formatTime=(time)=>{
+    if(!time) return "--:--";
+    return String(time).slice(0,5);
+  };
+
   return (
-    <section style={{border:"1px solid rgba(212,161,74,.7)",borderRadius:28,padding:24,background:"#050505",boxShadow:"0 0 30px rgba(212,161,74,.15)"}}>
+    <section style={{border:"1px solid rgba(212,161,74,.7)",borderRadius:28,padding:24,background:"#050505",boxShadow:"0 0 30px rgba(212,161,74,.12)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-        <div><h2 style={{fontSize:42,color:"#e0ae49",margin:0}}>오늘 스케줄</h2><div style={{color:"#ddd"}}>출석과 PT 차감 상태를 한 번에 확인하세요.</div></div>
+        <div>
+          <h2 style={{fontSize:42,color:"#e0ae49",margin:0}}>오늘 스케줄</h2>
+          <div style={{color:"#ddd"}}>출석과 PT 차감 상태를 한 번에 확인하세요.</div>
+        </div>
         <div style={{display:"flex",gap:12,alignItems:"center"}}>
           <button onClick={startTodaySMSQueue} style={{padding:"16px 24px",borderRadius:14,background:"#111",color:"#fff",border:"1px solid #d4a14a"}}>오늘 문자 시작</button>
           <div style={{padding:"16px 20px",borderRadius:14,background:"#d4a14a",fontWeight:700}}>{schedules.length}건</div>
         </div>
       </div>
-      <div style={{display:"flex",flexDirection:"column",gap:12}}>
-      {schedules.map((schedule)=>{
-        const member=getScheduleMember(schedule)||{};
-        const condition=getLatestConditionForMember(member);
-        const body=condition?.todayWorkout || condition?.nextWorkout || "미정";
-        return <div key={schedule.id} style={{display:"grid",gridTemplateColumns:"140px 140px 1.5fr 1fr auto",alignItems:"center",padding:"18px",borderRadius:18,border:"1px solid rgba(255,255,255,.08)",background:"rgba(255,255,255,.02)"}}>
-          <div style={{fontSize:26,color:"#e0ae49",fontWeight:700}}>{schedule.start_time}</div>
-          <div style={{fontSize:48}}>{bodyIcon(body)} <span style={{fontSize:24,color:"#fff"}}>{body}</span></div>
-          <div><div style={{fontSize:34,fontWeight:700}}>{member.name||"회원"} <span style={{fontSize:18,opacity:.7}}>PT {member.pt_count||member.remaining_pt||""}</span></div><div style={{opacity:.8}}>지난 이슈 : {condition?.memo || "없음"}</div></div>
-          <div style={{fontSize:24}}>🙂 {getConditionPreviewText(condition)||"보통"}</div>
-          <div style={{display:"flex",gap:8,alignItems:"center"}}>{renderScheduleQuickButtons(schedule,false)}</div>
-        </div>
-      })}
+
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {schedules.map((schedule)=>{
+          const member=getScheduleMember(schedule)||{};
+          const condition=getLatestConditionForMember(member);
+          const body=condition?.todayWorkout || condition?.nextWorkout || "";
+          const preview=getConditionPreviewText(condition);
+
+          return (
+            <div key={schedule.id} style={{
+              display:"grid",
+              gridTemplateColumns:"110px 140px 1.8fr 1fr auto",
+              alignItems:"center",
+              padding:"14px 18px",
+              borderRadius:20,
+              border:"1px solid rgba(255,255,255,.08)",
+              background:"rgba(255,255,255,.02)",
+              minHeight:110
+            }}>
+              <div style={{fontSize:22,color:"#e0ae49",fontWeight:900}}>
+                {formatTime(schedule.start_time)}
+              </div>
+
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <div style={{fontSize:28,color:"#e0ae49"}}>{bodyIcon(body)}</div>
+                <div style={{fontSize:34,fontWeight:900,color:"#fff"}}>
+                  {body || <span style={{fontSize:20,color:"#777"}}>운동미정</span>}
+                </div>
+              </div>
+
+              <div>
+                <div style={{fontSize:30,fontWeight:900,color:"#fff"}}>
+                  {member.name || "회원"}
+                  <span style={{fontSize:16,opacity:.7,marginLeft:10}}>
+                    PT {member.pt_count || member.remaining_pt || ""}
+                  </span>
+                </div>
+                <div style={{fontSize:15,color:"#cfcfcf",marginTop:4}}>
+                  {preview ? `🙂 ${preview}` : "🙂 보통"}
+                </div>
+                <div style={{fontSize:14,color:"#8f8f8f",marginTop:2}}>
+                  지난 이슈 : {condition?.memo || "없음"}
+                </div>
+              </div>
+
+              <div style={{fontSize:18,color:"#f2f2f2"}}>
+                {condition?.condition_level || "보통"}
+              </div>
+
+              <div style={{display:"flex",gap:8,justifyContent:"flex-end",alignItems:"center"}}>
+                {renderScheduleQuickButtons(schedule,false)}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </section>
   )
