@@ -227,7 +227,7 @@ const circuitPrograms = [
   },
 ];
 
-const SPOTAINER_PATCH_VERSION = "2026-05-25-v11-pwa-tablet-install-rescue";
+const SPOTAINER_PATCH_VERSION = "2026-05-29-v46-approved-reference-buildsafe";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const memberStageOptions = [
@@ -17609,7 +17609,7 @@ textarea: {
     overflow: "hidden",
     background: "#020506",
     color: "#fff",
-    padding: "18px 30px calc(env(safe-area-inset-bottom, 0px) + 18px)",
+    padding: "18px 30px calc(env(safe-area-inset-bottom, 0px) + 8px)",
     fontFamily: "Arial, sans-serif",
     display: "flex",
     flexDirection: "column",
@@ -17618,7 +17618,7 @@ textarea: {
 
 
   approvedHeader: {
-    height: 86,
+    height: 82,
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -17635,7 +17635,7 @@ textarea: {
   approvedLogo: {
     margin: 0,
     color: "#ffffff",
-    fontSize: 52,
+    fontSize: 48,
     lineHeight: 1,
     fontWeight: 1000,
     letterSpacing: "-3px",
@@ -17643,14 +17643,14 @@ textarea: {
   },
   approvedBrandDivider: {
     width: 1,
-    height: 44,
+    height: 40,
     background: "linear-gradient(180deg, rgba(244,185,69,0.15), rgba(244,185,69,0.95), rgba(244,185,69,0.15))",
     display: "block",
   },
   approvedCenterName: {
     margin: 0,
     color: "#ffffff",
-    fontSize: 23,
+    fontSize: 22,
     fontWeight: 900,
     letterSpacing: "-0.6px",
     whiteSpace: "nowrap",
@@ -17661,8 +17661,8 @@ textarea: {
     gap: 14,
   },
   approvedTopButton: {
-    minWidth: 132,
-    height: 56,
+    minWidth: 128,
+    height: 50,
     borderRadius: 14,
     border: "1px solid rgba(255,255,255,0.24)",
     background: "linear-gradient(180deg, rgba(25,29,31,0.96), rgba(8,10,11,0.96))",
@@ -17685,7 +17685,7 @@ textarea: {
     border: "1.2px solid rgba(216,145,37,0.88)",
     background: "#05090a",
     boxShadow: "0 0 0 1px rgba(255,214,138,0.06), 0 22px 48px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.03)",
-    padding: "26px 22px 18px",
+    padding: "24px 22px 18px",
     flexShrink: 0,
   },
   approvedScheduleHeader: {
@@ -17701,8 +17701,8 @@ textarea: {
     gap: 18,
   },
   approvedCalendarIcon: {
-    width: 70,
-    height: 70,
+    width: 64,
+    height: 64,
     borderRadius: "50%",
     border: "1.2px solid rgba(244,170,42,0.98)",
     color: "#f6b638",
@@ -17716,7 +17716,7 @@ textarea: {
   approvedSectionTitle: {
     margin: 0,
     color: "#f2c56a",
-    fontSize: 36,
+    fontSize: 32,
     lineHeight: 1.02,
     fontWeight: 1000,
     letterSpacing: "-1.4px",
@@ -17774,13 +17774,13 @@ textarea: {
     gap: 14,
   },
   approvedScheduleCard: {
-    height: 340,
+    height: 322,
     minWidth: 0,
     borderRadius: 13,
     border: "1.1px solid rgba(218,141,26,0.96)",
     background: "#030708",
     color: "#fff",
-    padding: "17px 15px 14px",
+    padding: "16px 14px 14px",
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
@@ -17788,7 +17788,7 @@ textarea: {
   },
   approvedScheduleCardTop: {
     display: "grid",
-    gridTemplateColumns: "70px minmax(0, 1fr)",
+    gridTemplateColumns: "68px minmax(0, 1fr)",
     gap: 10,
     minHeight: 62,
   },
@@ -17799,13 +17799,13 @@ textarea: {
   },
   approvedTimePeriod: {
     color: "#f5ae31",
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 900,
     lineHeight: 1.05,
   },
   approvedTimeText: {
     color: "#f5ae31",
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 1000,
     lineHeight: 1.02,
     letterSpacing: "-0.3px",
@@ -17824,7 +17824,7 @@ textarea: {
   },
   approvedScheduleName: {
     color: "#fff",
-    fontSize: 24,
+    fontSize: 22,
     lineHeight: 1.08,
     fontWeight: 1000,
     letterSpacing: "-0.7px",
@@ -17860,7 +17860,7 @@ textarea: {
     boxShadow: "0 6px 10px rgba(0,0,0,0.22)",
   },
   approvedBodyLine: {
-    height: 94,
+    height: 88,
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr) 1px minmax(86px, 0.72fr)",
     alignItems: "center",
@@ -17875,16 +17875,16 @@ textarea: {
   },
   approvedBodyIcon: {
     color: "#e0a12d",
-    width: 48,
-    minWidth: 48,
-    height: 48,
+    width: 50,
+    minWidth: 50,
+    height: 50,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
   },
   approvedBodyPartText: {
     color: "#fff",
-    fontSize: 27,
+    fontSize: 25,
     fontWeight: 1000,
     letterSpacing: "-0.8px",
     whiteSpace: "nowrap",
@@ -17911,7 +17911,7 @@ textarea: {
     whiteSpace: "nowrap",
   },
   approvedIssueArea: {
-    height: 49,
+    height: 44,
     borderTop: "1px solid rgba(255,255,255,0.10)",
     borderBottom: "1px solid rgba(255,255,255,0.06)",
     display: "flex",
@@ -17931,7 +17931,7 @@ textarea: {
     height: 18,
   },
   approvedStatusRow: {
-    height: 42,
+    height: 38,
     display: "flex",
     alignItems: "center",
     gap: 7,
@@ -18011,7 +18011,7 @@ textarea: {
   approvedMoreBar: {
     marginTop: 24,
     width: "100%",
-    height: 64,
+    height: 62,
     borderRadius: 10,
     border: "1px solid rgba(255,255,255,0.16)",
     background: "linear-gradient(180deg, rgba(18,27,29,0.88), rgba(5,8,9,0.92))",
@@ -18052,12 +18052,12 @@ textarea: {
     display: "grid",
     gridTemplateColumns: "repeat(9, minmax(0, 1fr))",
     gap: 14,
-    marginTop: 34,
+    marginTop: 32,
     flexShrink: 0,
   },
   approvedLauncherCard: {
-    aspectRatio: "1 / 0.86",
-    minHeight: 132,
+    aspectRatio: "1 / 0.90",
+    minHeight: 126,
     borderRadius: 13,
     border: "1px solid rgba(218,141,26,0.86)",
     background: "#05090a",
