@@ -7778,6 +7778,324 @@ async function saveMemberPreference() {
     );
   }
 
+
+  function getApprovedMainPart(bodyPartText) {
+    const textValue = String(bodyPartText || "");
+    if (textValue.includes("하체")) return "하체";
+    if (textValue.includes("등")) return "등";
+    if (textValue.includes("어깨")) return "어깨";
+    if (textValue.includes("코어") || textValue.includes("복부")) return "코어";
+    if (textValue.includes("팔")) return "팔";
+    if (textValue.includes("전신")) return "전신";
+    if (textValue.includes("가슴")) return "가슴";
+    return "가슴";
+  }
+
+  function renderApprovedBodyIcon(part) {
+    const commonProps = {
+      width: 44,
+      height: 44,
+      viewBox: "0 0 64 64",
+      fill: "none",
+      stroke: "#d89a2d",
+      strokeWidth: 2.2,
+      strokeLinecap: "round",
+      strokeLinejoin: "round",
+      style: { display: "block" },
+    };
+
+    if (part === "하체") {
+      return (
+        <svg {...commonProps}>
+          <path d="M23 9c2.5 8 3.5 16 2.5 24L22 55" />
+          <path d="M41 9c-2.5 8-3.5 16-2.5 24L42 55" />
+          <path d="M25 18c4.5 2 9.5 2 14 0" />
+          <path d="M29 10c2 3 4 3 6 0" />
+          <path d="M28 34h8" />
+        </svg>
+      );
+    }
+
+    if (part === "등") {
+      return (
+        <svg {...commonProps}>
+          <path d="M23 11c-5 8-7 18-7 31" />
+          <path d="M41 11c5 8 7 18 7 31" />
+          <path d="M32 10v43" />
+          <path d="M20 25c8 4 16 4 24 0" />
+          <path d="M22 38c7 3 13 3 20 0" />
+          <path d="M18 52c8-3 20-3 28 0" />
+        </svg>
+      );
+    }
+
+    if (part === "어깨") {
+      return (
+        <svg {...commonProps}>
+          <path d="M16 36c4-13 12-20 16-20s12 7 16 20" />
+          <path d="M14 38c8-3 15-2 18 3" />
+          <path d="M50 38c-8-3-15-2-18 3" />
+          <path d="M25 20c2 4 12 4 14 0" />
+        </svg>
+      );
+    }
+
+    if (part === "코어") {
+      return (
+        <svg {...commonProps}>
+          <path d="M24 11c-4 9-5 19-4 42" />
+          <path d="M40 11c4 9 5 19 4 42" />
+          <path d="M25 20h14" />
+          <path d="M23 30h18" />
+          <path d="M22 40h20" />
+          <path d="M29 20v25" />
+          <path d="M35 20v25" />
+        </svg>
+      );
+    }
+
+    if (part === "팔") {
+      return (
+        <svg {...commonProps}>
+          <path d="M20 43c3-14 10-24 19-28" />
+          <path d="M38 15c6 5 8 11 5 18" />
+          <path d="M26 42c8 0 16-2 22-8" />
+          <path d="M17 47c7 4 19 3 30-4" />
+        </svg>
+      );
+    }
+
+    if (part === "전신") {
+      return (
+        <svg {...commonProps}>
+          <circle cx="32" cy="10" r="4" />
+          <path d="M32 15v23" />
+          <path d="M18 23h28" />
+          <path d="M32 38l-12 17" />
+          <path d="M32 38l12 17" />
+        </svg>
+      );
+    }
+
+    return (
+      <svg {...commonProps}>
+        <path d="M22 22c-5 4-8 10-9 18" />
+        <path d="M42 22c5 4 8 10 9 18" />
+        <path d="M22 22c3 7 6 12 10 15" />
+        <path d="M42 22c-3 7-6 12-10 15" />
+        <path d="M24 42c5-3 11-3 16 0" />
+        <path d="M32 14v24" />
+        <path d="M25 16c3 3 11 3 14 0" />
+      </svg>
+    );
+  }
+
+  function ApprovedTodayScheduleBoxV2() {
+    const visibleSchedules = schedules.slice(0, 5);
+    const hiddenCount = Math.max(schedules.length - visibleSchedules.length, 0);
+
+    return (
+      <section style={styles.approvedMainScheduleBox}>
+        <div style={styles.approvedMainScheduleHead}>
+          <div style={styles.approvedMainScheduleTitleWrap}>
+            <div style={styles.approvedCalendarCircle}>▣</div>
+            <div>
+              <h2 style={styles.approvedMainScheduleTitle}>오늘 스케줄</h2>
+              <p style={styles.approvedMainScheduleDesc}>
+                출석과 PT 차감 상태를 한 번에 확인하세요.
+              </p>
+            </div>
+          </div>
+
+          <div style={styles.approvedMainScheduleActions}>
+            <button
+              type="button"
+              onClick={startTodaySMSQueue}
+              style={styles.approvedMainSmsButton}
+            >
+              오늘 문자 시작
+            </button>
+            <div style={styles.approvedMainCount}>{schedules.length}건</div>
+          </div>
+        </div>
+
+        {smsMode && getCurrentSMSSchedule() && (
+          <div style={styles.smsQueueBox}>
+            <div style={styles.smsQueueInfo}>
+              <strong style={styles.smsQueueTitle}>
+                오늘 문자 {smsIndex + 1} / {smsQueue.length}
+              </strong>
+              <span style={styles.smsQueueTarget}>
+                현재 대상: {getCurrentSMSTargetMember(getCurrentSMSSchedule())?.name || "회원"} · {formatScheduleRange(getCurrentSMSSchedule())}
+              </span>
+              <span style={styles.smsQueueHint}>
+                문자앱에서 전송 후 돌아와서 ‘보낸 처리’를 누르면 다음 회원으로 넘어갑니다.
+              </span>
+            </div>
+
+            <div style={styles.smsQueueActions}>
+              <button type="button" onClick={sendCurrentScheduleSMS} style={styles.smsQueuePrimaryButton}>
+                문자 보내기
+              </button>
+              <button type="button" onClick={markCurrentSMSSentAndNext} style={styles.smsQueueDoneButton}>
+                보낸 처리
+              </button>
+              <button type="button" onClick={skipCurrentSMS} style={styles.smsQueueSkipButton}>
+                건너뛰기
+              </button>
+              <button type="button" onClick={stopTodaySMSQueue} style={styles.smsQueueCloseButton}>
+                종료
+              </button>
+            </div>
+          </div>
+        )}
+
+        {schedules.length === 0 ? (
+          <p style={styles.muted}>오늘 등록된 스케줄이 없습니다.</p>
+        ) : (
+          <>
+            <div style={styles.approvedMainCardGrid}>
+              {visibleSchedules.map((schedule) => {
+                const member = getScheduleMember(schedule);
+                const attended = !!schedule.attendance_checked;
+                const ptUsed = !!schedule.pt_used;
+                const isNoShow = schedule.status === "noshow";
+                const isCancelled = schedule.status === "cancelled";
+                const isCompleted = schedule.status === "completed" || (attended && ptUsed);
+
+                const workoutSummary = getLastWorkoutSummary(lastWorkoutMap[schedule.id]);
+                const bodyPartText = workoutSummary?.bodyPartText || "";
+                const mainPart = getApprovedMainPart(bodyPartText);
+                const latestCondition = member ? getLatestConditionForMember(member) : null;
+                const conditionText = latestCondition ? getConditionPreviewText(latestCondition) : "";
+                const issueText = [
+                  workoutSummary?.conditionLine || "",
+                  workoutSummary?.noteLine || "",
+                ].filter(Boolean).join(" · ") || bodyPartText;
+
+                return (
+                  <article key={schedule.id} style={styles.approvedMainCard}>
+                    <div style={styles.approvedMainCardTop}>
+                      <div style={styles.approvedMainTime}>{formatTime(schedule.start_time)}</div>
+                      <div style={styles.approvedMainNameRow}>
+                        <strong style={styles.approvedMainName}>{getScheduleMemberNames(schedule)}</strong>
+                        {getScheduleMemberPtText(schedule) && (
+                          <span style={styles.approvedMainPtText}>{getScheduleMemberPtText(schedule)}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={styles.approvedMainTags}>
+                      {getSchedulePreferenceTags(schedule).slice(0, 3).map((tag) => (
+                        <span key={tag} style={styles.approvedMainTag}>{tag}</span>
+                      ))}
+                    </div>
+
+                    <div style={styles.approvedMainBody}>
+                      <div style={styles.approvedMainPartIcon}>{renderApprovedBodyIcon(mainPart)}</div>
+                      <strong style={styles.approvedMainPartText}>{mainPart}</strong>
+                      <span style={styles.approvedMainDivider} />
+                      <span style={styles.approvedMainMood}>🙂</span>
+                      <strong style={styles.approvedMainMoodText}>{conditionText || "보통"}</strong>
+                    </div>
+
+                    {issueText ? (
+                      <div style={styles.approvedMainIssue}>▣ 지난 이슈: {issueText}</div>
+                    ) : (
+                      <div style={styles.approvedMainIssueBlank} />
+                    )}
+
+                    <div style={styles.approvedMainStatus}>
+                      {isScheduleSMSSent(schedule) && <span style={styles.scheduleSmsDoneText}>문자 완료</span>}
+                      {isCancelled ? (
+                        <>
+                          <span style={styles.scheduleCancelText}>취소</span>
+                          <span style={styles.scheduleWarningText}>출석 없음</span>
+                          <span style={styles.scheduleWarningText}>차감 없음</span>
+                        </>
+                      ) : isNoShow ? (
+                        <>
+                          <span style={styles.scheduleNoShowText}>노쇼</span>
+                          <span style={styles.scheduleWarningText}>출석 없음</span>
+                          <span style={styles.scheduleDoneText}>차감 완료</span>
+                        </>
+                      ) : (
+                        <>
+                          {attended ? (
+                            <span style={styles.scheduleDoneText}>완료</span>
+                          ) : (
+                            <span style={styles.scheduleWarningText}>출석 전</span>
+                          )}
+
+                          {ptUsed ? (
+                            <span style={styles.scheduleDoneText}>차감 완료</span>
+                          ) : (
+                            <span style={styles.scheduleWarningText}>차감 전</span>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    <div style={styles.approvedMainButtons}>
+                      {scheduleActionMenuId === schedule.id && renderScheduleMoreMenu(schedule)}
+
+                      {isCompleted || isNoShow || isCancelled ? (
+                        <button style={styles.approvedMainDoneButton} disabled>
+                          {schedule.status === "cancelled"
+                            ? "취소됨"
+                            : schedule.status === "noshow"
+                              ? "노쇼"
+                              : "완료됨"}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => completeScheduleClass(schedule)}
+                          style={styles.approvedMainCompleteButton}
+                        >
+                          완료
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => sendScheduleSMS(schedule)}
+                        style={styles.approvedMainTextButton}
+                      >
+                        문자
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setScheduleActionMenuId((current) =>
+                            current === schedule.id ? null : schedule.id
+                          )
+                        }
+                        style={styles.approvedMainMoreButton}
+                      >
+                        ⋯
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={openScheduleCheckModal}
+              style={styles.approvedMainMoreBar}
+            >
+              {hiddenCount > 0 ? `+${hiddenCount}개 더` : "더보기"}
+              <span style={styles.approvedMainMoreCircle}>⌄</span>
+            </button>
+          </>
+        )}
+      </section>
+    );
+  }
+
   if (!mounted) return null;
 
   return (
@@ -7941,227 +8259,7 @@ async function saveMemberPreference() {
         </div>
       )}
 
-      <section style={styles.approvedScheduleShell}>
-        <div style={styles.approvedScheduleTop}>
-          <div style={styles.approvedScheduleTitleWrap}>
-            <div style={styles.approvedScheduleCircleIcon}>▣</div>
-            <div>
-              <h2 style={styles.approvedScheduleTitle}>오늘 스케줄</h2>
-              <p style={styles.approvedScheduleDesc}>
-                출석과 PT 차감 상태를 한 번에 확인하세요.
-              </p>
-            </div>
-          </div>
-
-          <div style={styles.approvedScheduleTopActions}>
-            <button
-              type="button"
-              onClick={startTodaySMSQueue}
-              style={styles.approvedTodaySmsButton}
-            >
-              오늘 문자 시작
-            </button>
-            <div style={styles.approvedScheduleCount}>{schedules.length}건</div>
-          </div>
-        </div>
-
-        {smsMode && getCurrentSMSSchedule() && (
-          <div style={styles.smsQueueBox}>
-            <div style={styles.smsQueueInfo}>
-              <strong style={styles.smsQueueTitle}>
-                오늘 문자 {smsIndex + 1} / {smsQueue.length}
-              </strong>
-              <span style={styles.smsQueueTarget}>
-                현재 대상: {getCurrentSMSTargetMember(getCurrentSMSSchedule())?.name || "회원"} · {formatScheduleRange(getCurrentSMSSchedule())}
-              </span>
-              <span style={styles.smsQueueHint}>
-                문자앱에서 전송 후 돌아와서 ‘보낸 처리’를 누르면 다음 회원으로 넘어갑니다.
-              </span>
-            </div>
-
-            <div style={styles.smsQueueActions}>
-              <button
-                type="button"
-                onClick={sendCurrentScheduleSMS}
-                style={styles.smsQueuePrimaryButton}
-              >
-                문자 보내기
-              </button>
-              <button
-                type="button"
-                onClick={markCurrentSMSSentAndNext}
-                style={styles.smsQueueDoneButton}
-              >
-                보낸 처리
-              </button>
-              <button
-                type="button"
-                onClick={skipCurrentSMS}
-                style={styles.smsQueueSkipButton}
-              >
-                건너뛰기
-              </button>
-              <button
-                type="button"
-                onClick={stopTodaySMSQueue}
-                style={styles.smsQueueCloseButton}
-              >
-                종료
-              </button>
-            </div>
-          </div>
-        )}
-
-        {schedules.length === 0 ? (
-          <p style={styles.muted}>오늘 등록된 스케줄이 없습니다.</p>
-        ) : (
-          <>
-            <div style={styles.approvedScheduleCardGrid}>
-              {schedules.slice(0, 5).map((schedule) => {
-                const member = getScheduleMember(schedule);
-                const attended = !!schedule.attendance_checked;
-                const ptUsed = !!schedule.pt_used;
-                const isNoShow = schedule.status === "noshow";
-                const isCancelled = schedule.status === "cancelled";
-                const isCompleted = schedule.status === "completed" || (attended && ptUsed);
-
-                const workoutSummary = getLastWorkoutSummary(lastWorkoutMap[schedule.id]);
-                const rawBodyPart = workoutSummary?.bodyPartText || "";
-                const latestCondition = member ? getLatestConditionForMember(member) : null;
-                const conditionPreview = latestCondition ? getConditionPreviewText(latestCondition) : "";
-                const issueText =
-                  workoutSummary?.conditionLine ||
-                  workoutSummary?.noteLine ||
-                  rawBodyPart ||
-                  "";
-
-                const mainPart = rawBodyPart.includes("하체")
-                  ? "하체"
-                  : rawBodyPart.includes("등")
-                  ? "등"
-                  : rawBodyPart.includes("코어") || rawBodyPart.includes("복부")
-                  ? "코어"
-                  : rawBodyPart.includes("팔")
-                  ? "팔"
-                  : rawBodyPart.includes("어깨")
-                  ? "어깨"
-                  : rawBodyPart.includes("전신")
-                  ? "전신"
-                  : rawBodyPart.includes("가슴")
-                  ? "가슴"
-                  : "가슴";
-
-                const partIcon = mainPart === "하체"
-                  ? "⌁"
-                  : mainPart === "등"
-                  ? "⋇"
-                  : mainPart === "코어"
-                  ? "▦"
-                  : mainPart === "팔"
-                  ? "⌒"
-                  : mainPart === "어깨"
-                  ? "⌃"
-                  : mainPart === "전신"
-                  ? "♁"
-                  : "◠";
-
-                return (
-                  <div key={schedule.id} style={styles.approvedScheduleCard}>
-                    <div style={styles.approvedCardTop}>
-                      <div style={styles.approvedScheduleTime}>
-                        {formatTime(schedule.start_time)}
-                      </div>
-                      <div style={styles.approvedNameLine}>
-                        <strong style={styles.approvedMemberName}>
-                          {getScheduleMemberNames(schedule)}
-                        </strong>
-                        {getScheduleMemberPtText(schedule) && (
-                          <span style={styles.approvedPtText}>
-                            {getScheduleMemberPtText(schedule)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div style={styles.approvedTagLine}>
-                      {getSchedulePreferenceTags(schedule).slice(0, 3).map((tag) => (
-                        <span key={tag} style={styles.approvedTagPill}>
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div style={styles.approvedBodyLine}>
-                      <span style={styles.approvedPartIcon}>{partIcon}</span>
-                      <strong style={styles.approvedPartText}>{mainPart}</strong>
-                      <span style={styles.approvedDivider} />
-                      <span style={styles.approvedMoodIcon}>🙂</span>
-                      <strong style={styles.approvedMoodText}>
-                        {conditionPreview || "보통"}
-                      </strong>
-                    </div>
-
-                    {issueText ? (
-                      <div style={styles.approvedIssueLine}>▣ 지난 이슈: {issueText}</div>
-                    ) : (
-                      <div style={styles.approvedIssuePlaceholder} />
-                    )}
-
-                    <div style={styles.approvedStatusRow}>
-                      {isScheduleSMSSent(schedule) && (
-                        <span style={styles.scheduleSmsDoneText}>문자 완료</span>
-                      )}
-                      {isCancelled ? (
-                        <>
-                          <span style={styles.scheduleCancelText}>취소</span>
-                          <span style={styles.scheduleWarningText}>출석 없음</span>
-                          <span style={styles.scheduleWarningText}>차감 없음</span>
-                        </>
-                      ) : isNoShow ? (
-                        <>
-                          <span style={styles.scheduleNoShowText}>노쇼</span>
-                          <span style={styles.scheduleWarningText}>출석 없음</span>
-                          <span style={styles.scheduleDoneText}>차감 완료</span>
-                        </>
-                      ) : (
-                        <>
-                          {attended ? (
-                            <span style={styles.scheduleDoneText}>완료</span>
-                          ) : (
-                            <span style={styles.scheduleWarningText}>출석 전</span>
-                          )}
-
-                          {ptUsed ? (
-                            <span style={styles.scheduleDoneText}>차감 완료</span>
-                          ) : (
-                            <span style={styles.scheduleWarningText}>차감 전</span>
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    <div style={styles.approvedButtonArea}>
-                      {renderScheduleQuickButtons(
-                        schedule,
-                        isNoShow || isCancelled || isCompleted
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <button
-              type="button"
-              onClick={openScheduleCheckModal}
-              style={styles.approvedMoreBar}
-            >
-              {schedules.length > 5 ? `+${schedules.length - 5}개 더` : "더보기"}
-              <span style={styles.approvedMoreArrow}>⌄</span>
-            </button>
-          </>
-        )}
-      </section>
+      <ApprovedTodayScheduleBoxV2 />
 
       <section style={styles.scheduleAddWideBox}>
         <button onClick={openScheduleCheckModal} style={styles.scheduleAddWideButton}>
@@ -12764,7 +12862,7 @@ const styles = {
     whiteSpace: "nowrap",
   },
 
-  approvedScheduleShell: {
+  approvedMainScheduleBox: {
     background: "#050607",
     border: "1px solid rgba(216,151,39,0.72)",
     borderRadius: 24,
@@ -12772,23 +12870,23 @@ const styles = {
     marginBottom: 26,
     boxShadow: "0 18px 34px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.03)",
   },
-  approvedScheduleTop: {
+  approvedMainScheduleHead: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     gap: 14,
     marginBottom: 18,
   },
-  approvedScheduleTitleWrap: {
+  approvedMainScheduleTitleWrap: {
     display: "flex",
     alignItems: "center",
     gap: 16,
   },
-  approvedScheduleCircleIcon: {
+  approvedCalendarCircle: {
     width: 54,
     height: 54,
     borderRadius: "50%",
-    border: "1px solid rgba(216,151,39,0.72)",
+    border: "1px solid rgba(216,151,39,0.74)",
     color: "#f0b73f",
     display: "flex",
     alignItems: "center",
@@ -12796,25 +12894,25 @@ const styles = {
     fontSize: 22,
     fontWeight: 900,
   },
-  approvedScheduleTitle: {
+  approvedMainScheduleTitle: {
     margin: 0,
     color: "#f7c95c",
     fontSize: 27,
     fontWeight: 900,
     lineHeight: 1,
   },
-  approvedScheduleDesc: {
+  approvedMainScheduleDesc: {
     margin: "8px 0 0",
     color: "#e9dfc7",
     fontSize: 13,
     fontWeight: 700,
   },
-  approvedScheduleTopActions: {
+  approvedMainScheduleActions: {
     display: "flex",
     alignItems: "center",
     gap: 12,
   },
-  approvedTodaySmsButton: {
+  approvedMainSmsButton: {
     background: "#d7fff3",
     color: "#10201d",
     border: "1px solid #9eead8",
@@ -12825,7 +12923,7 @@ const styles = {
     whiteSpace: "nowrap",
     boxShadow: "0 8px 18px rgba(144,255,225,0.10)",
   },
-  approvedScheduleCount: {
+  approvedMainCount: {
     background: "linear-gradient(180deg, #ffe28a 0%, #e2a72f 100%)",
     color: "#111",
     borderRadius: 16,
@@ -12835,45 +12933,45 @@ const styles = {
     whiteSpace: "nowrap",
     boxShadow: "0 8px 18px rgba(226,167,47,0.16)",
   },
-  approvedScheduleCardGrid: {
+  approvedMainCardGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
     gap: 12,
     alignItems: "stretch",
   },
-  approvedScheduleCard: {
+  approvedMainCard: {
     background: "#07090b",
     border: "1px solid rgba(216,151,39,0.68)",
     borderRadius: 16,
     padding: "14px 14px",
-    minHeight: 300,
+    height: 300,
     display: "grid",
-    gridTemplateRows: "auto 26px 78px 38px 32px auto",
+    gridTemplateRows: "auto 25px 75px 36px 30px 44px",
     gap: 7,
     overflow: "hidden",
     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03), 0 10px 22px rgba(0,0,0,0.24)",
   },
-  approvedCardTop: {
+  approvedMainCardTop: {
     display: "grid",
     gridTemplateColumns: "58px 1fr",
     gap: 10,
     alignItems: "start",
     minWidth: 0,
   },
-  approvedScheduleTime: {
+  approvedMainTime: {
     color: "#f0b73f",
     fontSize: 16,
     fontWeight: 900,
     lineHeight: 1.15,
     whiteSpace: "pre-line",
   },
-  approvedNameLine: {
+  approvedMainNameRow: {
     display: "flex",
     alignItems: "center",
     gap: 6,
     minWidth: 0,
   },
-  approvedMemberName: {
+  approvedMainName: {
     color: "#fff",
     fontSize: 18,
     fontWeight: 900,
@@ -12882,13 +12980,13 @@ const styles = {
     overflow: "hidden",
     textOverflow: "ellipsis",
   },
-  approvedPtText: {
+  approvedMainPtText: {
     color: "#d9d9d9",
     fontSize: 13,
     fontWeight: 800,
     whiteSpace: "nowrap",
   },
-  approvedTagLine: {
+  approvedMainTags: {
     display: "flex",
     flexWrap: "wrap",
     gap: 5,
@@ -12896,7 +12994,7 @@ const styles = {
     minWidth: 0,
     overflow: "hidden",
   },
-  approvedTagPill: {
+  approvedMainTag: {
     background: "rgba(255,255,255,0.13)",
     color: "#f6f6f6",
     border: "1px solid rgba(255,255,255,0.16)",
@@ -12907,21 +13005,21 @@ const styles = {
     lineHeight: 1,
     whiteSpace: "nowrap",
   },
-  approvedBodyLine: {
+  approvedMainBody: {
     display: "grid",
-    gridTemplateColumns: "42px 1fr 1px 34px 42px",
+    gridTemplateColumns: "44px minmax(46px,1fr) 1px 32px 40px",
     gap: 8,
     alignItems: "center",
     minWidth: 0,
   },
-  approvedPartIcon: {
-    color: "#d89a2d",
-    fontSize: 28,
-    fontWeight: 900,
-    lineHeight: 1,
-    textAlign: "center",
+  approvedMainPartIcon: {
+    width: 44,
+    height: 44,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  approvedPartText: {
+  approvedMainPartText: {
     color: "#fff",
     fontSize: 24,
     fontWeight: 900,
@@ -12929,22 +13027,22 @@ const styles = {
     overflow: "hidden",
     textOverflow: "ellipsis",
   },
-  approvedDivider: {
+  approvedMainDivider: {
     width: 1,
     height: 34,
     background: "rgba(255,255,255,0.12)",
   },
-  approvedMoodIcon: {
+  approvedMainMood: {
     fontSize: 24,
     lineHeight: 1,
   },
-  approvedMoodText: {
+  approvedMainMoodText: {
     color: "#fff",
     fontSize: 13,
     fontWeight: 900,
     whiteSpace: "nowrap",
   },
-  approvedIssueLine: {
+  approvedMainIssue: {
     color: "#f5e9d0",
     borderTop: "1px solid rgba(255,255,255,0.10)",
     borderBottom: "1px solid rgba(255,255,255,0.07)",
@@ -12956,10 +13054,10 @@ const styles = {
     overflow: "hidden",
     textOverflow: "ellipsis",
   },
-  approvedIssuePlaceholder: {
+  approvedMainIssueBlank: {
     height: 0,
   },
-  approvedStatusRow: {
+  approvedMainStatus: {
     display: "flex",
     gap: 6,
     flexWrap: "wrap",
@@ -12967,11 +13065,47 @@ const styles = {
     minHeight: 28,
     overflow: "hidden",
   },
-  approvedButtonArea: {
+  approvedMainButtons: {
+    position: "relative",
+    display: "grid",
+    gridTemplateColumns: "1.05fr 1fr 44px",
+    gap: 8,
     width: "100%",
-    marginTop: "auto",
   },
-  approvedMoreBar: {
+  approvedMainCompleteButton: {
+    background: "linear-gradient(180deg, #2b3033 0%, #1d2022 100%)",
+    color: "#fff",
+    border: "1px solid rgba(255,255,255,0.16)",
+    borderRadius: 10,
+    fontSize: 13,
+    fontWeight: 900,
+  },
+  approvedMainDoneButton: {
+    background: "linear-gradient(180deg, #2b3033 0%, #1d2022 100%)",
+    color: "#a7adb5",
+    border: "1px solid rgba(255,255,255,0.12)",
+    borderRadius: 10,
+    fontSize: 13,
+    fontWeight: 900,
+  },
+  approvedMainTextButton: {
+    background: "#06463f",
+    color: "#fff",
+    border: "1px solid rgba(56,189,171,0.35)",
+    borderRadius: 10,
+    fontSize: 13,
+    fontWeight: 900,
+  },
+  approvedMainMoreButton: {
+    background: "#050607",
+    color: "#fff",
+    border: "1px solid rgba(255,255,255,0.16)",
+    borderRadius: 10,
+    fontSize: 18,
+    fontWeight: 900,
+    lineHeight: 1,
+  },
+  approvedMainMoreBar: {
     width: "100%",
     height: 58,
     marginTop: 16,
@@ -12987,7 +13121,7 @@ const styles = {
     gap: 14,
     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
   },
-  approvedMoreArrow: {
+  approvedMainMoreCircle: {
     width: 30,
     height: 30,
     borderRadius: "50%",
