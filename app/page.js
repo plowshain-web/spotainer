@@ -307,58 +307,54 @@ function TodayScheduleSectionV2({
           return (
             <div key={schedule.id} style={{
               display:"grid",
-              gridTemplateColumns:"105px 170px 1.6fr 128px auto",
+              gridTemplateColumns:"120px minmax(0,1fr) auto",
               alignItems:"center",
-              gap:14,
-              padding:"12px 18px",
+              gap:18,
+              padding:"13px 18px",
               borderRadius:18,
               border:"1px solid rgba(255,255,255,.08)",
               background:"rgba(255,255,255,.025)",
-              minHeight:94
+              minHeight:86
             }}>
-              <div style={{fontSize:22,color:"#e0ae49",fontWeight:900,letterSpacing:-.5}}>
-                {formatTime(schedule.start_time)}
-              </div>
-
-              <div style={{display:"flex",alignItems:"center",gap:12,minWidth:0}}>
-                <div style={{fontSize:22,color:"#e0ae49",width:24,textAlign:"center",fontWeight:900}}>{bodyIcon(body)}</div>
-                <div style={{minWidth:0}}>
-                  {body ? (
-                    <div style={{fontSize:28,fontWeight:900,color:"#fff",lineHeight:1.05,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{body}</div>
-                  ) : (
-                    <div style={{fontSize:18,fontWeight:800,color:"#a2a2a2",lineHeight:1.05}}>운동미정</div>
-                  )}
-                  <div style={{fontSize:12,color:"#d4a14a",marginTop:7,whiteSpace:"nowrap"}}>출석 전 · 차감 전</div>
-                </div>
+              <div style={{display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"flex-start",gap:3}}>
+                <div style={{fontSize:22,color:"#e0ae49",fontWeight:900,letterSpacing:-.5}}>{formatTime(schedule.start_time)}</div>
+                <div style={{fontSize:12,color:"#8f8f8f",fontWeight:800,letterSpacing:.6}}>PT</div>
               </div>
 
               <div style={{minWidth:0}}>
                 <div style={{display:"flex",alignItems:"baseline",gap:10,minWidth:0}}>
-                  <div style={{fontSize:26,fontWeight:900,color:"#fff",lineHeight:1.1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                  <div style={{fontSize:24,fontWeight:900,color:"#fff",lineHeight:1.1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
                     {member.name || "회원"}
                   </div>
                   <div style={{fontSize:15,color:"#cfcfcf",fontWeight:800,whiteSpace:"nowrap"}}>{ptText}</div>
                 </div>
-                {tags.length > 0 && (
-                  <div style={{display:"flex",gap:6,marginTop:7,overflow:"hidden"}}>
-                    {tags.map((tag)=>(
-                      <span key={tag} style={{fontSize:12,color:"#f2f2f2",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.08)",borderRadius:999,padding:"4px 8px",whiteSpace:"nowrap"}}>{tag}</span>
-                    ))}
+
+                <div style={{display:"flex",alignItems:"center",gap:10,marginTop:5,minWidth:0}}>
+                  <div style={{fontSize:18,color:"#e0ae49",width:22,textAlign:"center",fontWeight:900,flex:"0 0 auto"}}>{bodyIcon(body)}</div>
+                  <div style={{fontSize:17,fontWeight:900,color:body ? "#f4f4f4" : "#a2a2a2",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                    {body || "운동미정"}
                   </div>
-                )}
-                <div style={{fontSize:14,color:"#cfcfcf",marginTop:6,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                  {tags.length > 0 && (
+                    <div style={{display:"flex",gap:6,overflow:"hidden"}}>
+                      {tags.map((tag)=>(
+                        <span key={tag} style={{fontSize:12,color:"#f2f2f2",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.08)",borderRadius:999,padding:"3px 8px",whiteSpace:"nowrap"}}>{tag}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{fontSize:14,color:"#cfcfcf",marginTop:5,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
                   {statusText}
                   <span style={{color:"#777",margin:"0 8px"}}>·</span>
                   지난 이슈 : {condition?.memo || "없음"}
                 </div>
               </div>
 
-              <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"center"}}>
-                <div style={{fontSize:13,color:"#d4a14a",border:"1px solid rgba(212,161,74,.45)",borderRadius:999,padding:"5px 11px",whiteSpace:"nowrap"}}>출석 전</div>
-                <div style={{fontSize:13,color:"#d4a14a",border:"1px solid rgba(212,161,74,.45)",borderRadius:999,padding:"5px 11px",whiteSpace:"nowrap"}}>차감 전</div>
-              </div>
-
-              <div style={{display:"flex",gap:8,justifyContent:"flex-end",alignItems:"center"}}>
+              <div style={{display:"flex",gap:8,justifyContent:"flex-end",alignItems:"center",whiteSpace:"nowrap"}}>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginRight:4}}>
+                  <span style={{fontSize:12,color:"#d4a14a",border:"1px solid rgba(212,161,74,.45)",borderRadius:999,padding:"5px 9px"}}>출석 전</span>
+                  <span style={{fontSize:12,color:"#d4a14a",border:"1px solid rgba(212,161,74,.45)",borderRadius:999,padding:"5px 9px"}}>차감 전</span>
+                </div>
                 {renderScheduleQuickButtons(schedule,false)}
               </div>
             </div>
