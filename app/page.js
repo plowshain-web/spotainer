@@ -1402,89 +1402,99 @@ const [workoutExercises, setWorkoutExercises] = useState([
     };
   }
 
-  function renderWorkoutPartIcon(value, size = 30) {
+  function renderWorkoutPartIcon(value, size = 46) {
     const meta = getWorkoutPartMeta(value);
     const stroke = "currentColor";
-    const common = { fill: "none", stroke, strokeWidth: "1.75", strokeLinecap: "round", strokeLinejoin: "round" };
-    const soft = { fill: "rgba(246,211,139,0.10)", stroke, strokeWidth: "1.55", strokeLinecap: "round", strokeLinejoin: "round" };
-    const contentMap = {
+    const common = {
+      fill: "none",
+      stroke,
+      strokeWidth: "1.55",
+      strokeLinecap: "round",
+      strokeLinejoin: "round",
+      vectorEffect: "non-scaling-stroke",
+    };
+
+    const icons = {
       "가슴": (
         <>
-          <path {...common} d="M16 7.8v3.8" />
-          <path {...common} d="M10.2 13.2c1.5-1.8 3.4-2.6 5.8-2.6s4.3.8 5.8 2.6" />
-          <path {...soft} d="M8.7 15.2c1.7-1.1 4.1-1.5 7.3-.6 3.2-.9 5.6-.5 7.3.6-.7 3.3-2.7 5.3-7.3 5.3s-6.6-2-7.3-5.3Z" />
-          <path {...common} d="M16 14.7v6.1" />
-          <path {...common} d="M9.1 20.7c1.8 1.8 4.1 2.6 6.9 2.6s5.1-.8 6.9-2.6" />
-        </>
-      ),
-      "어깨": (
-        <>
-          <path {...common} d="M16 8.5v4" />
-          <path {...common} d="M8 16.2c2-3.7 4.7-5.4 8-5.4s6 1.7 8 5.4" />
-          <path {...soft} d="M7.2 18.3c2.3 2.1 5.2 3.2 8.8 3.2s6.5-1.1 8.8-3.2" />
-          <path {...common} d="M10.5 17.2c1.3-.9 3.1-1.4 5.5-1.4s4.2.5 5.5 1.4" />
-        </>
-      ),
-      "등": (
-        <>
-          <path {...common} d="M16 7.8v15.7" />
-          <path {...soft} d="M9 12.5c2 1.7 4.4 2.5 7 2.5s5-.8 7-2.5" />
-          <path {...common} d="M9.5 22.2c1.4-4 3.6-6.1 6.5-6.1s5.1 2.1 6.5 6.1" />
-          <path {...common} d="M11.3 15.8c-.8 2.7-1.2 5.1-1.2 7.2" />
-          <path {...common} d="M20.7 15.8c.8 2.7 1.2 5.1 1.2 7.2" />
-        </>
-      ),
-      "팔": (
-        <>
-          <path {...common} d="M11 12.3c1.9-.5 3.5.4 4.2 2.4" />
-          <path {...soft} d="M15.2 14.7c.2 3.5 2.2 5.6 5.9 5.7" />
-          <path {...common} d="M10.8 12.3c1-1.7 3.2-2.5 5.1-1.5" />
-          <path {...common} d="M20.9 20.4c1.1.1 2.1-.4 2.7-1.4" />
-          <path {...common} d="M13.5 15.8c-1.6.6-2.7 1.8-3.4 3.4" />
-        </>
-      ),
-      "코어": (
-        <>
-          <path {...common} d="M11.5 10.2h9" />
-          <path {...soft} d="M12 12.8h8" />
-          <path {...soft} d="M11.8 16h8.4" />
-          <path {...soft} d="M12.5 19.2h7" />
-          <path {...common} d="M10.4 11.3c.9 3.4.9 6.9 0 10.4" />
-          <path {...common} d="M21.6 11.3c-.9 3.4-.9 6.9 0 10.4" />
-          <path {...common} d="M16 12.8v9" />
+          <path {...common} d="M16 6.6v4.2" />
+          <path {...common} d="M9.2 14.2c1.7-2.6 4-3.8 6.8-3.8s5.1 1.2 6.8 3.8" />
+          <path {...common} d="M8.2 15.8c2.1-.8 4.7-.7 7.8.4 3.1-1.1 5.7-1.2 7.8-.4" />
+          <path {...common} d="M9.2 16.4c.9 4 3.1 6 6.8 6s5.9-2 6.8-6" />
+          <path {...common} d="M16 15.9v6.7" />
+          <path {...common} d="M11.4 21.2c1.3 1 2.8 1.5 4.6 1.5s3.3-.5 4.6-1.5" />
         </>
       ),
       "하체": (
         <>
-          <path {...common} d="M12.1 9.4c1.2.5 2.5.8 3.9.8s2.7-.3 3.9-.8" />
-          <path {...soft} d="M12.3 10.5l-1.1 7.1-2.4 6.1" />
-          <path {...soft} d="M19.7 10.5l1.1 7.1 2.4 6.1" />
-          <path {...common} d="M13 17.1h6" />
-          <path {...common} d="M11 23.6H8.5" />
-          <path {...common} d="M23.5 23.6H21" />
+          <path {...common} d="M12.5 7.5c2.1.8 4.9.8 7 0" />
+          <path {...common} d="M12.6 9.2l-1.2 7.4-2.7 8" />
+          <path {...common} d="M19.4 9.2l1.2 7.4 2.7 8" />
+          <path {...common} d="M13.1 16.9h5.8" />
+          <path {...common} d="M10.3 24.8H8" />
+          <path {...common} d="M24 24.8h-2.3" />
+          <path {...common} d="M16 9.8v6.8" />
+        </>
+      ),
+      "등": (
+        <>
+          <path {...common} d="M16 6.8v17" />
+          <path {...common} d="M9.3 12.4c1.8 1.8 4.1 2.7 6.7 2.7s4.9-.9 6.7-2.7" />
+          <path {...common} d="M10.1 23.7c1.2-4.7 3.2-7 5.9-7s4.7 2.3 5.9 7" />
+          <path {...common} d="M11.2 15.2c-.9 2.8-1.4 5.8-1.4 8.8" />
+          <path {...common} d="M20.8 15.2c.9 2.8 1.4 5.8 1.4 8.8" />
+        </>
+      ),
+      "코어": (
+        <>
+          <path {...common} d="M12.3 9.6h7.4" />
+          <path {...common} d="M11.8 12.8h8.4" />
+          <path {...common} d="M11.8 16h8.4" />
+          <path {...common} d="M12.4 19.2h7.2" />
+          <path {...common} d="M13.2 22.3h5.6" />
+          <path {...common} d="M9.9 10.6c1.2 4 1.2 8 0 12" />
+          <path {...common} d="M22.1 10.6c-1.2 4-1.2 8 0 12" />
+          <path {...common} d="M16 12.8v9.5" />
+        </>
+      ),
+      "어깨": (
+        <>
+          <path {...common} d="M16 7.2v4" />
+          <path {...common} d="M7.6 16.6c2.3-3.9 5.1-5.8 8.4-5.8s6.1 1.9 8.4 5.8" />
+          <path {...common} d="M7.8 18.3c2.4 2.3 5.1 3.4 8.2 3.4s5.8-1.1 8.2-3.4" />
+          <path {...common} d="M10.7 16.7c1.3-1 3.1-1.5 5.3-1.5s4 .5 5.3 1.5" />
+        </>
+      ),
+      "팔": (
+        <>
+          <path {...common} d="M10.8 12.2c2-.4 3.6.5 4.3 2.6" />
+          <path {...common} d="M15.1 14.8c.3 3.8 2.3 5.9 6 6" />
+          <path {...common} d="M10.8 12.2c1-1.8 3.2-2.5 5.1-1.5" />
+          <path {...common} d="M21.1 20.8c1 .1 1.9-.3 2.6-1.2" />
+          <path {...common} d="M13.5 16c-1.6.5-2.8 1.7-3.6 3.4" />
         </>
       ),
       "전신": (
         <>
           <circle {...common} cx="16" cy="8.4" r="1.9" />
-          <path {...common} d="M16 10.7v7" />
-          <path {...soft} d="M9.4 14.2l6.6-2.1 6.6 2.1" />
-          <path {...common} d="M16 17.7l-4.2 5.7" />
-          <path {...common} d="M16 17.7l4.2 5.7" />
+          <path {...common} d="M16 10.8v7.2" />
+          <path {...common} d="M9.3 14.5l6.7-2 6.7 2" />
+          <path {...common} d="M16 18l-4.2 5.8" />
+          <path {...common} d="M16 18l4.2 5.8" />
         </>
       ),
       "유산소": (
         <>
-          <path {...common} d="M7.2 17c2.3-5 5-5 7.4 0s5.1 5 7.8 0" />
-          <path {...common} d="M8.3 22.5h15.4" />
+          <path {...common} d="M7.5 17c2.4-5.1 5.1-5.1 7.5 0s5.1 5.1 7.5 0" />
+          <path {...common} d="M8.5 22.5h15" />
           <path {...common} d="M9.5 12.2h13" />
-          <path {...soft} d="M11.5 12.2l2.4-2.5 2.1 2.5 2.2-2.5 2.3 2.5" />
         </>
       ),
     };
+
     return (
       <svg width={size} height={size} viewBox="0 0 32 32" aria-label={meta.label} role="img">
-        {contentMap[meta.key] || (<><circle {...common} cx="16" cy="16" r="7" /><path {...common} d="M12 16h8" /></>)}
+        {icons[meta.key] || icons["전신"]}
       </svg>
     );
   }
@@ -8291,7 +8301,7 @@ async function saveMemberPreference() {
                   </div>
 
                   <div style={styles.compactWorkoutRow}>
-                    <span style={styles.compactBodyIcon}>{renderWorkoutPartIcon(todayBodyPart, 42)}</span>
+                    <span style={styles.compactBodyIcon}>{renderWorkoutPartIcon(todayBodyPart, 46)}</span>
                     <strong style={styles.compactBodyText}>{getWorkoutPartMeta(todayBodyPart).label}</strong>
                     <span style={styles.compactDivider} />
                     <span style={styles.compactConditionIcon}>{condition.icon}</span>
@@ -9128,7 +9138,7 @@ async function saveMemberPreference() {
                       </div>
 
                       <div style={styles.compactWorkoutRow}>
-                        <span style={styles.compactBodyIcon}>{renderWorkoutPartIcon(todayBodyPart, 42)}</span>
+                        <span style={styles.compactBodyIcon}>{renderWorkoutPartIcon(todayBodyPart, 46)}</span>
                         <strong style={styles.compactBodyText}>{getWorkoutPartMeta(todayBodyPart).label}</strong>
                         <span style={styles.compactDivider} />
                         <span style={styles.compactConditionIcon}>{condition.icon}</span>
@@ -13537,23 +13547,23 @@ const styles = {
   notice: {
     position: "fixed",
     left: "50%",
-    bottom: "calc(max(22px, env(safe-area-inset-bottom)) + 118px)",
+    bottom: "calc(158px + env(safe-area-inset-bottom))",
     transform: "translateX(-50%)",
-    zIndex: 9998,
-    minWidth: 360,
-    maxWidth: "min(720px, calc(100vw - 48px))",
-    background: "linear-gradient(90deg, rgba(82,59,14,0.78), rgba(32,25,14,0.90))",
-    border: "1.15px solid rgba(246,211,139,0.68)",
+    zIndex: 50000,
+    minWidth: 420,
+    maxWidth: "calc(100vw - 48px)",
+    background: "linear-gradient(90deg, rgba(88,60,16,0.94), rgba(38,28,12,0.96))",
     color: "#f6d38b",
-    padding: "8px 14px",
-    borderRadius: 13,
-    minHeight: 40,
+    border: "1px solid rgba(246,211,139,0.70)",
+    borderRadius: 14,
+    padding: "13px 16px",
     display: "flex",
-    justifyContent: "space-between",
-    gap: 10,
     alignItems: "center",
-    boxSizing: "border-box",
-    boxShadow: "0 14px 34px rgba(0,0,0,0.36)",
+    justifyContent: "space-between",
+    gap: 16,
+    fontSize: 16,
+    fontWeight: 900,
+    boxShadow: "0 18px 36px rgba(0,0,0,0.34)",
   },
   noticeButton: {
     background: "linear-gradient(180deg, #f9d977, #d89b2a)",
@@ -18215,7 +18225,7 @@ textarea: {
   ==================================================== */
   page: {
     height: "100dvh",
-    minHeight: "100vh",
+    minHeight: "100dvh",
     overflow: "hidden",
     boxSizing: "border-box",
     position: "relative",
@@ -18223,7 +18233,7 @@ textarea: {
     flexDirection: "column",
     background: "#050708",
     color: "#fff",
-    padding: "16px 28px max(14px, env(safe-area-inset-bottom))",
+    padding: "20px 30px max(16px, env(safe-area-inset-bottom))",
     fontFamily: "Arial, sans-serif",
   },
   header: {
@@ -18231,7 +18241,7 @@ textarea: {
     justifyContent: "space-between",
     alignItems: "center",
     gap: 16,
-    marginBottom: 12,
+    marginBottom: 22,
     flexShrink: 0,
   },
   headerTitleRow: {
@@ -18241,13 +18251,13 @@ textarea: {
   },
   headerDivider: {
     width: 1,
-    height: 40,
+    height: 36,
     background: "rgba(246,211,139,0.78)",
-    boxShadow: "0 0 12px rgba(246,211,139,0.18)",
+    boxShadow: "0 0 10px rgba(246,211,139,0.18)",
   },
   title: {
     margin: 0,
-    fontSize: 56,
+    fontSize: "clamp(42px, 4.2vw, 58px)",
     lineHeight: 0.9,
     fontWeight: 1000,
     letterSpacing: "-0.07em",
@@ -18255,7 +18265,7 @@ textarea: {
   },
   subtitle: {
     margin: 0,
-    fontSize: 18,
+    fontSize: "clamp(15px, 1.35vw, 20px)",
     color: "#f4f4f5",
     fontWeight: 900,
     letterSpacing: "-0.02em",
@@ -18279,49 +18289,51 @@ textarea: {
     border: "1px solid rgba(255,255,255,0.18)",
     background: "rgba(255,255,255,0.055)",
     color: "#fff",
-    borderRadius: 15,
+    borderRadius: 14,
     padding: "10px 18px",
     fontSize: 14,
     fontWeight: 1000,
+    minWidth: 116,
   },
   adminBadge: {
     border: "1px solid rgba(255,255,255,0.18)",
     background: "rgba(255,255,255,0.055)",
     color: "#fff",
-    borderRadius: 15,
+    borderRadius: 14,
     padding: "10px 18px",
     fontSize: 14,
     fontWeight: 1000,
+    minWidth: 96,
   },
   incompleteBox: {
     background: "#080b0d",
-    border: "1.15px solid rgba(214,157,48,0.72)",
+    border: "1.15px solid rgba(214,157,48,0.78)",
     borderRadius: 18,
-    padding: "14px 18px 14px",
+    padding: "22px 22px 20px",
     marginBottom: 0,
-    height: "342px",
-    minHeight: 0,
+    height: "min(500px, 58dvh)",
+    minHeight: 405,
     boxSizing: "border-box",
-    boxShadow: "0 14px 34px rgba(0,0,0,0.28)",
+    boxShadow: "0 18px 42px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.04), 0 0 18px rgba(214,157,48,0.06)",
     flexShrink: 0,
   },
   incompleteTop: {
     display: "flex",
     justifyContent: "space-between",
     gap: 14,
-    alignItems: "center",
-    marginBottom: 10,
+    alignItems: "flex-start",
+    marginBottom: 18,
   },
   incompleteTitle: {
-    fontSize: 27,
+    fontSize: "clamp(27px, 2.6vw, 38px)",
     margin: 0,
     fontWeight: 1000,
     color: "#f6d38b",
-    letterSpacing: "-0.04em",
+    letterSpacing: "-0.045em",
   },
   incompleteDesc: {
     color: "#d4d4d8",
-    margin: "4px 0 0",
+    margin: "7px 0 0",
     fontSize: 13,
     fontWeight: 800,
   },
@@ -18330,47 +18342,52 @@ textarea: {
     color: "#10201d",
     border: "1px solid #9eead8",
     borderRadius: 999,
-    padding: "9px 15px",
+    padding: "10px 18px",
     fontSize: 13,
     fontWeight: 1000,
     whiteSpace: "nowrap",
+    boxShadow: "0 8px 18px rgba(0,0,0,0.22)",
   },
   incompleteCount: {
     background: "linear-gradient(180deg, #f9d977, #d89b2a)",
     color: "#111",
-    borderRadius: 999,
-    padding: "9px 14px",
-    fontSize: 15,
+    borderRadius: 13,
+    padding: "10px 15px",
+    fontSize: 19,
     fontWeight: 1000,
     whiteSpace: "nowrap",
+    minWidth: 58,
+    textAlign: "center",
   },
   incompleteList: {
     display: "grid",
     gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-    gridTemplateRows: "205px 42px",
-    columnGap: 11,
-    rowGap: 10,
+    gridTemplateRows: "minmax(245px, 280px) 52px",
+    columnGap: 13,
+    rowGap: 18,
     alignItems: "stretch",
-    height: "calc(100% - 58px)",
+    alignContent: "start",
+    height: "auto",
   },
   incompleteItem: {
     position: "relative",
-    background: "#070b0d",
-    border: "1px solid rgba(214,157,48,0.70)",
+    background: "#06090b",
+    border: "1px solid rgba(214,157,48,0.78)",
     borderRadius: 12,
-    padding: "9px 11px 9px",
+    padding: "13px 13px 11px",
     display: "grid",
-    gridTemplateRows: "43px 48px 20px 23px 35px",
-    gap: 5,
+    gridTemplateRows: "52px 62px 25px 30px 43px",
+    gap: 8,
     alignItems: "stretch",
     minWidth: 0,
     minHeight: 0,
-    boxShadow: "0 8px 18px rgba(0,0,0,0.18)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 10px 22px rgba(0,0,0,0.24), 0 0 8px rgba(214,157,48,0.055)",
+    overflow: "hidden",
   },
   compactScheduleHead: {
     display: "grid",
-    gridTemplateColumns: "50px minmax(0, 1fr)",
-    gap: 8,
+    gridTemplateColumns: "60px minmax(0, 1fr)",
+    gap: 9,
     alignItems: "start",
     minWidth: 0,
     minHeight: 0,
@@ -18396,15 +18413,15 @@ textarea: {
   },
   compactMemberName: {
     color: "#fff",
-    fontSize: 17,
+    fontSize: "clamp(18px, 1.5vw, 23px)",
     fontWeight: 1000,
-    letterSpacing: "-0.04em",
+    letterSpacing: "-0.045em",
     overflow: "hidden",
     textOverflow: "ellipsis",
   },
   compactPtText: {
     color: "#d4d4d8",
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 800,
     flexShrink: 0,
   },
@@ -18428,30 +18445,29 @@ textarea: {
   },
   compactWorkoutRow: {
     display: "grid",
-    gridTemplateColumns: "52px minmax(42px, 1fr) 1px 24px auto",
+    gridTemplateColumns: "54px minmax(54px, 1fr) 1px 30px 42px",
     alignItems: "center",
-    gap: 7,
+    gap: 9,
     minHeight: 0,
+    overflow: "hidden",
   },
   compactBodyIcon: {
-    width: 52,
-    height: 43,
+    width: 54,
+    height: 54,
     borderRadius: 0,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
     border: "none",
     color: "#d69d30",
-    fontSize: 12,
-    fontWeight: 1000,
     background: "transparent",
     flexShrink: 0,
   },
   compactBodyText: {
-    fontSize: 19,
+    fontSize: "clamp(22px, 1.8vw, 28px)",
     fontWeight: 1000,
     color: "#fff",
-    letterSpacing: "-0.05em",
+    letterSpacing: "-0.055em",
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -18463,30 +18479,31 @@ textarea: {
   },
   compactConditionIcon: {
     color: "#f6d38b",
-    fontSize: 18,
+    fontSize: 25,
     lineHeight: 1,
   },
   compactConditionText: {
     color: "#fff",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 900,
     whiteSpace: "nowrap",
+    overflow: "hidden",
   },
   compactIssueLine: {
-    borderTop: "1px solid rgba(255,255,255,0.07)",
+    borderTop: "1px solid rgba(255,255,255,0.075)",
     borderBottom: "1px solid rgba(255,255,255,0.045)",
-    padding: "2px 0",
+    padding: "3px 0",
     display: "flex",
     alignItems: "center",
     gap: 6,
     color: "#f4f4f5",
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: 800,
     minWidth: 0,
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
-    minHeight: 20,
+    minHeight: 25,
     boxSizing: "border-box",
   },
   compactIssueIcon: {
@@ -18495,9 +18512,9 @@ textarea: {
     flexShrink: 0,
   },
   compactIssueLinePlaceholder: {
-    height: 20,
-    minHeight: 20,
-    borderTop: "1px solid rgba(255,255,255,0.07)",
+    height: 25,
+    minHeight: 25,
+    borderTop: "1px solid rgba(255,255,255,0.075)",
     borderBottom: "1px solid rgba(255,255,255,0.045)",
     visibility: "hidden",
   },
@@ -18506,8 +18523,9 @@ textarea: {
     gap: 6,
     flexWrap: "wrap",
     marginTop: 0,
-    minHeight: 23,
+    minHeight: 30,
     alignItems: "center",
+    alignContent: "center",
   },
   scheduleDoneText: {
     color: "#d7fff3",
@@ -18562,19 +18580,19 @@ textarea: {
     color: "#fff",
     border: "1px solid rgba(255,255,255,0.14)",
     borderRadius: 8,
-    padding: "8px 9px",
+    padding: "9px 10px",
     fontWeight: 1000,
-    fontSize: 12,
+    fontSize: 13,
     whiteSpace: "nowrap",
   },
   scheduleSmsButton: {
-    background: "rgba(19,78,74,0.70)",
+    background: "rgba(19,78,74,0.72)",
     color: "#d7fff3",
-    border: "1px solid rgba(45,115,105,0.76)",
+    border: "1px solid rgba(45,115,105,0.78)",
     borderRadius: 8,
-    padding: "8px 9px",
+    padding: "9px 10px",
     fontWeight: 1000,
-    fontSize: 12,
+    fontSize: 13,
     whiteSpace: "nowrap",
   },
   scheduleDisabledButton: {
@@ -18582,15 +18600,15 @@ textarea: {
     color: "#9ca3af",
     border: "1px solid rgba(255,255,255,0.08)",
     borderRadius: 8,
-    padding: "5px 7px",
+    padding: "8px 9px",
     fontWeight: 1000,
-    fontSize: 10,
+    fontSize: 12,
     whiteSpace: "nowrap",
   },
   scheduleQuickButtonWrap: {
     position: "relative",
     display: "grid",
-    gridTemplateColumns: "1fr 1fr 42px",
+    gridTemplateColumns: "1fr 1fr 48px",
     gap: 8,
     width: "100%",
     alignSelf: "end",
@@ -18614,35 +18632,34 @@ textarea: {
     paddingTop: 0,
     paddingBottom: "max(2px, env(safe-area-inset-bottom))",
     flexShrink: 0,
-    transform: "translateY(14px)",
   },
   homeLauncherItem: {
     width: "100%",
-    height: "clamp(88px, 8.1vw, 106px)",
+    height: "clamp(104px, 9.1vw, 132px)",
     minHeight: 0,
-    border: "1.05px solid rgba(246,211,139,0.56)",
+    border: "1px solid rgba(246,211,139,0.58)",
     background: "#090d0f",
     color: "#fff",
-    borderRadius: 13,
-    padding: "8px 7px",
+    borderRadius: 12,
+    padding: "10px 8px",
     display: "grid",
     justifyItems: "center",
     alignContent: "center",
-    gap: 4,
+    gap: 5,
     textAlign: "center",
-    fontSize: 10,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045), 0 8px 16px rgba(0,0,0,0.14), 0 0 7px rgba(246,211,139,0.055)",
+    fontSize: 11,
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045), 0 10px 20px rgba(0,0,0,0.18), 0 0 8px rgba(246,211,139,0.06)",
   },
   homeLauncherIcon: {
-    height: 27,
-    minWidth: 27,
+    height: 34,
+    minWidth: 34,
     borderRadius: 8,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: 23,
+    fontSize: 30,
     fontWeight: 1000,
-    marginBottom: 1,
+    marginBottom: 2,
   },
 
 
@@ -18747,19 +18764,19 @@ textarea: {
   moreScheduleCard: {
     position: "relative",
     gridColumn: "1 / -1",
-    minHeight: 42,
+    minHeight: 52,
     background: "#090d0f",
-    border: "1px solid rgba(246,211,139,0.38)",
-    borderRadius: 11,
-    padding: "4px",
+    border: "1px solid rgba(246,211,139,0.34)",
+    borderRadius: 10,
+    padding: "5px",
     minWidth: 0,
     color: "#f6d38b",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: 12,
     textAlign: "center",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 18px rgba(0,0,0,0.10)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 18px rgba(0,0,0,0.13)",
   },
   moreScheduleIcon: {
     display: "none",
@@ -18774,15 +18791,16 @@ textarea: {
     display: "none",
   },
   moreScheduleArrow: {
-    width: 22,
-    height: 22,
+    width: 28,
+    height: 28,
     borderRadius: 999,
     border: "1px solid rgba(246, 211, 139, 0.56)",
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: 1000,
+    lineHeight: 1,
   },
   actionSearchGridThree: {
     display: "none",
@@ -19031,582 +19049,3 @@ textarea: {
   schedulePartPickerIcon: { width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" },
 
 };
-
-
-
-/* ====================================================
-   APPROVED MAIN DESIGN LOCK v41
-   기준: 사용자가 승인한 최종 스크린샷 그대로 적용
-   - 새 디자인/재해석 금지
-   - 배경 그라데이션 제거
-   - 5개 카드 한 줄 + 더보기 바 + 하단 런처 유지
-   - 지난이슈 유무와 관계없이 카드 버튼 높이 정렬
-   - 운동부위 SVG 유지
-   - Vercel 빌드 오류 방지: styles 선언 이후 Object.assign만 사용
-==================================================== */
-Object.assign(styles, {
-  page: {
-    ...styles.page,
-    height: "100dvh",
-    minHeight: "100dvh",
-    overflow: "hidden",
-    background: "#050607",
-    backgroundImage: "none",
-    color: "#fff",
-    padding: "22px 28px max(0px, env(safe-area-inset-bottom))",
-    boxSizing: "border-box",
-    display: "flex",
-    flexDirection: "column",
-    gap: 0,
-  },
-  header: {
-    ...styles.header,
-    height: 74,
-    minHeight: 74,
-    marginBottom: 12,
-    padding: 0,
-    flexShrink: 0,
-    display: "flex",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-  },
-  headerTitleRow: {
-    ...styles.headerTitleRow,
-    display: "flex",
-    alignItems: "center",
-    gap: 20,
-  },
-  title: {
-    ...styles.title,
-    margin: 0,
-    fontSize: 54,
-    lineHeight: 0.95,
-    letterSpacing: "-0.075em",
-    color: "#fff",
-    fontWeight: 1000,
-    textShadow: "0 1px 0 rgba(255,255,255,0.05)",
-  },
-  headerDivider: {
-    ...styles.headerDivider,
-    width: 1,
-    height: 42,
-    background: "rgba(246,211,139,0.74)",
-    flex: "0 0 auto",
-  },
-  subtitle: {
-    ...styles.subtitle,
-    margin: 0,
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: 900,
-    whiteSpace: "nowrap",
-  },
-  headerActions: {
-    ...styles.headerActions,
-    gap: 12,
-    alignItems: "flex-start",
-    paddingTop: 2,
-  },
-  trainerQuickButton: {
-    ...styles.trainerQuickButton,
-    height: 52,
-    minWidth: 120,
-    padding: "0 20px",
-    borderRadius: 14,
-    background: "#111417",
-    border: "1px solid rgba(255,255,255,0.18)",
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: 950,
-    boxShadow: "none",
-  },
-  adminBadge: {
-    ...styles.adminBadge,
-    height: 52,
-    minWidth: 104,
-    padding: "0 20px",
-    borderRadius: 14,
-    background: "#111417",
-    border: "1px solid rgba(255,255,255,0.18)",
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: 950,
-    boxShadow: "none",
-  },
-
-  incompleteBox: {
-    ...styles.incompleteBox,
-    height: "clamp(500px, 55.5dvh, 556px)",
-    minHeight: 500,
-    border: "1.15px solid rgba(214,157,48,0.78)",
-    borderRadius: 18,
-    background: "#07090b",
-    backgroundImage: "none",
-    padding: "28px 22px 18px",
-    boxShadow: "0 18px 42px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.035)",
-    flexShrink: 0,
-    boxSizing: "border-box",
-  },
-  incompleteTop: {
-    ...styles.incompleteTop,
-    marginBottom: 26,
-    alignItems: "flex-start",
-    display: "flex",
-    justifyContent: "space-between",
-  },
-  incompleteTitle: {
-    ...styles.incompleteTitle,
-    margin: 0,
-    color: "#f6d38b",
-    fontSize: 34,
-    lineHeight: 1.05,
-    fontWeight: 1000,
-    letterSpacing: "-0.055em",
-  },
-  incompleteDesc: {
-    ...styles.incompleteDesc,
-    margin: "8px 0 0",
-    color: "#f2f2f2",
-    fontSize: 13,
-    fontWeight: 850,
-    lineHeight: 1.3,
-  },
-  incompleteTopActions: {
-    ...styles.incompleteTopActions,
-    display: "flex",
-    alignItems: "center",
-    gap: 14,
-    paddingTop: 6,
-  },
-  todaySmsStartButton: {
-    ...styles.todaySmsStartButton,
-    height: 52,
-    minWidth: 128,
-    padding: "0 18px",
-    borderRadius: 15,
-    background: "#d9fff2",
-    color: "#07110f",
-    border: "1px solid rgba(255,255,255,0.18)",
-    fontSize: 14,
-    fontWeight: 1000,
-    boxShadow: "0 8px 18px rgba(0,0,0,0.18)",
-  },
-  incompleteCount: {
-    ...styles.incompleteCount,
-    width: 70,
-    height: 52,
-    borderRadius: 14,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "linear-gradient(180deg, #f7d46a 0%, #d99b27 100%)",
-    color: "#090909",
-    fontSize: 24,
-    fontWeight: 1000,
-    boxShadow: "0 8px 18px rgba(0,0,0,0.18)",
-  },
-
-  incompleteList: {
-    ...styles.incompleteList,
-    display: "grid",
-    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-    gridTemplateRows: "minmax(310px, 1fr) 64px",
-    columnGap: 14,
-    rowGap: 22,
-    height: "calc(100% - 100px)",
-    alignItems: "stretch",
-  },
-  incompleteItem: {
-    ...styles.incompleteItem,
-    position: "relative",
-    height: "100%",
-    minHeight: 0,
-    background: "#040607",
-    backgroundImage: "none",
-    border: "1.05px solid rgba(214,157,48,0.82)",
-    borderRadius: 13,
-    padding: "17px 14px 14px",
-    display: "grid",
-    gridTemplateRows: "60px 76px 32px 33px 45px",
-    gap: 6,
-    boxSizing: "border-box",
-    boxShadow: "0 13px 28px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.025)",
-    overflow: "hidden",
-  },
-  compactScheduleHead: {
-    ...styles.compactScheduleHead,
-    display: "grid",
-    gridTemplateColumns: "60px minmax(0, 1fr)",
-    gap: 12,
-    alignItems: "start",
-    minWidth: 0,
-  },
-  compactScheduleTime: {
-    ...styles.compactScheduleTime,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "flex-start",
-    color: "#60a5fa",
-    fontSize: 17,
-    fontWeight: 1000,
-    lineHeight: 1.05,
-    letterSpacing: "-0.025em",
-    whiteSpace: "normal",
-  },
-  compactMemberBlock: {
-    ...styles.compactMemberBlock,
-    minWidth: 0,
-    display: "grid",
-    gap: 7,
-  },
-  compactMemberLine: {
-    ...styles.compactMemberLine,
-    display: "flex",
-    alignItems: "baseline",
-    gap: 7,
-    minWidth: 0,
-    overflow: "hidden",
-    whiteSpace: "nowrap",
-  },
-  compactMemberName: {
-    ...styles.compactMemberName,
-    color: "#fff",
-    fontSize: 20,
-    lineHeight: 1.1,
-    fontWeight: 1000,
-    letterSpacing: "-0.055em",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-  },
-  compactPtText: {
-    ...styles.compactPtText,
-    color: "#d6d6d6",
-    fontSize: 12,
-    fontWeight: 850,
-    flexShrink: 0,
-  },
-  compactTagRow: {
-    ...styles.compactTagRow,
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 5,
-    maxHeight: 22,
-    overflow: "hidden",
-  },
-  compactTag: {
-    ...styles.compactTag,
-    background: "rgba(255,255,255,0.13)",
-    color: "#f4f4f5",
-    border: "1px solid rgba(255,255,255,0.10)",
-    borderRadius: 999,
-    padding: "3px 8px",
-    fontSize: 9.5,
-    fontWeight: 900,
-    lineHeight: 1.15,
-  },
-  compactWorkoutRow: {
-    ...styles.compactWorkoutRow,
-    display: "grid",
-    gridTemplateColumns: "64px minmax(58px, 1fr) 1px 30px 44px",
-    alignItems: "center",
-    gap: 8,
-    minHeight: 0,
-  },
-  compactBodyIcon: {
-    ...styles.compactBodyIcon,
-    width: 58,
-    height: 58,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#d69d30",
-    border: "none",
-    background: "transparent",
-    borderRadius: 0,
-    flexShrink: 0,
-  },
-  compactBodyText: {
-    ...styles.compactBodyText,
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: 1000,
-    letterSpacing: "-0.06em",
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-  },
-  compactDivider: {
-    ...styles.compactDivider,
-    width: 1,
-    height: 32,
-    background: "rgba(255,255,255,0.105)",
-  },
-  compactConditionIcon: {
-    ...styles.compactConditionIcon,
-    fontSize: 22,
-    lineHeight: 1,
-  },
-  compactConditionText: {
-    ...styles.compactConditionText,
-    width: 44,
-    minWidth: 44,
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: 950,
-    whiteSpace: "nowrap",
-    overflow: "visible",
-    textAlign: "left",
-  },
-  compactIssueLine: {
-    ...styles.compactIssueLine,
-    height: 32,
-    minHeight: 32,
-    padding: "4px 0",
-    borderTop: "1px solid rgba(255,255,255,0.08)",
-    borderBottom: "1px solid rgba(255,255,255,0.05)",
-    color: "#f4f4f5",
-    fontSize: 11,
-    fontWeight: 850,
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-    overflow: "hidden",
-    whiteSpace: "nowrap",
-    textOverflow: "ellipsis",
-    boxSizing: "border-box",
-  },
-  compactIssueLinePlaceholder: {
-    ...styles.compactIssueLinePlaceholder,
-    height: 32,
-    minHeight: 32,
-    borderTop: "1px solid rgba(255,255,255,0.08)",
-    borderBottom: "1px solid rgba(255,255,255,0.05)",
-    visibility: "hidden",
-    boxSizing: "border-box",
-  },
-  scheduleStatusRow: {
-    ...styles.scheduleStatusRow,
-    height: 33,
-    minHeight: 33,
-    marginTop: 0,
-    display: "flex",
-    alignItems: "center",
-    gap: 7,
-    flexWrap: "nowrap",
-    overflow: "hidden",
-  },
-  scheduleDoneText: {
-    ...styles.scheduleDoneText,
-    color: "#d7fff3",
-    background: "rgba(32,92,78,0.45)",
-    border: "1px solid rgba(62,151,130,0.50)",
-    borderRadius: 999,
-    padding: "6px 10px",
-    fontSize: 11.5,
-    fontWeight: 1000,
-    lineHeight: 1,
-    whiteSpace: "nowrap",
-  },
-  scheduleWarningText: {
-    ...styles.scheduleWarningText,
-    color: "#f6d38b",
-    background: "rgba(214,157,48,0.16)",
-    border: "1px solid rgba(214,157,48,0.42)",
-    borderRadius: 999,
-    padding: "6px 10px",
-    fontSize: 11.5,
-    fontWeight: 1000,
-    lineHeight: 1,
-    whiteSpace: "nowrap",
-  },
-  scheduleSmsDoneText: {
-    ...styles.scheduleSmsDoneText,
-    color: "#d7fff3",
-    background: "rgba(32,92,78,0.45)",
-    border: "1px solid rgba(62,151,130,0.50)",
-    borderRadius: 999,
-    padding: "6px 10px",
-    fontSize: 11.5,
-    fontWeight: 1000,
-    lineHeight: 1,
-    whiteSpace: "nowrap",
-  },
-  scheduleQuickButtonWrap: {
-    ...styles.scheduleQuickButtonWrap,
-    position: "relative",
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr 48px",
-    gap: 9,
-    width: "100%",
-    height: 45,
-    alignSelf: "end",
-  },
-  incompleteCompleteButton: {
-    ...styles.incompleteCompleteButton,
-    height: 45,
-    borderRadius: 8,
-    padding: "0 10px",
-    background: "rgba(255,255,255,0.105)",
-    color: "#fff",
-    border: "1px solid rgba(255,255,255,0.15)",
-    fontSize: 13,
-    fontWeight: 1000,
-  },
-  scheduleSmsButton: {
-    ...styles.scheduleSmsButton,
-    height: 45,
-    borderRadius: 8,
-    padding: "0 10px",
-    background: "rgba(19,78,74,0.72)",
-    color: "#d7fff3",
-    border: "1px solid rgba(45,115,105,0.78)",
-    fontSize: 13,
-    fontWeight: 1000,
-  },
-  scheduleDisabledButton: {
-    ...styles.scheduleDisabledButton,
-    height: 45,
-    borderRadius: 8,
-    padding: "0 10px",
-    background: "rgba(255,255,255,0.08)",
-    color: "#9ca3af",
-    border: "1px solid rgba(255,255,255,0.09)",
-    fontSize: 12,
-    fontWeight: 1000,
-  },
-  scheduleMoreButton: {
-    ...styles.scheduleMoreButton,
-    height: 45,
-    borderRadius: 8,
-    padding: 0,
-    background: "rgba(0,0,0,0.34)",
-    color: "#fff",
-    border: "1px solid rgba(255,255,255,0.14)",
-    fontSize: 17,
-    fontWeight: 1000,
-    lineHeight: 1,
-  },
-
-  moreScheduleCard: {
-    ...styles.moreScheduleCard,
-    gridColumn: "1 / -1",
-    height: 64,
-    minHeight: 64,
-    border: "1px solid rgba(255,255,255,0.16)",
-    background: "#070b0d",
-    backgroundImage: "none",
-    color: "#fff",
-    borderRadius: 11,
-    padding: 0,
-    minWidth: 0,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    textAlign: "center",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 20px rgba(0,0,0,0.16)",
-  },
-  moreScheduleIcon: {
-    ...styles.moreScheduleIcon,
-    display: "none",
-  },
-  moreScheduleCount: {
-    ...styles.moreScheduleCount,
-    color: "#ffffff",
-    fontSize: 22,
-    fontWeight: 1000,
-    letterSpacing: "-0.045em",
-  },
-  moreScheduleText: {
-    ...styles.moreScheduleText,
-    display: "none",
-  },
-  moreScheduleArrow: {
-    ...styles.moreScheduleArrow,
-    width: 28,
-    height: 28,
-    borderRadius: 999,
-    border: "1px solid rgba(246,211,139,0.56)",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#f6d38b",
-    fontSize: 15,
-    fontWeight: 1000,
-    lineHeight: 1,
-  },
-
-  notice: {
-    ...styles.notice,
-    left: "50%",
-    right: "auto",
-    bottom: "calc(max(18px, env(safe-area-inset-bottom)) + 128px)",
-    transform: "translateX(-50%)",
-    minWidth: 420,
-    minHeight: 44,
-    borderRadius: 13,
-    background: "linear-gradient(90deg, rgba(67,45,10,0.96), rgba(37,28,12,0.96))",
-    border: "1px solid rgba(246,211,139,0.62)",
-    color: "#f6d38b",
-    boxShadow: "0 14px 34px rgba(0,0,0,0.36)",
-    zIndex: 9998,
-  },
-  noticeButton: {
-    ...styles.noticeButton,
-    background: "linear-gradient(180deg, #f9d977, #d89b2a)",
-    color: "#111",
-    borderRadius: 11,
-    padding: "7px 12px",
-    fontSize: 12,
-    fontWeight: 1000,
-  },
-
-  homeLauncherGrid: {
-    ...styles.homeLauncherGrid,
-    display: "grid",
-    gridTemplateColumns: "repeat(9, minmax(0, 1fr))",
-    gap: 14,
-    marginTop: 70,
-    paddingTop: 0,
-    paddingBottom: "max(8px, env(safe-area-inset-bottom))",
-    flexShrink: 0,
-    transform: "none",
-  },
-  homeLauncherItem: {
-    ...styles.homeLauncherItem,
-    width: "100%",
-    height: "clamp(128px, 11vw, 150px)",
-    minHeight: 0,
-    border: "1.05px solid rgba(214,157,48,0.82)",
-    background: "#06090b",
-    backgroundImage: "none",
-    color: "#fff",
-    borderRadius: 12,
-    padding: "14px 10px",
-    display: "grid",
-    justifyItems: "center",
-    alignContent: "center",
-    gap: 7,
-    textAlign: "center",
-    fontSize: 12,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035), 0 12px 24px rgba(0,0,0,0.18)",
-  },
-  homeLauncherIcon: {
-    ...styles.homeLauncherIcon,
-    height: 40,
-    minWidth: 40,
-    borderRadius: 10,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 32,
-    fontWeight: 1000,
-    marginBottom: 4,
-  },
-
-  todayScheduleOnlyOverlay: {
-    ...styles.todayScheduleOnlyOverlay,
-    background: "rgba(0,0,0,0.62)",
-    backdropFilter: "blur(8px)",
-  },
-});
