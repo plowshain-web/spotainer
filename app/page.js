@@ -316,7 +316,7 @@ function TodayScheduleSectionV2({
           return (
             <div key={schedule.id} style={{
               display:"grid",
-              gridTemplateColumns:"120px minmax(0,1fr) auto",
+              gridTemplateColumns:"120px 220px minmax(0,1fr) auto",
               alignItems:"center",
               gap:14,
               padding:"13px 18px",
@@ -329,38 +329,32 @@ function TodayScheduleSectionV2({
                 <div style={{fontSize:22,color:"#e0ae49",fontWeight:900,letterSpacing:-.5,lineHeight:1}}>{formatTime(schedule.start_time)}</div>
               </div>
 
-              <div style={{minWidth:0,display:"grid",gridTemplateColumns:"230px minmax(0,1fr)",alignItems:"center",gap:18}}>
-                <div style={{minWidth:0,display:"flex",alignItems:"center",gap:14}}>
-                  <div style={{width:6,height:6,borderRadius:999,background:"#d4a14a",flex:"0 0 auto",boxShadow:"0 0 10px rgba(212,161,74,.35)"}} />
-                  <div style={{minWidth:0}}>
-                    <div style={{fontSize:22,color:body ? "#f4f4f4" : "#bdbdbd",fontWeight:900,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",lineHeight:1.15}}>
-                      {body ? workoutText : "미정"}
-                    </div>
-                    <div style={{fontSize:12,color:"#d4a14a",marginTop:5,fontWeight:800,whiteSpace:"nowrap"}}>{ptText}</div>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:20,color:body ? "#f4f4f4" : "#bdbdbd",fontWeight:900,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",lineHeight:1.15}}>
+                  {body ? workoutText : "미정"}
+                </div>
+              </div>
+
+              <div style={{minWidth:0}}>
+                <div style={{display:"flex",alignItems:"baseline",gap:10,minWidth:0}}>
+                  <div style={{fontSize:24,fontWeight:900,color:"#fff",lineHeight:1.1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                    {member.name || "회원"}
                   </div>
+                  <div style={{fontSize:15,color:"#cfcfcf",fontWeight:800,whiteSpace:"nowrap"}}>{ptText}</div>
                 </div>
 
-                <div style={{minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"baseline",gap:10,minWidth:0}}>
-                    <div style={{fontSize:24,fontWeight:900,color:"#fff",lineHeight:1.1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                      {member.name || "회원"}
-                    </div>
-                    <div style={{fontSize:15,color:"#cfcfcf",fontWeight:800,whiteSpace:"nowrap"}}>{ptText}</div>
+                {tags.length > 0 && (
+                  <div style={{display:"flex",gap:6,overflow:"hidden",marginTop:6}}>
+                    {tags.map((tag)=>(
+                      <span key={tag} style={{fontSize:12,color:"#f2f2f2",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.08)",borderRadius:999,padding:"3px 8px",whiteSpace:"nowrap"}}>{tag}</span>
+                    ))}
                   </div>
+                )}
 
-                  {tags.length > 0 && (
-                    <div style={{display:"flex",gap:6,overflow:"hidden",marginTop:6}}>
-                      {tags.map((tag)=>(
-                        <span key={tag} style={{fontSize:12,color:"#f2f2f2",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.08)",borderRadius:999,padding:"3px 8px",whiteSpace:"nowrap"}}>{tag}</span>
-                      ))}
-                    </div>
-                  )}
-
-                  <div style={{fontSize:14,color:"#cfcfcf",marginTop:6,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                    {statusText}
-                    <span style={{color:"#777",margin:"0 8px"}}>·</span>
-                    지난 이슈 : {condition?.memo || "없음"}
-                  </div>
+                <div style={{fontSize:14,color:"#cfcfcf",marginTop:6,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                  {statusText}
+                  <span style={{color:"#777",margin:"0 8px"}}>·</span>
+                  지난 이슈 : {condition?.memo || "없음"}
                 </div>
               </div>
 
