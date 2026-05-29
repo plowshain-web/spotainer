@@ -289,7 +289,7 @@ function TodayScheduleSectionV2({
         const member=getScheduleMember(schedule)||{};
         const condition=getLatestConditionForMember(member);
         const body=condition?.todayWorkout || condition?.nextWorkout || "미정";
-        return <div key={schedule.id} style={{display:"grid",gridTemplateColumns":"140px 140px 1.5fr 1fr auto",alignItems:"center",padding:"18px",borderRadius:18,border:"1px solid rgba(255,255,255,.08)",background:"rgba(255,255,255,.02)"}}>
+        return <div key={schedule.id} style={{display:"grid",gridTemplateColumns:"140px 140px 1.5fr 1fr auto",alignItems:"center",padding:"18px",borderRadius:18,border:"1px solid rgba(255,255,255,.08)",background:"rgba(255,255,255,.02)"}}>
           <div style={{fontSize:26,color:"#e0ae49",fontWeight:700}}>{schedule.start_time}</div>
           <div style={{fontSize:48}}>{bodyIcon(body)} <span style={{fontSize:24,color:"#fff"}}>{body}</span></div>
           <div><div style={{fontSize:34,fontWeight:700}}>{member.name||"회원"} <span style={{fontSize:18,opacity:.7}}>PT {member.pt_count||member.remaining_pt||""}</span></div><div style={{opacity:.8}}>지난 이슈 : {condition?.memo || "없음"}</div></div>
