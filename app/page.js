@@ -316,7 +316,7 @@ function TodayScheduleSectionV2({
           return (
             <div key={schedule.id} style={{
               display:"grid",
-              gridTemplateColumns:"145px minmax(0,1fr) auto",
+              gridTemplateColumns:"120px minmax(0,1fr) auto",
               alignItems:"center",
               gap:14,
               padding:"13px 18px",
@@ -325,17 +325,19 @@ function TodayScheduleSectionV2({
               background:"rgba(255,255,255,.025)",
               minHeight:82
             }}>
-              <div style={{display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"flex-start",gap:7}}>
+              <div style={{display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"flex-start",gap:6}}>
                 <div style={{fontSize:22,color:"#e0ae49",fontWeight:900,letterSpacing:-.5,lineHeight:1}}>{formatTime(schedule.start_time)}</div>
-                <div style={{fontSize:12,color:"#d6d6d6",border:"1px solid rgba(212,161,74,.45)",borderRadius:999,padding:"4px 9px",fontWeight:800,lineHeight:1}}>{ptText}</div>
               </div>
 
-              <div style={{minWidth:0,display:"grid",gridTemplateColumns:"170px minmax(0,1fr)",alignItems:"center",gap:18}}>
-                <div style={{minWidth:0}}>
-                  <div style={{fontSize:22,color:body ? "#f4f4f4" : "#aaa",fontWeight:900,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",lineHeight:1.15}}>
-                    {workoutText}
+              <div style={{minWidth:0,display:"grid",gridTemplateColumns:"230px minmax(0,1fr)",alignItems:"center",gap:18}}>
+                <div style={{minWidth:0,display:"flex",alignItems:"center",gap:14}}>
+                  <div style={{width:6,height:6,borderRadius:999,background:"#d4a14a",flex:"0 0 auto",boxShadow:"0 0 10px rgba(212,161,74,.35)"}} />
+                  <div style={{minWidth:0}}>
+                    <div style={{fontSize:22,color:body ? "#f4f4f4" : "#bdbdbd",fontWeight:900,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",lineHeight:1.15}}>
+                      {body ? workoutText : "미정"}
+                    </div>
+                    <div style={{fontSize:12,color:"#d4a14a",marginTop:5,fontWeight:800,whiteSpace:"nowrap"}}>{ptText}</div>
                   </div>
-                  <div style={{fontSize:12,color:"#9b9b9b",marginTop:5,fontWeight:700}}>운동 부위</div>
                 </div>
 
                 <div style={{minWidth:0}}>
