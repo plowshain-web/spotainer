@@ -302,8 +302,9 @@ function TodayScheduleSectionV2({
       padding:20,
       background:"#050505",
       boxShadow:"0 0 30px rgba(212,161,74,.12)",
-      height:"calc(100vh - 210px)",
-      minHeight:420,
+      height:"auto",
+      minHeight:0,
+      flex:"1 1 auto",
       display:"flex",
       flexDirection:"column",
       overflow:"hidden"
@@ -7926,13 +7927,6 @@ async function saveMemberPreference() {
         <div>
           <div style={styles.headerTitleRow}>
             <h1 style={styles.title}>Spotainer</h1>
-            <button
-              type="button"
-              onClick={() => setShowSalesModal(true)}
-              style={styles.headerSalesButton}
-            >
-              매출 관리
-            </button>
           </div>
           <p style={styles.subtitle}>{centerName || "여성전용 PT 회원관리"}</p>
         </div>
@@ -7946,31 +7940,6 @@ async function saveMemberPreference() {
         </div>
       </header>
 
-
-      <section style={styles.todayDashboardBox}>
-        <div style={styles.todayDashboardTop}>
-          <div>
-            <h2 style={styles.todayDashboardTitle}>오늘 할 일</h2>
-            <p style={styles.todayDashboardDesc}>메인은 깔끔하게 보고, 필요한 작업은 전체화면에서 처리합니다.</p>
-          </div>
-          <span style={styles.todayDashboardBadge}>{getTodayDateString()}</span>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setShowTodayTodoModal(true)}
-          style={styles.todayTodoOpenButton}
-        >
-          <span style={styles.todayTodoOpenTextWrap}>
-            <strong style={styles.todayTodoOpenTitle}>오늘 할 일 열기</strong>
-            <span style={styles.todayTodoOpenDesc}>
-              처리할 일 {pendingTodayTodoItems.length}건
-              {doneTodayTodoItems.length > 0 ? ` · 완료 ${doneTodayTodoItems.length}건` : ""}
-            </span>
-          </span>
-          <span style={styles.todayTodoOpenCount}>{pendingTodayTodoItems.length}건</span>
-        </button>
-      </section>
 
       {showTodayTodoModal && (
         <div style={styles.todayTodoPopupOverlay} onClick={() => setShowTodayTodoModal(false)}>
@@ -11530,11 +11499,16 @@ const styles = {
     fontWeight: 1000,
   },
   page: {
-    minHeight: "100vh",
+    height: "100dvh",
+    minHeight: "100dvh",
     background: "linear-gradient(180deg, #090909 0%, #111 100%)",
     color: "#fff",
     padding: 24,
     fontFamily: "Arial, sans-serif",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+    boxSizing: "border-box",
   },
 
   todayDashboardBox: {
@@ -11969,9 +11943,10 @@ const styles = {
 
   header: {
     display: "flex",
+    flexShrink: 0,
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 28,
+    marginBottom: 18,
   },
   headerTitleRow: {
     display: "flex",
@@ -13026,7 +13001,9 @@ const styles = {
     fontWeight: 800,
   },
   scheduleAddWideBox: {
-    marginBottom: 22,
+    flexShrink: 0,
+    marginTop: 12,
+    marginBottom: 0,
   },
   scheduleActionWideGrid: {
     display: "grid",
@@ -13040,7 +13017,7 @@ const styles = {
     border: "1px solid #272727",
     borderRadius: 22,
     color: "#fff",
-    padding: "22px 24px",
+    padding: "16px 22px",
     display: "flex",
     alignItems: "center",
     gap: 16,
