@@ -9207,9 +9207,6 @@ getScheduleMemberPtText={getScheduleMemberPtText}
                   <label style={styles.scheduleBodyPartTitle}>운동부위 <span style={styles.scheduleBodyPartSubTitle}>(복수 선택)</span></label>
                   <p style={styles.scheduleBodyPartHint}>수업 전에 오늘 진행할 부위를 선택하세요.</p>
                 </div>
-                <div style={styles.scheduleBodyPartSelected}>
-                  {scheduleBodyParts.length > 0 ? scheduleBodyParts.join(" · ") : "미선택"}
-                </div>
               </div>
 
               <div style={styles.scheduleBodyPartGrid}>
@@ -9225,11 +9222,17 @@ getScheduleMemberPtText={getScheduleMemberPtText}
                         ...(selected ? styles.scheduleBodyPartChipActive : {}),
                       }}
                     >
-                      {selected && <span style={styles.scheduleBodyPartCheck}>✓</span>}
                       {part}
                     </button>
                   );
                 })}
+              </div>
+
+              <div style={styles.scheduleBodyPartSelectedLine}>
+                <span style={styles.scheduleBodyPartSelectedLabel}>선택됨</span>
+                <span style={styles.scheduleBodyPartSelectedText}>
+                  {scheduleBodyParts.length > 0 ? scheduleBodyParts.join(" · ") : "없음"}
+                </span>
               </div>
             </div>
 
@@ -13402,7 +13405,7 @@ const styles = {
     alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 12,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   scheduleBodyPartTitle: {
     display: "block",
@@ -13422,60 +13425,46 @@ const styles = {
     fontSize: 13,
     fontWeight: 800,
   },
-  scheduleBodyPartSelected: {
-    minWidth: 110,
-    maxWidth: "45%",
-    background: "#111",
-    color: "#fff",
-    borderRadius: 999,
-    padding: "9px 13px",
-    fontSize: 14,
-    fontWeight: 900,
-    textAlign: "center",
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-  },
   scheduleBodyPartGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(8, minmax(0, 1fr))",
-    gap: 12,
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 10,
   },
   scheduleBodyPartChip: {
-    position: "relative",
-    minHeight: 52,
+    minHeight: 44,
     background: "#fff",
     color: "#111",
     border: "1px solid #d5d5d5",
     borderRadius: 12,
-    padding: "12px 10px",
-    fontSize: 17,
+    padding: "9px 10px",
+    fontSize: 16,
     fontWeight: 900,
     cursor: "pointer",
-    boxShadow: "0 6px 14px rgba(0,0,0,0.04)",
+    boxShadow: "0 5px 12px rgba(0,0,0,0.035)",
   },
   scheduleBodyPartChipActive: {
     background: "#111",
     color: "#fff",
     border: "1px solid #111",
-    boxShadow: "0 10px 22px rgba(0,0,0,0.16)",
+    boxShadow: "0 8px 18px rgba(0,0,0,0.14)",
   },
-  scheduleBodyPartCheck: {
-    position: "absolute",
-    right: -8,
-    top: -9,
-    width: 24,
-    height: 24,
-    borderRadius: 999,
-    background: "#111",
-    color: "#fff",
-    border: "2px solid #fff",
+  scheduleBodyPartSelectedLine: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-    fontSize: 14,
+    gap: 10,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTop: "1px solid #e1e1e1",
+  },
+  scheduleBodyPartSelectedLabel: {
+    color: "#777",
+    fontSize: 13,
     fontWeight: 900,
-    lineHeight: 1,
+  },
+  scheduleBodyPartSelectedText: {
+    color: "#111",
+    fontSize: 15,
+    fontWeight: 900,
   },
   autoEndTimeBox: {
     background: "#222",
