@@ -12028,7 +12028,7 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
     gap: 10,
-    marginTop: 8,
+    marginTop: "auto",
     paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
   },
   mainLauncherButton: {
