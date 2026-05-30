@@ -21,6 +21,8 @@ const commonExercises = [
   "플랭크",
 ];
 
+const SCHEDULE_BODY_PART_OPTIONS = ["가슴", "어깨", "등", "하체", "팔", "코어", "전신", "유산소"];
+
 
 /*
 ====================================================
@@ -271,8 +273,12 @@ function TodayScheduleSectionV2({
     return String(time).slice(0,5);
   };
 
-  const normalizeWorkoutParts=(text)=>{
-    const raw=String(text || "").trim();
+  const normalizeWorkoutParts=(value)=>{
+    if (Array.isArray(value)) {
+      return value.map((item)=>String(item || "").trim()).filter(Boolean);
+    }
+
+    const raw=String(value || "").trim();
     if(!raw) return [];
     return raw
       .replace(/[+\/]/g,"·")
@@ -282,9 +288,9 @@ function TodayScheduleSectionV2({
       .filter(Boolean);
   };
 
-  const formatWorkoutParts=(text)=>{
-    const parts=normalizeWorkoutParts(text);
-    if(parts.length===0) return "운동 미정";
+  const formatWorkoutParts=(value)=>{
+    const parts=normalizeWorkoutParts(value);
+    if(parts.length===0) return "미정";
     if(parts.length<=2) return parts.join(" · ");
     return `${parts.slice(0,2).join(" · ")} 외 ${parts.length-2}`;
   };
@@ -306,8 +312,11 @@ function TodayScheduleSectionV2({
         {schedules.map((schedule)=>{
           const member=getScheduleMember(schedule)||{};
           const condition=getLatestConditionForMember(member);
-          const body=condition?.todayWorkout || condition?.nextWorkout || "";
+          const scheduleBodyParts=normalizeWorkoutParts(schedule?.body_parts || schedule?.bodyParts || schedule?.workout_parts || schedule?.workoutParts);
+          const fallbackBody=condition?.todayWorkout || condition?.nextWorkout || "";
+          const body=scheduleBodyParts.length > 0 ? scheduleBodyParts : fallbackBody;
           const workoutText=formatWorkoutParts(body);
+          const hasWorkoutParts=normalizeWorkoutParts(body).length > 0;
           const preview=getConditionPreviewText(condition);
           const tags=(getSchedulePreferenceTags ? getSchedulePreferenceTags(schedule) : []).slice(0,3);
           const ptText=getScheduleMemberPtText ? getScheduleMemberPtText(schedule) : `PT ${member.pt_remaining || member.remaining_pt || member.pt_count || 0}회`;
@@ -330,8 +339,8 @@ function TodayScheduleSectionV2({
               </div>
 
               <div style={{minWidth:0}}>
-                <div style={{fontSize:20,color:body ? "#f4f4f4" : "#bdbdbd",fontWeight:900,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",lineHeight:1.15}}>
-                  {body ? workoutText : "미정"}
+                <div style={{fontSize:20,color:hasWorkoutParts ? "#f4f4f4" : "#bdbdbd",fontWeight:900,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",lineHeight:1.15}}>
+                  {workoutText}
                 </div>
               </div>
 
@@ -634,6 +643,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [scheduleEndTime, setScheduleEndTime] = useState("");
   const [scheduleType, setScheduleType] = useState("pt");
   const [scheduleMemo, setScheduleMemo] = useState("");
+  const [scheduleBodyParts, setScheduleBodyParts] = useState([]);
   const [exitToast, setExitToast] = useState("");
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [scheduleActionMenuId, setScheduleActionMenuId] = useState(null);
@@ -2355,6 +2365,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setScheduleEndTime("");
     setScheduleType("pt");
     setScheduleMemo("");
+    setScheduleBodyParts([]);
     setSelectedDateSchedules([]);
   }
 
@@ -2386,6 +2397,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
     );
     setScheduleType(schedule.type || "pt");
     setScheduleMemo(getScheduleDisplayMemo(schedule));
+    setScheduleBodyParts(Array.isArray(schedule?.body_parts) ? schedule.body_parts : []);
     setReturnToScheduleCheckAfterAdd(showScheduleCheckModal);
     setShowScheduleCheckModal(false);
     setShowScheduleModal(true);
@@ -2606,6 +2618,16 @@ const [workoutExercises, setWorkoutExercises] = useState([
     return Array.from(new Set(ids));
   }
 
+  function toggleScheduleBodyPart(part) {
+    setScheduleBodyParts((prev) => {
+      const current = Array.isArray(prev) ? prev : [];
+      if (current.includes(part)) {
+        return current.filter((item) => item !== part);
+      }
+      return [...current, part];
+    });
+  }
+
   async function syncScheduleMembers(scheduleId, memberIds = []) {
     if (!scheduleId) return false;
 
@@ -2708,6 +2730,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
       end_time: endTime,
       type: scheduleType,
       memo: cleanScheduleMemoText(scheduleMemo),
+      body_parts: Array.isArray(scheduleBodyParts) ? scheduleBodyParts : [],
       allow_over_capacity: false,
     };
 
@@ -9176,6 +9199,28 @@ getScheduleMemberPtText={getScheduleMemberPtText}
               <option value="ot">OT</option>
               <option value="consult">상담</option>
             </select>
+
+
+            <label style={styles.label}>운동부위</label>
+            <p style={styles.scheduleFormHint}>수업 전에 오늘 진행할 부위를 선택하세요. 여러 개 선택할 수 있습니다.</p>
+            <div style={styles.scheduleBodyPartGrid}>
+              {SCHEDULE_BODY_PART_OPTIONS.map((part) => {
+                const selected = scheduleBodyParts.includes(part);
+                return (
+                  <button
+                    key={part}
+                    type="button"
+                    onClick={() => toggleScheduleBodyPart(part)}
+                    style={{
+                      ...styles.scheduleBodyPartChip,
+                      ...(selected ? styles.scheduleBodyPartChipActive : {}),
+                    }}
+                  >
+                    {part}
+                  </button>
+                );
+              })}
+            </div>
 
             <label style={styles.label}>메모</label>
             <textarea
