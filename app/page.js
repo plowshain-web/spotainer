@@ -9201,25 +9201,36 @@ getScheduleMemberPtText={getScheduleMemberPtText}
             </select>
 
 
-            <label style={styles.label}>운동부위</label>
-            <p style={styles.scheduleFormHint}>수업 전에 오늘 진행할 부위를 선택하세요. 여러 개 선택할 수 있습니다.</p>
-            <div style={styles.scheduleBodyPartGrid}>
-              {SCHEDULE_BODY_PART_OPTIONS.map((part) => {
-                const selected = scheduleBodyParts.includes(part);
-                return (
-                  <button
-                    key={part}
-                    type="button"
-                    onClick={() => toggleScheduleBodyPart(part)}
-                    style={{
-                      ...styles.scheduleBodyPartChip,
-                      ...(selected ? styles.scheduleBodyPartChipActive : {}),
-                    }}
-                  >
-                    {part}
-                  </button>
-                );
-              })}
+            <div style={styles.scheduleBodyPartBox}>
+              <div style={styles.scheduleBodyPartHeader}>
+                <div>
+                  <label style={styles.scheduleBodyPartTitle}>운동부위 <span style={styles.scheduleBodyPartSubTitle}>(복수 선택)</span></label>
+                  <p style={styles.scheduleBodyPartHint}>수업 전에 오늘 진행할 부위를 선택하세요.</p>
+                </div>
+                <div style={styles.scheduleBodyPartSelected}>
+                  {scheduleBodyParts.length > 0 ? scheduleBodyParts.join(" · ") : "미선택"}
+                </div>
+              </div>
+
+              <div style={styles.scheduleBodyPartGrid}>
+                {SCHEDULE_BODY_PART_OPTIONS.map((part) => {
+                  const selected = scheduleBodyParts.includes(part);
+                  return (
+                    <button
+                      key={part}
+                      type="button"
+                      onClick={() => toggleScheduleBodyPart(part)}
+                      style={{
+                        ...styles.scheduleBodyPartChip,
+                        ...(selected ? styles.scheduleBodyPartChipActive : {}),
+                      }}
+                    >
+                      {selected && <span style={styles.scheduleBodyPartCheck}>✓</span>}
+                      {part}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <label style={styles.label}>메모</label>
@@ -13378,6 +13389,93 @@ const styles = {
     marginBottom: 16,
     fontSize: 14,
     fontWeight: 900,
+  },
+  scheduleBodyPartBox: {
+    background: "#f8f8f8",
+    border: "1px solid #dedede",
+    borderRadius: 18,
+    padding: 16,
+    margin: "8px 0 18px",
+  },
+  scheduleBodyPartHeader: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 14,
+  },
+  scheduleBodyPartTitle: {
+    display: "block",
+    color: "#111",
+    fontSize: 18,
+    fontWeight: 900,
+    marginBottom: 5,
+  },
+  scheduleBodyPartSubTitle: {
+    color: "#666",
+    fontSize: 15,
+    fontWeight: 800,
+  },
+  scheduleBodyPartHint: {
+    margin: 0,
+    color: "#888",
+    fontSize: 13,
+    fontWeight: 800,
+  },
+  scheduleBodyPartSelected: {
+    minWidth: 110,
+    maxWidth: "45%",
+    background: "#111",
+    color: "#fff",
+    borderRadius: 999,
+    padding: "9px 13px",
+    fontSize: 14,
+    fontWeight: 900,
+    textAlign: "center",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  scheduleBodyPartGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(8, minmax(0, 1fr))",
+    gap: 12,
+  },
+  scheduleBodyPartChip: {
+    position: "relative",
+    minHeight: 52,
+    background: "#fff",
+    color: "#111",
+    border: "1px solid #d5d5d5",
+    borderRadius: 12,
+    padding: "12px 10px",
+    fontSize: 17,
+    fontWeight: 900,
+    cursor: "pointer",
+    boxShadow: "0 6px 14px rgba(0,0,0,0.04)",
+  },
+  scheduleBodyPartChipActive: {
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #111",
+    boxShadow: "0 10px 22px rgba(0,0,0,0.16)",
+  },
+  scheduleBodyPartCheck: {
+    position: "absolute",
+    right: -8,
+    top: -9,
+    width: 24,
+    height: 24,
+    borderRadius: 999,
+    background: "#111",
+    color: "#fff",
+    border: "2px solid #fff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 14,
+    fontWeight: 900,
+    lineHeight: 1,
   },
   autoEndTimeBox: {
     background: "#222",
