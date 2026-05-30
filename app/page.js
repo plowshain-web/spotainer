@@ -7767,7 +7767,7 @@ async function saveMemberPreference() {
             <>
               {publicOtCheckMember?.name && (
                 <div style={preferenceStyles.noticeBox}>
-                  <div style={preferenceStyles.noticeTitle}>{publicOtCheckMember.name}님 체크</div>
+                  <div style={preferenceStyles.noticeTitle}>{publicOtCheckMember.name}님</div>
                   <div style={preferenceStyles.noticeText}>
                     부담없이 편하게 선택해주세요.
                   </div>
