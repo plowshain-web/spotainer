@@ -299,20 +299,20 @@ function TodayScheduleSectionV2({
     <section style={{
       border:"1px solid rgba(212,161,74,.7)",
       borderRadius:28,
-      padding:18,
+      padding:16,
       background:"#050505",
       boxShadow:"0 0 30px rgba(212,161,74,.12)",
-      height:500,
-      maxHeight:500,
-      minHeight:500,
-      flex:"0 0 500px",
+      height:430,
+      maxHeight:430,
+      minHeight:430,
+      flex:"0 0 430px",
       display:"flex",
       flexDirection:"column",
       overflow:"hidden"
     }}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flex:"0 0 auto"}}>
         <div>
-          <h2 style={{fontSize:34,color:"#e0ae49",margin:0,lineHeight:1}}>오늘 스케줄</h2>
+          <h2 style={{fontSize:32,color:"#e0ae49",margin:0,lineHeight:1}}>오늘 스케줄</h2>
           <div style={{color:"#ddd",fontSize:14,marginTop:6}}>오늘 수업 흐름만 빠르게 확인하세요.</div>
         </div>
         <div style={{display:"flex",gap:10,alignItems:"center"}}>
@@ -342,11 +342,11 @@ function TodayScheduleSectionV2({
               gridTemplateColumns:"76px 150px minmax(0,1fr) 240px",
               alignItems:"center",
               gap:12,
-              padding:"9px 14px",
+              padding:"8px 14px",
               borderRadius:16,
               border:"1px solid rgba(255,255,255,.08)",
               background:"rgba(255,255,255,.025)",
-              minHeight:78
+              minHeight:72
             }}>
               <div style={{display:"flex",alignItems:"center"}}>
                 <div style={{fontSize:21,color:"#e0ae49",fontWeight:1000,letterSpacing:-.5,lineHeight:1}}>{formatTime(schedule.start_time)}</div>
@@ -7925,11 +7925,10 @@ async function saveMemberPreference() {
   return (
     <main style={styles.page}>
       <header style={styles.header}>
-        <div>
-          <div style={styles.headerTitleRow}>
-            <h1 style={styles.title}>Spotainer</h1>
-          </div>
-          <p style={styles.subtitle}>{centerName || "여성전용 PT 회원관리"}</p>
+        <div style={styles.brandLine}>
+          <h1 style={styles.title}>Spotainer</h1>
+          <span style={styles.brandDivider} />
+          <p style={styles.subtitleInline}>{centerName || "여성전용 PT 회원관리"}</p>
         </div>
         <div style={styles.headerActions}>
           <button onClick={openTrainerLogModal} style={styles.trainerQuickButton}>
@@ -11560,7 +11559,7 @@ const styles = {
     border: "1px solid rgba(255,255,255,0.22)",
     background: "#ffffff",
     color: "#111827",
-    borderRadius: 18,
+    borderRadius: 16,
     padding: "16px 18px",
     display: "flex",
     alignItems: "center",
@@ -11948,13 +11947,34 @@ const styles = {
     flexShrink: 0,
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   headerTitleRow: {
     display: "flex",
     alignItems: "center",
     gap: 14,
     flexWrap: "wrap",
+  },
+  brandLine: {
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+    minWidth: 0,
+  },
+  brandDivider: {
+    width: 1,
+    height: 34,
+    background: "rgba(212,161,74,.75)",
+    display: "inline-block",
+    flexShrink: 0,
+  },
+  subtitleInline: {
+    color: "#ffffff",
+    margin: 0,
+    fontSize: 17,
+    opacity: 0.94,
+    textShadow: "0 1px 8px rgba(0,0,0,0.45)",
+    whiteSpace: "nowrap",
   },
   headerSalesButton: {
     background: "#ffffff",
@@ -11968,7 +11988,7 @@ const styles = {
     boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
   },
   title: {
-    fontSize: 40,
+    fontSize: 38,
     margin: 0,
     fontWeight: 900,
     letterSpacing: -1,
@@ -12010,27 +12030,28 @@ const styles = {
     flex: "0 0 auto",
     display: "grid",
     gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-    gap: 12,
-    marginTop: 12,
+    gap: 10,
+    marginTop: 8,
+    paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
   },
   mainLauncherButton: {
-    minHeight: 84,
+    minHeight: 64,
     borderRadius: 18,
     border: "1px solid rgba(212,161,74,.45)",
     background: "linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.025))",
     color: "#fff",
     display: "grid",
-    gridTemplateRows: "auto auto auto",
+    gridTemplateRows: "auto auto",
     alignItems: "center",
     justifyItems: "center",
-    gap: 3,
-    padding: "10px 8px",
+    gap: 2,
+    padding: "7px 8px",
     cursor: "pointer",
     boxShadow: "0 10px 24px rgba(0,0,0,.22)",
   },
   mainLauncherIcon: {
     color: "#e0ae49",
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 1000,
     lineHeight: 1,
   },
@@ -16453,11 +16474,16 @@ textarea: {
      White UI consistency overrides
      ========================= */
   page: {
-    minHeight: "100vh",
+    height: "100dvh",
+    minHeight: "100dvh",
     background: "linear-gradient(180deg, #0b0b0b 0%, #111 100%)",
-    color: "#111",
-    padding: 24,
+    color: "#fff",
+    padding: "12px 20px calc(env(safe-area-inset-bottom, 0px) + 58px)",
     fontFamily: "Arial, sans-serif",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+    boxSizing: "border-box",
   },
   memberListModalBox: {
     width: "100%",
