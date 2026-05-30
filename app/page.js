@@ -299,19 +299,20 @@ function TodayScheduleSectionV2({
     <section style={{
       border:"1px solid rgba(212,161,74,.7)",
       borderRadius:28,
-      padding:20,
+      padding:18,
       background:"#050505",
       boxShadow:"0 0 30px rgba(212,161,74,.12)",
-      height:"auto",
-      minHeight:0,
-      flex:"1 1 auto",
+      height:500,
+      maxHeight:500,
+      minHeight:500,
+      flex:"0 0 500px",
       display:"flex",
       flexDirection:"column",
       overflow:"hidden"
     }}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flex:"0 0 auto"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flex:"0 0 auto"}}>
         <div>
-          <h2 style={{fontSize:38,color:"#e0ae49",margin:0,lineHeight:1}}>오늘 스케줄</h2>
+          <h2 style={{fontSize:34,color:"#e0ae49",margin:0,lineHeight:1}}>오늘 스케줄</h2>
           <div style={{color:"#ddd",fontSize:14,marginTop:6}}>오늘 수업 흐름만 빠르게 확인하세요.</div>
         </div>
         <div style={{display:"flex",gap:10,alignItems:"center"}}>
@@ -320,7 +321,7 @@ function TodayScheduleSectionV2({
         </div>
       </div>
 
-      <div style={{display:"flex",flexDirection:"column",gap:7,overflowY:"auto",paddingRight:6,overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",flex:"1 1 auto"}}>
+      <div style={{display:"flex",flexDirection:"column",gap:8,overflowY:"auto",paddingRight:6,overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",flex:"1 1 auto",minHeight:0}}>
         {schedules.map((schedule)=>{
           const member=getScheduleMember(schedule)||{};
           const condition=getLatestConditionForMember(member);
@@ -341,11 +342,11 @@ function TodayScheduleSectionV2({
               gridTemplateColumns:"76px 150px minmax(0,1fr) 240px",
               alignItems:"center",
               gap:12,
-              padding:"10px 14px",
+              padding:"9px 14px",
               borderRadius:16,
               border:"1px solid rgba(255,255,255,.08)",
               background:"rgba(255,255,255,.025)",
-              minHeight:72
+              minHeight:78
             }}>
               <div style={{display:"flex",alignItems:"center"}}>
                 <div style={{fontSize:21,color:"#e0ae49",fontWeight:1000,letterSpacing:-.5,lineHeight:1}}>{formatTime(schedule.start_time)}</div>
@@ -8071,11 +8072,31 @@ getSchedulePreferenceTags={getSchedulePreferenceTags}
 getScheduleMemberPtText={getScheduleMemberPtText}
 />
 
-      <section style={styles.scheduleAddWideBox}>
-        <button onClick={openScheduleCheckModal} style={styles.scheduleAddWideButton}>
-          <span style={styles.actionCardIcon}>☰</span>
-          <span>스케줄 확인 / 추가</span>
-          <span style={styles.actionCardArrow}>›</span>
+      <section style={styles.mainLauncherGrid}>
+        <button onClick={openScheduleCheckModal} style={styles.mainLauncherButton}>
+          <span style={styles.mainLauncherIcon}>▦</span>
+          <strong>스케줄</strong>
+          <small>확인 / 추가</small>
+        </button>
+        <button onClick={() => setShowAddModal(true)} style={styles.mainLauncherButton}>
+          <span style={styles.mainLauncherIcon}>＋</span>
+          <strong>회원 추가</strong>
+          <small>신규 등록</small>
+        </button>
+        <button onClick={() => openMemberListModal("회원 목록", true, false)} style={styles.mainLauncherButton}>
+          <span style={styles.mainLauncherIcon}>☰</span>
+          <strong>회원 목록</strong>
+          <small>검색 / 관리</small>
+        </button>
+        <button onClick={() => setShowTodayTodoModal(true)} style={styles.mainLauncherButton}>
+          <span style={styles.mainLauncherIcon}>✓</span>
+          <strong>오늘 할 일</strong>
+          <small>필요할 때 확인</small>
+        </button>
+        <button onClick={() => setShowSalesModal(true)} style={styles.mainLauncherButton}>
+          <span style={styles.mainLauncherIcon}>▥</span>
+          <strong>매출 관리</strong>
+          <small>현황 확인</small>
         </button>
       </section>
 
@@ -11206,26 +11227,7 @@ ${link}`;
         </div>
       )}
 
-      <section style={styles.actionSearchGridThree}>
-        <button onClick={() => setShowAddModal(true)} style={styles.actionBigCard}>
-          <span style={{ ...styles.actionBigIcon, color: "#facc15" }}>👤</span>
-          <span>
-            <strong>회원 추가</strong>
-            <p>새로운 회원을 등록합니다</p>
-          </span>
-          <span style={styles.actionCardArrow}>›</span>
-        </button>
 
-        <button onClick={() => openMemberListModal("회원 목록", true, false)} style={styles.actionBigCard}>
-          <span style={{ ...styles.actionBigIcon, color: "#38bdf8" }}>☰</span>
-          <span>
-            <strong>회원 목록 / 검색</strong>
-            <p>활성 회원을 보고 바로 검색합니다</p>
-          </span>
-          <span style={styles.actionCardArrow}>›</span>
-        </button>
-
-      </section>
 
       {showMemberListModal && (
         <div style={styles.whiteModalOverlay}>
@@ -11503,7 +11505,7 @@ const styles = {
     minHeight: "100dvh",
     background: "linear-gradient(180deg, #090909 0%, #111 100%)",
     color: "#fff",
-    padding: 24,
+    padding: 20,
     fontFamily: "Arial, sans-serif",
     display: "flex",
     flexDirection: "column",
@@ -11946,7 +11948,7 @@ const styles = {
     flexShrink: 0,
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 18,
+    marginBottom: 12,
   },
   headerTitleRow: {
     display: "flex",
@@ -11966,7 +11968,7 @@ const styles = {
     boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
   },
   title: {
-    fontSize: 44,
+    fontSize: 40,
     margin: 0,
     fontWeight: 900,
     letterSpacing: -1,
@@ -11975,8 +11977,8 @@ const styles = {
   },
   subtitle: {
     color: "#ffffff",
-    marginTop: 8,
-    fontSize: 16,
+    marginTop: 4,
+    fontSize: 15,
     opacity: 0.92,
     textShadow: "0 1px 8px rgba(0,0,0,0.45)",
   },
@@ -12003,6 +12005,34 @@ const styles = {
     fontWeight: 700,
     color: "#ddd",
     cursor: "pointer",
+  },
+  mainLauncherGrid: {
+    flex: "0 0 auto",
+    display: "grid",
+    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+    gap: 12,
+    marginTop: 12,
+  },
+  mainLauncherButton: {
+    minHeight: 84,
+    borderRadius: 18,
+    border: "1px solid rgba(212,161,74,.45)",
+    background: "linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.025))",
+    color: "#fff",
+    display: "grid",
+    gridTemplateRows: "auto auto auto",
+    alignItems: "center",
+    justifyItems: "center",
+    gap: 3,
+    padding: "10px 8px",
+    cursor: "pointer",
+    boxShadow: "0 10px 24px rgba(0,0,0,.22)",
+  },
+  mainLauncherIcon: {
+    color: "#e0ae49",
+    fontSize: 24,
+    fontWeight: 1000,
+    lineHeight: 1,
   },
   summaryBox: {
     display: "grid",
