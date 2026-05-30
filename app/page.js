@@ -302,10 +302,7 @@ function TodayScheduleSectionV2({
       padding:16,
       background:"#050505",
       boxShadow:"0 0 30px rgba(212,161,74,.12)",
-      height:430,
-      maxHeight:430,
-      minHeight:430,
-      flex:"0 0 430px",
+      flex:"0 0 auto",
       display:"flex",
       flexDirection:"column",
       overflow:"hidden"
@@ -321,7 +318,7 @@ function TodayScheduleSectionV2({
         </div>
       </div>
 
-      <div style={{display:"flex",flexDirection:"column",gap:8,overflowY:"auto",paddingRight:6,overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",flex:"1 1 auto",minHeight:0}}>
+      <div style={{display:"flex",flexDirection:"column",gap:8,overflowY:"auto",paddingRight:6,overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",maxHeight:328,minHeight:0}}>
         {schedules.map((schedule)=>{
           const member=getScheduleMember(schedule)||{};
           const condition=getLatestConditionForMember(member);
