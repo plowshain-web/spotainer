@@ -264,272 +264,6 @@ function createEmptyWorkoutExercise(trainingType = "weight") {
 
 
 
-"use client";
-
-import { useEffect, useRef, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
-const commonExercises = [
-  "랫풀다운",
-  "레그프레스",
-  "스쿼트",
-  "벤치프레스",
-  "데드리프트",
-  "힙쓰러스트",
-  "숄더프레스",
-  "시티드로우",
-  "런지",
-  "플랭크",
-];
-
-const SCHEDULE_BODY_PART_OPTIONS = ["가슴", "어깨", "등", "하체", "팔", "코어", "전신", "유산소"];
-
-
-/*
-====================================================
-[ 트레이너 일지 입력 구조 변경 ]
-====================================================
-
-최종 입력 구조:
-- 오늘운동: 운동 기록에서 선택한 부위/운동 종류 사용
-- 컨디션: 좋음 / 보통 / 나쁨
-- 체크사항: 집중력 좋음, 좌우 차이 적음, 좌우 흔들림 등
-- 총평: 폼 좋음, 폼 무너짐, 컨디션 좋음 등
-- 다음운동: 어깨, 하체, 스트레칭 먼저 어깨 등
-
-목표:
-트레이너는 짧게 기록하고,
-앱은 회원이 거부감 느끼지 않는 자연스러운 현장 톤 피드백으로 변환합니다.
-====================================================
-*/
-
-function FullScreenModal({ children, onClose }) {
-  useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
-    const originalHeight = document.body.style.height;
-
-    document.body.style.overflow = "hidden";
-    document.body.style.height = "100vh";
-
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      document.body.style.height = originalHeight;
-    };
-  }, []);
-
-  return (
-    <div
-      className="fixed inset-0 z-[9999] bg-white overflow-hidden"
-      style={{
-        touchAction: "none",
-      }}
-    >
-      <div
-        className="h-full overflow-y-auto overscroll-contain"
-        style={{
-          WebkitOverflowScrolling: "touch",
-          touchAction: "pan-y",
-        }}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
-/*
-====================================================
-[ Spotainer 공통 FullScreenModal 적용 기준 ]
-====================================================
-
-적용 대상:
-- 상담기록
-- 운동기록
-- 회원상세
-- 스케줄확인
-- 오늘할일
-- 매출관리
-- 개인기록
-
-사용 예시:
-
-{showModal && (
-  <FullScreenModal onClose={() => setShowModal(false)}>
-    내용
-  </FullScreenModal>
-)}
-
-핵심 목적:
-- Android 태블릿 / PWA 환경 안정화
-- 입력창 클릭 시 화면 밀림 방지
-- 배경 스크롤 완전 잠금
-- 팝업 내부만 스크롤 허용
-- 기존 UI 디자인 최대 유지
-
-====================================================
-*/
-
-
-
-const exerciseCatalog = [
-  { name: "스미스 스쿼트", bodyPart: "하체", type: "weight" },
-  { name: "바벨 스쿼트", bodyPart: "하체", type: "weight" },
-  { name: "덤벨 스쿼트", bodyPart: "하체", type: "weight" },
-  { name: "불가리안 스플릿 스쿼트", bodyPart: "하체", type: "weight" },
-  { name: "런지", bodyPart: "하체", type: "weight" },
-  { name: "워킹 런지", bodyPart: "하체", type: "weight" },
-  { name: "레그 프레스", bodyPart: "하체", type: "weight" },
-  { name: "레그 익스텐션", bodyPart: "하체", type: "weight" },
-  { name: "레그 컬", bodyPart: "하체", type: "weight" },
-  { name: "힙 어브덕션", bodyPart: "하체", type: "weight" },
-  { name: "힙 어덕션", bodyPart: "하체", type: "weight" },
-  { name: "힙 쓰러스트", bodyPart: "하체", type: "weight" },
-  { name: "글루트 브리지", bodyPart: "하체", type: "weight" },
-  { name: "케이블 킥백", bodyPart: "하체", type: "weight" },
-  { name: "스텝업", bodyPart: "하체", type: "weight" },
-  { name: "V스쿼트", bodyPart: "하체", type: "weight" },
-  { name: "핵스쿼트", bodyPart: "하체", type: "weight" },
-
-  { name: "랫풀다운", bodyPart: "등", type: "weight" },
-  { name: "시티드 로우", bodyPart: "등", type: "weight" },
-  { name: "바벨 로우", bodyPart: "등", type: "weight" },
-  { name: "덤벨 로우", bodyPart: "등", type: "weight" },
-  { name: "케이블 로우", bodyPart: "등", type: "weight" },
-  { name: "풀업", bodyPart: "등", type: "weight" },
-  { name: "페이스풀", bodyPart: "등", type: "weight" },
-  { name: "리버스 플라이(등)", bodyPart: "등", type: "weight" },
-  { name: "롱 풀", bodyPart: "등", type: "weight" },
-  { name: "어시스트 풀업", bodyPart: "등", type: "weight" },
-  { name: "백익스텐션", bodyPart: "등", type: "weight" },
-
-  { name: "체스트 프레스", bodyPart: "가슴", type: "weight" },
-  { name: "인클라인 프레스", bodyPart: "가슴", type: "weight" },
-  { name: "딥클라인 프레스", bodyPart: "가슴", type: "weight" },
-  { name: "덤벨 벤치프레스", bodyPart: "가슴", type: "weight" },
-  { name: "푸쉬업", bodyPart: "가슴", type: "weight" },
-  { name: "펙덱 플라이", bodyPart: "가슴", type: "weight" },
-  { name: "케이블 플라이", bodyPart: "가슴", type: "weight" },
-  { name: "딥스", bodyPart: "가슴", type: "weight" },
-
-  { name: "덤벨 숄더프레스", bodyPart: "어깨", type: "weight" },
-  { name: "머신 숄더프레스", bodyPart: "어깨", type: "weight" },
-  { name: "사이드 레터럴 레이즈", bodyPart: "어깨", type: "weight" },
-  { name: "프론트 레이즈", bodyPart: "어깨", type: "weight" },
-  { name: "리어 델트 레이즈", bodyPart: "어깨", type: "weight" },
-  { name: "업라이트 로우", bodyPart: "어깨", type: "weight" },
-  { name: "리버스 플라이(어깨)", bodyPart: "어깨", type: "weight" },
-
-  { name: "플랭크", bodyPart: "복부", type: "weight" },
-  { name: "사이드 플랭크", bodyPart: "복부", type: "weight" },
-  { name: "크런치", bodyPart: "복부", type: "weight" },
-  { name: "레그레이즈", bodyPart: "복부", type: "weight" },
-  { name: "데드버그", bodyPart: "복부", type: "weight" },
-  { name: "버드독", bodyPart: "복부", type: "weight" },
-  { name: "러시안 트위스트", bodyPart: "복부", type: "weight" },
-  { name: "케이블 크런치", bodyPart: "복부", type: "weight" },
-
-  { name: "점핑잭", bodyPart: "전신", type: "circuit" },
-  { name: "케틀벨 스윙", bodyPart: "전신", type: "circuit" },
-  { name: "덤벨 런지 프레스", bodyPart: "전신", type: "circuit" },
-  { name: "스쿼트", bodyPart: "전신", type: "circuit" },
-  { name: "하이 니 크런치", bodyPart: "전신", type: "circuit" },
-  { name: "스탠딩 사이드 크런치", bodyPart: "전신", type: "circuit" },
-  { name: "스탠딩 트위스트 크런치", bodyPart: "전신", type: "circuit" },
-  { name: "스텝업 니업", bodyPart: "전신", type: "circuit" },
-  { name: "스텝업 니 드라이브 킥", bodyPart: "전신", type: "circuit" },
-  { name: "스텝업 니킥", bodyPart: "전신", type: "circuit" },
-  { name: "스텝업 덤벨 터치", bodyPart: "전신", type: "circuit" },
-  { name: "점핑 런지", bodyPart: "전신", type: "circuit" },
-  { name: "업다운", bodyPart: "전신", type: "circuit" },
-  { name: "크로스 업다운", bodyPart: "전신", type: "circuit" },
-];
-
-const exerciseList = exerciseCatalog.map((exercise) => exercise.name);
-
-const CIRCUIT_FIXED_SET_COUNT = 3;
-const WEIGHT_DEFAULT_SET_COUNT = 4;
-
-const circuitPrograms = [
-  {
-    name: "서킷 1단계",
-    memo: "전신 서킷 1단계 · 3세트 고정 · 케틀벨/덤벨 중량은 현장에서 입력",
-    exercises: [
-      { name: "점핑잭", weight: "", reps: "20" },
-      { name: "케틀벨 스윙", weight: "", reps: "20" },
-      { name: "덤벨 런지 프레스", weight: "", reps: "20" },
-      { name: "스쿼트", weight: "", reps: "20" },
-    ],
-  },
-  {
-    name: "서킷 2단계",
-    memo: "전신 서킷 2단계 · 3세트 고정",
-    exercises: [
-      { name: "하이 니 크런치", weight: "", reps: "20" },
-      { name: "스탠딩 사이드 크런치", weight: "", reps: "20" },
-      { name: "스탠딩 트위스트 크런치", weight: "", reps: "20" },
-    ],
-  },
-  {
-    name: "서킷 3단계",
-    memo: "전신 서킷 3단계 · 3세트 고정 · 스텝업 니업/니킥은 좌우 각각 15회",
-    exercises: [
-      { name: "스텝업 니업", weight: "", reps: "15" },
-      { name: "스텝업 니킥", weight: "", reps: "15" },
-      { name: "스텝업 덤벨 터치", weight: "", reps: "20" },
-      { name: "점핑 런지", weight: "", reps: "15" },
-    ],
-  },
-  {
-    name: "서킷 4단계",
-    memo: "전신 서킷 4단계 · 3세트 고정",
-    exercises: [
-      { name: "스텝업", weight: "", reps: "20" },
-      { name: "업다운", weight: "", reps: "20" },
-      { name: "크로스 업다운", weight: "", reps: "20" },
-    ],
-  },
-];
-
-const SPOTAINER_PATCH_VERSION = "2026-05-25-v11-pwa-tablet-install-rescue";
-const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
-
-const memberStageOptions = [
-  { value: "ot", label: "OT회원" },
-  { value: "pt", label: "PT회원" },
-  { value: "inactive", label: "비활성" },
-];
-
-const conditionLevelOptions = ["좋음", "보통", "안좋음"];
-const sleepStatusOptions = ["충분", "보통", "부족", "매우부족"];
-const painAreaOptions = ["없음", "목/승모", "어깨", "허리", "무릎", "손목", "골반/고관절", "기타"];
-const muscleSorenessOptions = ["없음", "약간", "심함"];
-const workoutBurdenOptions = ["괜찮음", "조금 부담", "많이 부담"];
-
-
-const weightBodyPartOptions = ["가슴", "어깨", "등", "하체", "팔", "복부"];
-const workoutPatternOptions = [...weightBodyPartOptions, "전신"];
-
-function createExerciseSets(count, weight = "", reps = "") {
-  return Array.from({ length: count }, () => ({ weight, reps }));
-}
-
-function createEmptyWorkoutExercise(trainingType = "weight") {
-  const defaultSetCount = trainingType === "circuit" ? CIRCUIT_FIXED_SET_COUNT : WEIGHT_DEFAULT_SET_COUNT;
-
-  return {
-    name: "",
-    sets: createExerciseSets(defaultSetCount),
-  };
-}
-
-
-
-
 function TodayScheduleSectionV2({
   schedules,startTodaySMSQueue,getScheduleMember,getLatestConditionForMember,
   getConditionPreviewText,renderScheduleQuickButtons,getSchedulePreferenceTags,getScheduleMemberPtText
@@ -561,47 +295,31 @@ function TodayScheduleSectionV2({
     return `${parts.slice(0,2).join(" · ")} 외 ${parts.length-2}`;
   };
 
-  const getShortConditionText=(condition, preview)=>{
-    const raw=String(preview || condition?.condition_level || "보통").trim();
-    if(!raw) return "보통";
-    return raw
-      .replace(/^🙂\s*/, "")
-      .replace(/컨디션\s*/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-  };
-
   return (
     <section style={{
       border:"1px solid rgba(212,161,74,.7)",
       borderRadius:28,
-      padding:22,
+      padding:20,
       background:"#050505",
       boxShadow:"0 0 30px rgba(212,161,74,.12)",
+      height:"calc(100vh - 210px)",
+      minHeight:420,
       display:"flex",
       flexDirection:"column",
-      minHeight:0,
-      maxHeight:"calc(100vh - 260px)"
+      overflow:"hidden"
     }}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flex:"0 0 auto"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flex:"0 0 auto"}}>
         <div>
-          <h2 style={{fontSize:42,color:"#e0ae49",margin:0,lineHeight:1}}>오늘 스케줄</h2>
-          <div style={{color:"#ddd",marginTop:8}}>출석과 PT 차감 상태를 한 번에 확인하세요.</div>
+          <h2 style={{fontSize:38,color:"#e0ae49",margin:0,lineHeight:1}}>오늘 스케줄</h2>
+          <div style={{color:"#ddd",fontSize:14,marginTop:6}}>오늘 수업 흐름만 빠르게 확인하세요.</div>
         </div>
-        <div style={{display:"flex",gap:12,alignItems:"center"}}>
-          <button onClick={startTodaySMSQueue} style={{padding:"16px 24px",borderRadius:14,background:"#111",color:"#fff",border:"1px solid #d4a14a"}}>오늘 문자 시작</button>
-          <div style={{padding:"16px 20px",borderRadius:14,background:"#d4a14a",fontWeight:700}}>{schedules.length}건</div>
+        <div style={{display:"flex",gap:10,alignItems:"center"}}>
+          <button onClick={startTodaySMSQueue} style={{padding:"13px 20px",borderRadius:14,background:"#111",color:"#fff",border:"1px solid #d4a14a",fontWeight:900}}>오늘 문자 시작</button>
+          <div style={{padding:"13px 18px",borderRadius:14,background:"#d4a14a",fontWeight:900,color:"#111"}}>{schedules.length}건</div>
         </div>
       </div>
 
-      <div style={{
-        display:"flex",
-        flexDirection:"column",
-        gap:8,
-        overflowY:"auto",
-        paddingRight:4,
-        minHeight:0
-      }}>
+      <div style={{display:"flex",flexDirection:"column",gap:7,overflowY:"auto",paddingRight:6,overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",flex:"1 1 auto"}}>
         {schedules.map((schedule)=>{
           const member=getScheduleMember(schedule)||{};
           const condition=getLatestConditionForMember(member);
@@ -613,50 +331,50 @@ function TodayScheduleSectionV2({
           const preview=getConditionPreviewText(condition);
           const tags=(getSchedulePreferenceTags ? getSchedulePreferenceTags(schedule) : []).slice(0,2);
           const ptText=getScheduleMemberPtText ? getScheduleMemberPtText(schedule) : `PT ${member.pt_remaining || member.remaining_pt || member.pt_count || 0}회`;
-          const conditionText=getShortConditionText(condition, preview);
+          const statusText=preview || condition?.condition_level || "보통";
           const issueText=condition?.memo || "없음";
 
           return (
             <div key={schedule.id} style={{
               display:"grid",
-              gridTemplateColumns:"120px 230px minmax(0,1fr) auto",
+              gridTemplateColumns:"76px 150px minmax(0,1fr) 240px",
               alignItems:"center",
-              gap:16,
-              padding:"12px 18px",
-              borderRadius:18,
+              gap:12,
+              padding:"10px 14px",
+              borderRadius:16,
               border:"1px solid rgba(255,255,255,.08)",
               background:"rgba(255,255,255,.025)",
               minHeight:72
             }}>
               <div style={{display:"flex",alignItems:"center"}}>
-                <div style={{fontSize:22,color:"#e0ae49",fontWeight:900,letterSpacing:-.5,lineHeight:1}}>{formatTime(schedule.start_time)}</div>
+                <div style={{fontSize:21,color:"#e0ae49",fontWeight:1000,letterSpacing:-.5,lineHeight:1}}>{formatTime(schedule.start_time)}</div>
               </div>
 
               <div style={{minWidth:0}}>
-                <div style={{fontSize:20,color:hasWorkoutParts ? "#f4f4f4" : "#bdbdbd",fontWeight:900,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",lineHeight:1.15}}>
+                <div style={{fontSize:18,color:hasWorkoutParts ? "#f4f4f4" : "#aaa",fontWeight:1000,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",lineHeight:1.15}}>
                   {workoutText}
                 </div>
               </div>
 
               <div style={{minWidth:0}}>
-                <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0,whiteSpace:"nowrap",overflow:"hidden"}}>
-                  <div style={{fontSize:23,fontWeight:900,color:"#fff",lineHeight:1.1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:170}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0,whiteSpace:"nowrap",overflow:"hidden"}}>
+                  <span style={{fontSize:20,fontWeight:1000,color:"#fff",lineHeight:1.1,overflow:"hidden",textOverflow:"ellipsis"}}>
                     {member.name || "회원"}
-                  </div>
-                  {tags.map((tag,idx)=>(
-                    <span key={`${tag}-${idx}`} style={{fontSize:12,color:"#f2f2f2",background:idx===1 ? "rgba(22,95,74,.55)" : "rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.08)",borderRadius:999,padding:"4px 9px",whiteSpace:"nowrap",fontWeight:800}}>{tag}</span>
+                  </span>
+                  <span style={{fontSize:14,color:"#d8d8d8",fontWeight:900,flex:"0 0 auto"}}>{ptText}</span>
+                  {tags.map((tag)=>(
+                    <span key={tag} style={{fontSize:11,color:"#f2f2f2",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.08)",borderRadius:999,padding:"2px 7px",fontWeight:900,flex:"0 0 auto"}}>{tag}</span>
                   ))}
-                  <div style={{fontSize:15,color:"#cfcfcf",fontWeight:800,whiteSpace:"nowrap"}}>{ptText}</div>
                 </div>
 
-                <div style={{fontSize:14,color:"#cfcfcf",marginTop:8,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                  컨디션: {conditionText}
-                  <span style={{color:"#777",margin:"0 10px"}}>|</span>
-                  지난 이슈: {issueText}
+                <div style={{fontSize:13,color:"#cfcfcf",marginTop:6,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                  컨디션 : {statusText}
+                  <span style={{color:"#777",margin:"0 8px"}}>|</span>
+                  지난 이슈 : {issueText}
                 </div>
               </div>
 
-              <div style={{display:"flex",gap:8,justifyContent:"flex-end",alignItems:"center",whiteSpace:"nowrap"}}>
+              <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",whiteSpace:"nowrap"}}>
                 {renderScheduleQuickButtons(schedule,false)}
               </div>
             </div>
@@ -666,7 +384,6 @@ function TodayScheduleSectionV2({
     </section>
   )
 }
-
 
 export default function Page() {
   const [mounted, setMounted] = useState(false);
@@ -8209,15 +7926,13 @@ async function saveMemberPreference() {
         <div>
           <div style={styles.headerTitleRow}>
             <h1 style={styles.title}>Spotainer</h1>
-            {false && (
-              <button
-                type="button"
-                onClick={() => setShowSalesModal(true)}
-                style={styles.headerSalesButton}
-              >
-                매출 관리
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setShowSalesModal(true)}
+              style={styles.headerSalesButton}
+            >
+              매출 관리
+            </button>
           </div>
           <p style={styles.subtitle}>{centerName || "여성전용 PT 회원관리"}</p>
         </div>
@@ -8232,7 +7947,6 @@ async function saveMemberPreference() {
       </header>
 
 
-      {false && (
       <section style={styles.todayDashboardBox}>
         <div style={styles.todayDashboardTop}>
           <div>
@@ -8257,8 +7971,6 @@ async function saveMemberPreference() {
           <span style={styles.todayTodoOpenCount}>{pendingTodayTodoItems.length}건</span>
         </button>
       </section>
-
-      )}
 
       {showTodayTodoModal && (
         <div style={styles.todayTodoPopupOverlay} onClick={() => setShowTodayTodoModal(false)}>
