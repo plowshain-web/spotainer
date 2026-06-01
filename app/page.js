@@ -326,43 +326,45 @@ function TodayScheduleSectionV2({
       flexDirection:"column",
       overflow:"hidden"
     }}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flex:"0 0 auto"}}>
+      <div style={{display:"grid",gridTemplateColumns:"minmax(220px,0.75fr) minmax(420px,1.5fr) auto",alignItems:"center",gap:12,marginBottom:12,flex:"0 0 auto"}}>
         <div>
           <h2 style={{fontSize:32,color:"#e0ae49",margin:0,lineHeight:1}}>오늘 스케줄</h2>
           <div style={{color:"#ddd",fontSize:14,marginTop:6}}>오늘 수업 흐름만 빠르게 확인하세요.</div>
         </div>
-        <div style={{display:"flex",gap:10,alignItems:"center"}}>
+
+        <div style={{minWidth:0}}>
+          {smsMode && currentSMSSchedule && currentSMSMember ? (
+            <div style={{
+              display:"grid",
+              gridTemplateColumns:"minmax(0,1fr) auto auto auto auto",
+              alignItems:"center",
+              gap:8,
+              padding:"9px 10px",
+              borderRadius:16,
+              border:"1px solid rgba(212,161,74,.55)",
+              background:"rgba(212,161,74,.10)"
+            }}>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:13,color:"#e0ae49",fontWeight:1000}}>
+                  문자 진행 {smsIndex + 1} / {smsQueue.length}
+                </div>
+                <div style={{fontSize:12,color:"#eee",fontWeight:900,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginTop:3}}>
+                  {String(currentSMSSchedule.start_time || "").slice(0,5)} · {currentSMSMember.name || "회원"} · {formatScheduleRange ? formatScheduleRange(currentSMSSchedule) : ""}
+                </div>
+              </div>
+              <button type="button" onClick={sendCurrentScheduleSMS} style={{border:"0",borderRadius:12,padding:"9px 12px",fontWeight:1000,background:"#fff",color:"#111",whiteSpace:"nowrap"}}>문자 보내기</button>
+              <button type="button" onClick={markCurrentSMSSentAndNext} style={{border:"0",borderRadius:12,padding:"9px 12px",fontWeight:1000,background:"#1f3f36",color:"#fff",whiteSpace:"nowrap"}}>보낸 처리</button>
+              <button type="button" onClick={skipCurrentSMS} style={{border:"1px solid rgba(255,255,255,.16)",borderRadius:12,padding:"9px 12px",fontWeight:1000,background:"#111",color:"#fff",whiteSpace:"nowrap"}}>건너뛰기</button>
+              <button type="button" onClick={stopTodaySMSQueue} style={{border:"1px solid rgba(255,255,255,.16)",borderRadius:12,padding:"9px 12px",fontWeight:1000,background:"#111",color:"#fff",whiteSpace:"nowrap"}}>닫기</button>
+            </div>
+          ) : null}
+        </div>
+
+        <div style={{display:"flex",gap:10,alignItems:"center",justifyContent:"flex-end"}}>
           <button onClick={startTodaySMSQueue} style={{padding:"13px 20px",borderRadius:14,background:"#111",color:"#fff",border:"1px solid #d4a14a",fontWeight:900}}>오늘 문자 시작</button>
           <div style={{padding:"13px 18px",borderRadius:14,background:"#d4a14a",fontWeight:900,color:"#111"}}>{schedules.length}건</div>
         </div>
       </div>
-
-      {smsMode && currentSMSSchedule && currentSMSMember && (
-        <div style={{
-          display:"grid",
-          gridTemplateColumns:"minmax(0,1fr) auto auto auto auto",
-          alignItems:"center",
-          gap:8,
-          marginBottom:10,
-          padding:"10px 12px",
-          borderRadius:16,
-          border:"1px solid rgba(212,161,74,.55)",
-          background:"rgba(212,161,74,.10)"
-        }}>
-          <div style={{minWidth:0}}>
-            <div style={{fontSize:14,color:"#e0ae49",fontWeight:1000}}>
-              문자 진행 {smsIndex + 1} / {smsQueue.length}
-            </div>
-            <div style={{fontSize:13,color:"#eee",fontWeight:900,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginTop:3}}>
-              {String(currentSMSSchedule.start_time || "").slice(0,5)} · {currentSMSMember.name || "회원"} · {formatScheduleRange ? formatScheduleRange(currentSMSSchedule) : ""}
-            </div>
-          </div>
-          <button type="button" onClick={sendCurrentScheduleSMS} style={{border:"0",borderRadius:12,padding:"10px 14px",fontWeight:1000,background:"#fff",color:"#111"}}>문자 보내기</button>
-          <button type="button" onClick={markCurrentSMSSentAndNext} style={{border:"0",borderRadius:12,padding:"10px 14px",fontWeight:1000,background:"#1f3f36",color:"#fff"}}>보낸 처리</button>
-          <button type="button" onClick={skipCurrentSMS} style={{border:"1px solid rgba(255,255,255,.16)",borderRadius:12,padding:"10px 14px",fontWeight:1000,background:"#111",color:"#fff"}}>건너뛰기</button>
-          <button type="button" onClick={stopTodaySMSQueue} style={{border:"1px solid rgba(255,255,255,.16)",borderRadius:12,padding:"10px 14px",fontWeight:1000,background:"#111",color:"#fff"}}>닫기</button>
-        </div>
-      )}
 
       <div style={{display:"flex",flexDirection:"column",gap:8,overflowY:"auto",paddingRight:6,overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",maxHeight:408,minHeight:0}}>
         {schedules.map((schedule)=>{
