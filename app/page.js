@@ -265,8 +265,24 @@ function createEmptyWorkoutExercise(trainingType = "weight") {
 
 
 function TodayScheduleSectionV2({
-  schedules,startTodaySMSQueue,getScheduleMember,getLatestConditionForMember,
-  getConditionPreviewText,renderScheduleQuickButtons,getSchedulePreferenceTags,getScheduleMemberPtText
+  schedules,
+  smsMode,
+  getCurrentSMSSchedule,
+  smsIndex,
+  smsQueue,
+  getCurrentSMSTargetMember,
+  formatScheduleRange,
+  sendCurrentScheduleSMS,
+  markCurrentSMSSentAndNext,
+  skipCurrentSMS,
+  stopTodaySMSQueue,
+  startTodaySMSQueue,
+  getScheduleMember,
+  getLatestConditionForMember,
+  getConditionPreviewText,
+  renderScheduleQuickButtons,
+  getSchedulePreferenceTags,
+  getScheduleMemberPtText
 }) {
   const formatTime=(time)=>{
     if(!time) return "--:--";
@@ -295,6 +311,9 @@ function TodayScheduleSectionV2({
     return `${parts.slice(0,2).join(" · ")} 외 ${parts.length-2}`;
   };
 
+  const currentSMSSchedule = smsMode && getCurrentSMSSchedule ? getCurrentSMSSchedule() : null;
+  const currentSMSMember = smsMode && getCurrentSMSTargetMember ? getCurrentSMSTargetMember(currentSMSSchedule) : null;
+
   return (
     <section style={{
       border:"1px solid rgba(212,161,74,.7)",
@@ -318,7 +337,34 @@ function TodayScheduleSectionV2({
         </div>
       </div>
 
-      <div style={{display:"flex",flexDirection:"column",gap:8,overflowY:"auto",paddingRight:6,overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",maxHeight:328,minHeight:0}}>
+      {smsMode && currentSMSSchedule && currentSMSMember && (
+        <div style={{
+          display:"grid",
+          gridTemplateColumns:"minmax(0,1fr) auto auto auto auto",
+          alignItems:"center",
+          gap:8,
+          marginBottom:10,
+          padding:"10px 12px",
+          borderRadius:16,
+          border:"1px solid rgba(212,161,74,.55)",
+          background:"rgba(212,161,74,.10)"
+        }}>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:14,color:"#e0ae49",fontWeight:1000}}>
+              문자 진행 {smsIndex + 1} / {smsQueue.length}
+            </div>
+            <div style={{fontSize:13,color:"#eee",fontWeight:900,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginTop:3}}>
+              {String(currentSMSSchedule.start_time || "").slice(0,5)} · {currentSMSMember.name || "회원"} · {formatScheduleRange ? formatScheduleRange(currentSMSSchedule) : ""}
+            </div>
+          </div>
+          <button type="button" onClick={sendCurrentScheduleSMS} style={{border:"0",borderRadius:12,padding:"10px 14px",fontWeight:1000,background:"#fff",color:"#111"}}>문자 보내기</button>
+          <button type="button" onClick={markCurrentSMSSentAndNext} style={{border:"0",borderRadius:12,padding:"10px 14px",fontWeight:1000,background:"#1f3f36",color:"#fff"}}>보낸 처리</button>
+          <button type="button" onClick={skipCurrentSMS} style={{border:"1px solid rgba(255,255,255,.16)",borderRadius:12,padding:"10px 14px",fontWeight:1000,background:"#111",color:"#fff"}}>건너뛰기</button>
+          <button type="button" onClick={stopTodaySMSQueue} style={{border:"1px solid rgba(255,255,255,.16)",borderRadius:12,padding:"10px 14px",fontWeight:1000,background:"#111",color:"#fff"}}>닫기</button>
+        </div>
+      )}
+
+      <div style={{display:"flex",flexDirection:"column",gap:8,overflowY:"auto",paddingRight:6,overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",maxHeight:408,minHeight:0}}>
         {schedules.map((schedule)=>{
           const member=getScheduleMember(schedule)||{};
           const condition=getLatestConditionForMember(member);
@@ -332,6 +378,15 @@ function TodayScheduleSectionV2({
           const ptText=getScheduleMemberPtText ? getScheduleMemberPtText(schedule) : `PT ${member.pt_remaining || member.remaining_pt || member.pt_count || 0}회`;
           const statusText=preview || condition?.condition_level || "보통";
           const issueText=condition?.memo || "없음";
+          const isDone = schedule.status === "completed" || schedule.status === "noshow" || schedule.status === "cancelled";
+          const scheduleStatusText =
+            schedule.status === "completed"
+              ? "완료"
+              : schedule.status === "noshow"
+                ? "노쇼"
+                : schedule.status === "cancelled"
+                  ? "취소"
+                  : "미정";
 
           return (
             <div key={schedule.id} style={{
@@ -341,8 +396,9 @@ function TodayScheduleSectionV2({
               gap:12,
               padding:"8px 14px",
               borderRadius:16,
-              border:"1px solid rgba(255,255,255,.08)",
-              background:"rgba(255,255,255,.025)",
+              border:isDone ? "1px solid rgba(212,161,74,.45)" : "1px solid rgba(255,255,255,.08)",
+              background:isDone ? "rgba(212,161,74,.08)" : "rgba(255,255,255,.025)",
+              opacity:schedule.status === "cancelled" ? .55 : 1,
               minHeight:72
             }}>
               <div style={{display:"flex",alignItems:"center"}}>
@@ -351,7 +407,7 @@ function TodayScheduleSectionV2({
 
               <div style={{minWidth:0}}>
                 <div style={{fontSize:18,color:hasWorkoutParts ? "#f4f4f4" : "#aaa",fontWeight:1000,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",lineHeight:1.15}}>
-                  {workoutText}
+                  {scheduleStatusText}
                 </div>
               </div>
 
@@ -374,7 +430,7 @@ function TodayScheduleSectionV2({
               </div>
 
               <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",whiteSpace:"nowrap"}}>
-                {renderScheduleQuickButtons(schedule,false)}
+                {renderScheduleQuickButtons(schedule,isDone)}
               </div>
             </div>
           )
@@ -11497,6 +11553,9 @@ const styles = {
     fontWeight: 1000,
   },
   page: {
+    position: "fixed",
+    inset: 0,
+    width: "100vw",
     height: "100dvh",
     minHeight: "100dvh",
     background: "linear-gradient(180deg, #090909 0%, #111 100%)",
