@@ -282,7 +282,9 @@ function TodayScheduleSectionV2({
   getConditionPreviewText,
   renderScheduleQuickButtons,
   getSchedulePreferenceTags,
-  getScheduleMemberPtText
+  getScheduleMemberPtText,
+  lastWorkoutMap,
+  getLastWorkoutSummary
 }) {
   const formatTime=(time)=>{
     if(!time) return "--:--";
@@ -371,8 +373,10 @@ function TodayScheduleSectionV2({
           const member=getScheduleMember(schedule)||{};
           const condition=getLatestConditionForMember(member);
           const scheduleBodyParts=normalizeWorkoutParts(schedule?.body_parts || schedule?.bodyParts || schedule?.workout_parts || schedule?.workoutParts);
+          const lastWorkoutSummary = getLastWorkoutSummary && lastWorkoutMap ? getLastWorkoutSummary(lastWorkoutMap[schedule.id]) : null;
+          const lastWorkoutBodyParts=normalizeWorkoutParts(lastWorkoutSummary?.bodyPartText || "");
           const fallbackBody=condition?.todayWorkout || condition?.nextWorkout || "";
-          const body=scheduleBodyParts.length > 0 ? scheduleBodyParts : fallbackBody;
+          const body=scheduleBodyParts.length > 0 ? scheduleBodyParts : (lastWorkoutBodyParts.length > 0 ? lastWorkoutBodyParts : fallbackBody);
           const workoutText=formatWorkoutParts(body);
           const hasWorkoutParts=normalizeWorkoutParts(body).length > 0;
           const preview=getConditionPreviewText(condition);
@@ -409,6 +413,9 @@ function TodayScheduleSectionV2({
 
               <div style={{minWidth:0}}>
                 <div style={{fontSize:18,color:hasWorkoutParts ? "#f4f4f4" : "#aaa",fontWeight:1000,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",lineHeight:1.15}}>
+                  {hasWorkoutParts ? workoutText : "운동 미정"}
+                </div>
+                <div style={{fontSize:11,color:isDone ? "#e0ae49" : "#aaa",fontWeight:900,marginTop:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
                   {scheduleStatusText}
                 </div>
               </div>
@@ -1073,7 +1080,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
         .from("workout_sessions")
         .select("*, workout_sets(*)")
         .eq("member_id", target.memberId)
-        .lt("workout_date", target.scheduleDate)
+        .lte("workout_date", target.scheduleDate)
         .order("workout_date", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(1);
@@ -8124,6 +8131,8 @@ getConditionPreviewText={getConditionPreviewText}
 renderScheduleQuickButtons={renderScheduleQuickButtons}
 getSchedulePreferenceTags={getSchedulePreferenceTags}
 getScheduleMemberPtText={getScheduleMemberPtText}
+lastWorkoutMap={lastWorkoutMap}
+getLastWorkoutSummary={getLastWorkoutSummary}
 />
 
       <section style={styles.mainLauncherGrid}>
