@@ -719,6 +719,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [scheduleRepeatEnabled, setScheduleRepeatEnabled] = useState(false);
   const [scheduleRepeatCount, setScheduleRepeatCount] = useState(1);
   const [scheduleRepeatIntervalDays, setScheduleRepeatIntervalDays] = useState(7);
+  const [scheduleRepeatItems, setScheduleRepeatItems] = useState([]);
   const [schedulePreviousWorkoutList, setSchedulePreviousWorkoutList] = useState([]);
   const [schedulePreviousWorkoutLoading, setSchedulePreviousWorkoutLoading] = useState(false);
   const [exitToast, setExitToast] = useState("");
@@ -2457,6 +2458,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setScheduleRepeatEnabled(false);
     setScheduleRepeatCount(1);
     setScheduleRepeatIntervalDays(7);
+    setScheduleRepeatItems([]);
     setSchedulePreviousWorkoutList([]);
     setSelectedDateSchedules([]);
   }
@@ -2491,9 +2493,9 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setScheduleMemo(getScheduleDisplayMemo(schedule));
     setScheduleBodyParts(Array.isArray(schedule?.body_parts) ? schedule.body_parts : []);
     setScheduleRepeatEnabled(false);
-    setScheduleRepeatEnabled(false);
     setScheduleRepeatCount(1);
     setScheduleRepeatIntervalDays(7);
+    setScheduleRepeatItems([]);
     setReturnToScheduleCheckAfterAdd(showScheduleCheckModal);
     setShowScheduleCheckModal(false);
     setShowScheduleModal(true);
@@ -2721,12 +2723,69 @@ const [workoutExercises, setWorkoutExercises] = useState([
   }
 
   function getScheduleRepeatDates() {
-    if (!scheduleRepeatEnabled) return [scheduleDate];
+    return getScheduleRepeatItems().map((item) => item.date);
+  }
 
-    const count = Math.max(scheduleRepeatEnabled ? 2 : 1, Math.min(30, Number(scheduleRepeatCount || 1)));
-    const interval = Math.max(1, Number(scheduleRepeatIntervalDays || 7));
+  function getScheduleRepeatCountValue() {
+    return Math.max(scheduleRepeatEnabled ? 2 : 1, Math.min(12, Number(scheduleRepeatCount || 1)));
+  }
 
-    return Array.from({ length: count }, (_, index) => addDaysToDateString(scheduleDate, index * interval));
+  function createScheduleRepeatItem(index = 0) {
+    return {
+      date: addDaysToDateString(scheduleDate || getTodayDateString(), index * 7),
+      startTime: scheduleStartTime || "",
+      bodyParts: index === 0 && Array.isArray(scheduleBodyParts) ? scheduleBodyParts : [],
+    };
+  }
+
+  function getScheduleRepeatItems() {
+    if (!scheduleRepeatEnabled) {
+      return [{ date: scheduleDate, startTime: scheduleStartTime, bodyParts: Array.isArray(scheduleBodyParts) ? scheduleBodyParts : [] }];
+    }
+
+    const count = getScheduleRepeatCountValue();
+    return Array.from({ length: count }, (_, index) => {
+      const saved = scheduleRepeatItems[index] || {};
+      return {
+        date: saved.date || addDaysToDateString(scheduleDate || getTodayDateString(), index * 7),
+        startTime: saved.startTime || scheduleStartTime || "",
+        bodyParts: Array.isArray(saved.bodyParts) ? saved.bodyParts : [],
+      };
+    });
+  }
+
+  function resetScheduleRepeatItems(nextCount = scheduleRepeatCount) {
+    const count = Math.max(2, Math.min(12, Number(nextCount || 4)));
+    setScheduleRepeatCount(count);
+    setScheduleRepeatItems(
+      Array.from({ length: count }, (_, index) => ({
+        date: addDaysToDateString(scheduleDate || getTodayDateString(), index * 7),
+        startTime: scheduleStartTime || "",
+        bodyParts: index === 0 && Array.isArray(scheduleBodyParts) ? scheduleBodyParts : [],
+      }))
+    );
+  }
+
+  function updateScheduleRepeatItem(index, patch) {
+    setScheduleRepeatItems((prev) => {
+      const count = getScheduleRepeatCountValue();
+      const next = Array.from({ length: count }, (_, itemIndex) => prev[itemIndex] || createScheduleRepeatItem(itemIndex));
+      next[index] = { ...next[index], ...patch };
+      return next;
+    });
+  }
+
+  function toggleScheduleRepeatItemBodyPart(index, part) {
+    setScheduleRepeatItems((prev) => {
+      const count = getScheduleRepeatCountValue();
+      const next = Array.from({ length: count }, (_, itemIndex) => prev[itemIndex] || createScheduleRepeatItem(itemIndex));
+      const current = Array.isArray(next[index]?.bodyParts) ? next[index].bodyParts : [];
+      next[index] = {
+        ...next[index],
+        bodyParts: current.includes(part) ? current.filter((item) => item !== part) : [...current, part],
+      };
+      return next;
+    });
   }
 
   async function loadPreviousWorkoutsForScheduleForm(memberIds = getScheduleFormMemberIds(), baseDate = scheduleDate) {
@@ -2828,23 +2887,35 @@ const [workoutExercises, setWorkoutExercises] = useState([
       return;
     }
 
-    const startMinutes = timeToMinutes(scheduleStartTime);
-    const endTime = getAutoScheduleEndTime(scheduleStartTime);
-    const endMinutes = timeToMinutes(endTime);
+    const scheduleItems = editingSchedule
+      ? [{ date: scheduleDate, startTime: scheduleStartTime, bodyParts: Array.isArray(scheduleBodyParts) ? scheduleBodyParts : [] }]
+      : getScheduleRepeatItems();
 
-    if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
-      alert("종료 시간은 시작 시간보다 뒤여야 합니다.");
-      return;
+    for (const item of scheduleItems) {
+      if (!item.date) return alert("등록할 날짜를 모두 선택하세요.");
+      if (!item.startTime) return alert("등록할 시간을 모두 선택하세요.");
+
+      const startMinutes = timeToMinutes(item.startTime);
+      const endTime = getAutoScheduleEndTime(item.startTime);
+      const endMinutes = timeToMinutes(endTime);
+
+      if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+        alert("종료 시간은 시작 시간보다 뒤여야 합니다.");
+        return;
+      }
     }
 
-    const repeatDates = editingSchedule ? [scheduleDate] : getScheduleRepeatDates();
     const allConflicts = [];
 
-    for (const targetDate of repeatDates) {
+    for (const item of scheduleItems) {
+      const startMinutes = timeToMinutes(item.startTime);
+      const endTime = getAutoScheduleEndTime(item.startTime);
+      const endMinutes = timeToMinutes(endTime);
+
       const { data: sameDateSchedules, error: checkError } = await supabase
         .from("schedules")
         .select("*, members(*), schedule_members(*, members(*))")
-        .eq("schedule_date", targetDate)
+        .eq("schedule_date", item.date)
         .order("start_time", { ascending: true });
 
       if (checkError) {
@@ -2864,7 +2935,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
         return existingStart < endMinutes && existingEnd > startMinutes;
       });
 
-      conflicts.forEach((schedule) => allConflicts.push({ ...schedule, __conflictDate: targetDate }));
+      conflicts.forEach((schedule) => allConflicts.push({ ...schedule, __conflictDate: item.date }));
     }
 
     if (allConflicts.length > 0) {
@@ -2879,18 +2950,19 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
     const baseRow = {
       member_id: memberIds[0],
-      start_time: scheduleStartTime,
-      end_time: endTime,
       type: scheduleType,
       memo: cleanScheduleMemoText(scheduleMemo),
-      body_parts: Array.isArray(scheduleBodyParts) ? scheduleBodyParts : [],
       allow_over_capacity: false,
     };
 
     if (editingSchedule) {
+      const item = scheduleItems[0];
       const row = {
         ...baseRow,
-        schedule_date: scheduleDate,
+        schedule_date: item.date,
+        start_time: item.startTime,
+        end_time: getAutoScheduleEndTime(item.startTime),
+        body_parts: Array.isArray(item.bodyParts) ? item.bodyParts : [],
       };
 
       const { error } = await supabase
@@ -2908,20 +2980,23 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
       closeScheduleModal();
       await loadSchedules(getTodayDateString());
-      await loadSelectedDateSchedules(scheduleDate);
+      await loadSelectedDateSchedules(row.schedule_date);
 
       if (returnToScheduleCheckAfterAdd) {
         setShowScheduleCheckModal(true);
-        await loadScheduleCheckList(scheduleDate);
+        await loadScheduleCheckList(row.schedule_date);
       }
 
       alert("스케줄이 수정되었습니다.");
       return;
     }
 
-    const rows = repeatDates.map((date) => ({
+    const rows = scheduleItems.map((item) => ({
       ...baseRow,
-      schedule_date: date,
+      schedule_date: item.date,
+      start_time: item.startTime,
+      end_time: getAutoScheduleEndTime(item.startTime),
+      body_parts: Array.isArray(item.bodyParts) ? item.bodyParts : [],
     }));
 
     const { data: insertedRows, error } = await supabase
@@ -2942,8 +3017,8 @@ const [workoutExercises, setWorkoutExercises] = useState([
     const shouldReturnToScheduleCheck = returnToScheduleCheckAfterAdd;
     closeScheduleModal();
     await loadSchedules(getTodayDateString());
-    await loadScheduleCheckList(scheduleDate);
-    setScheduleCheckDate(scheduleDate);
+    await loadScheduleCheckList(rows[0]?.schedule_date || scheduleDate);
+    setScheduleCheckDate(rows[0]?.schedule_date || scheduleDate);
 
     if (shouldReturnToScheduleCheck) {
       setShowScheduleCheckModal(true);
@@ -2953,7 +3028,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
     alert(savedCount > 1 ? `${savedCount}개 스케줄이 한 번에 저장되었습니다.` : (scheduleType === "group" ? "그룹PT 스케줄이 1개 수업으로 저장되었습니다." : "스케줄이 저장되었습니다."));
 
     if (insertedRows?.length > 0 && confirm("저장한 스케줄을 기본 캘린더에 추가할까요?")) {
-      insertedRows.forEach((inserted, index) => {
+      insertedRows.forEach((inserted) => {
         addToDeviceCalendar({
           ...inserted,
           schedule_members: memberIds.map((memberId, memberIndex) => ({
@@ -9363,16 +9438,19 @@ getLastWorkoutSummary={getLastWorkoutSummary}
               <div style={{marginTop:12,marginBottom:12,padding:16,borderRadius:18,background:scheduleRepeatEnabled ? "#f7f7f7" : "#fff",border:"1px solid #e2e2e2"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
                   <div>
-                    <strong style={{display:"block",fontSize:16,color:"#111",marginBottom:5}}>반복 예약</strong>
-                    <p style={{margin:0,fontSize:13,color:"#777",fontWeight:800}}>기본은 오늘 선택한 수업 1개만 저장됩니다.</p>
+                    <strong style={{display:"block",fontSize:16,color:"#111",marginBottom:5}}>여러 수업 한 번에 등록</strong>
+                    <p style={{margin:0,fontSize:13,color:"#777",fontWeight:800}}>켜면 주 단위로 날짜·시간·운동부위를 각각 지정해서 저장합니다.</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => {
                       const next = !scheduleRepeatEnabled;
                       setScheduleRepeatEnabled(next);
-                      if (next && Number(scheduleRepeatCount || 1) < 2) setScheduleRepeatCount(4);
-                      if (!next) setScheduleRepeatCount(1);
+                      if (next) resetScheduleRepeatItems(Number(scheduleRepeatCount || 4) < 2 ? 4 : scheduleRepeatCount);
+                      if (!next) {
+                        setScheduleRepeatCount(1);
+                        setScheduleRepeatItems([]);
+                      }
                     }}
                     style={{
                       border:"1px solid #ddd",
@@ -9384,40 +9462,84 @@ getLastWorkoutSummary={getLastWorkoutSummary}
                       whiteSpace:"nowrap"
                     }}
                   >
-                    {scheduleRepeatEnabled ? "반복 사용 중" : "반복 예약 켜기"}
+                    {scheduleRepeatEnabled ? "여러 개 등록 중" : "여러 개 등록 켜기"}
                   </button>
                 </div>
 
                 {scheduleRepeatEnabled && (
                   <>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:12}}>
+                    <div style={{display:"grid",gridTemplateColumns:"220px 1fr",gap:10,marginTop:12,alignItems:"end"}}>
                       <div>
-                        <label style={{...styles.label,marginTop:0}}>총 몇 개 등록할까요?</label>
-                        <input
-                          type="number"
-                          min="2"
-                          max="30"
-                          value={scheduleRepeatCount}
-                          onChange={(e) => setScheduleRepeatCount(e.target.value)}
-                          style={styles.input}
-                        />
-                      </div>
-                      <div>
-                        <label style={{...styles.label,marginTop:0}}>간격</label>
+                        <label style={{...styles.label,marginTop:0}}>등록 개수</label>
                         <select
-                          value={scheduleRepeatIntervalDays}
-                          onChange={(e) => setScheduleRepeatIntervalDays(e.target.value)}
+                          value={scheduleRepeatCount}
+                          onChange={(e) => {
+                            const value = Number(e.target.value);
+                            setScheduleRepeatCount(value);
+                            resetScheduleRepeatItems(value);
+                          }}
                           style={styles.input}
                         >
-                          <option value={7}>매주 같은 요일</option>
-                          <option value={14}>2주마다</option>
-                          <option value={1}>매일</option>
+                          {[2,3,4,5,6,7,8].map((count) => (
+                            <option key={count} value={count}>{count}개</option>
+                          ))}
                         </select>
                       </div>
+                      <p style={{margin:"0 0 12px",fontSize:13,color:"#666",fontWeight:900,lineHeight:1.55}}>
+                        기본은 1주일 간격으로 날짜가 자동 배치됩니다. 필요한 날짜와 시간은 아래에서 직접 바꿀 수 있습니다.
+                      </p>
                     </div>
-                    <p style={{margin:"10px 0 0",fontSize:13,color:"#555",fontWeight:900,lineHeight:1.55}}>
-                      저장 예정: {getScheduleRepeatDates().slice(0, 5).map((date) => formatDate(date)).join(" · ")}{getScheduleRepeatDates().length > 5 ? ` 외 ${getScheduleRepeatDates().length - 5}개` : ""}
-                    </p>
+
+                    <div style={{display:"grid",gap:10,marginTop:12}}>
+                      {getScheduleRepeatItems().map((item, index) => (
+                        <div key={`repeat-${index}`} style={{padding:12,borderRadius:16,background:"#fff",border:"1px solid #e5e5e5"}}>
+                          <div style={{display:"grid",gridTemplateColumns:"70px 1fr 1fr",gap:10,alignItems:"center"}}>
+                            <strong style={{fontSize:14,color:"#111"}}>{index + 1}회차</strong>
+                            <input
+                              type="date"
+                              value={item.date}
+                              onChange={(e) => updateScheduleRepeatItem(index, { date: e.target.value })}
+                              style={styles.input}
+                            />
+                            <select
+                              value={item.startTime}
+                              onChange={(e) => updateScheduleRepeatItem(index, { startTime: e.target.value })}
+                              style={styles.input}
+                            >
+                              <option value="">시간 선택</option>
+                              {getTimeOptions().map((time) => (
+                                <option key={time} value={time}>
+                                  {formatTime(time)}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div style={{display:"grid",gridTemplateColumns:"repeat(4, minmax(0, 1fr))",gap:8,marginTop:10}}>
+                            {SCHEDULE_BODY_PART_OPTIONS.map((part) => {
+                              const selected = Array.isArray(item.bodyParts) && item.bodyParts.includes(part);
+                              return (
+                                <button
+                                  key={`${index}-${part}`}
+                                  type="button"
+                                  onClick={() => toggleScheduleRepeatItemBodyPart(index, part)}
+                                  style={{
+                                    border:selected ? "1px solid #222" : "1px solid #ddd",
+                                    borderRadius:12,
+                                    background:selected ? "#222" : "#fff",
+                                    color:selected ? "#fff" : "#111",
+                                    padding:"10px 8px",
+                                    fontWeight:900,
+                                  }}
+                                >
+                                  {part}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </>
                 )}
               </div>
