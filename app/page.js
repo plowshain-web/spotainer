@@ -716,6 +716,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [scheduleType, setScheduleType] = useState("pt");
   const [scheduleMemo, setScheduleMemo] = useState("");
   const [scheduleBodyParts, setScheduleBodyParts] = useState([]);
+  const [scheduleRepeatEnabled, setScheduleRepeatEnabled] = useState(false);
   const [scheduleRepeatCount, setScheduleRepeatCount] = useState(1);
   const [scheduleRepeatIntervalDays, setScheduleRepeatIntervalDays] = useState(7);
   const [schedulePreviousWorkoutList, setSchedulePreviousWorkoutList] = useState([]);
@@ -2453,6 +2454,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setScheduleType("pt");
     setScheduleMemo("");
     setScheduleBodyParts([]);
+    setScheduleRepeatEnabled(false);
     setScheduleRepeatCount(1);
     setScheduleRepeatIntervalDays(7);
     setSchedulePreviousWorkoutList([]);
@@ -2488,6 +2490,8 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setScheduleType(schedule.type || "pt");
     setScheduleMemo(getScheduleDisplayMemo(schedule));
     setScheduleBodyParts(Array.isArray(schedule?.body_parts) ? schedule.body_parts : []);
+    setScheduleRepeatEnabled(false);
+    setScheduleRepeatEnabled(false);
     setScheduleRepeatCount(1);
     setScheduleRepeatIntervalDays(7);
     setReturnToScheduleCheckAfterAdd(showScheduleCheckModal);
@@ -2717,7 +2721,9 @@ const [workoutExercises, setWorkoutExercises] = useState([
   }
 
   function getScheduleRepeatDates() {
-    const count = Math.max(1, Math.min(30, Number(scheduleRepeatCount || 1)));
+    if (!scheduleRepeatEnabled) return [scheduleDate];
+
+    const count = Math.max(scheduleRepeatEnabled ? 2 : 1, Math.min(30, Number(scheduleRepeatCount || 1)));
     const interval = Math.max(1, Number(scheduleRepeatIntervalDays || 7));
 
     return Array.from({ length: count }, (_, index) => addDaysToDateString(scheduleDate, index * interval));
@@ -9289,40 +9295,6 @@ getLastWorkoutSummary={getLastWorkoutSummary}
               )}
             </div>
 
-            {!editingSchedule && (
-              <div style={{marginTop:12,marginBottom:12,padding:16,borderRadius:18,background:"#fff",border:"1px solid #e2e2e2"}}>
-                <strong style={{display:"block",fontSize:16,color:"#111",marginBottom:6}}>여러 수업 한 번에 등록</strong>
-                <p style={{margin:"0 0 12px",fontSize:13,color:"#777",fontWeight:800}}>같은 회원·같은 시간으로 주 단위 예약을 여러 개 만들 때 사용하세요.</p>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                  <div>
-                    <label style={{...styles.label,marginTop:0}}>등록 개수</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="30"
-                      value={scheduleRepeatCount}
-                      onChange={(e) => setScheduleRepeatCount(e.target.value)}
-                      style={styles.input}
-                    />
-                  </div>
-                  <div>
-                    <label style={{...styles.label,marginTop:0}}>반복 간격</label>
-                    <select
-                      value={scheduleRepeatIntervalDays}
-                      onChange={(e) => setScheduleRepeatIntervalDays(e.target.value)}
-                      style={styles.input}
-                    >
-                      <option value={7}>매주 같은 요일</option>
-                      <option value={14}>2주마다</option>
-                      <option value={1}>매일</option>
-                    </select>
-                  </div>
-                </div>
-                <p style={{margin:"8px 0 0",fontSize:13,color:"#777",fontWeight:800}}>
-                  저장 예정: {getScheduleRepeatDates().slice(0, 5).map((date) => formatDate(date)).join(" · ")}{getScheduleRepeatDates().length > 5 ? ` 외 ${getScheduleRepeatDates().length - 5}개` : ""}
-                </p>
-              </div>
-            )}
 
             <div style={styles.schedulePreviewBox}>
               <div style={styles.schedulePreviewTop}>
@@ -9386,6 +9358,70 @@ getLastWorkoutSummary={getLastWorkoutSummary}
                   : "시작 시간을 선택하면 종료 시간이 자동으로 1시간 뒤로 설정됩니다."}
               </p>
             </div>
+
+            {!editingSchedule && (
+              <div style={{marginTop:12,marginBottom:12,padding:16,borderRadius:18,background:scheduleRepeatEnabled ? "#f7f7f7" : "#fff",border:"1px solid #e2e2e2"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+                  <div>
+                    <strong style={{display:"block",fontSize:16,color:"#111",marginBottom:5}}>반복 예약</strong>
+                    <p style={{margin:0,fontSize:13,color:"#777",fontWeight:800}}>기본은 오늘 선택한 수업 1개만 저장됩니다.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !scheduleRepeatEnabled;
+                      setScheduleRepeatEnabled(next);
+                      if (next && Number(scheduleRepeatCount || 1) < 2) setScheduleRepeatCount(4);
+                      if (!next) setScheduleRepeatCount(1);
+                    }}
+                    style={{
+                      border:"1px solid #ddd",
+                      borderRadius:14,
+                      padding:"11px 16px",
+                      background:scheduleRepeatEnabled ? "#222" : "#fff",
+                      color:scheduleRepeatEnabled ? "#fff" : "#111",
+                      fontWeight:900,
+                      whiteSpace:"nowrap"
+                    }}
+                  >
+                    {scheduleRepeatEnabled ? "반복 사용 중" : "반복 예약 켜기"}
+                  </button>
+                </div>
+
+                {scheduleRepeatEnabled && (
+                  <>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:12}}>
+                      <div>
+                        <label style={{...styles.label,marginTop:0}}>총 몇 개 등록할까요?</label>
+                        <input
+                          type="number"
+                          min="2"
+                          max="30"
+                          value={scheduleRepeatCount}
+                          onChange={(e) => setScheduleRepeatCount(e.target.value)}
+                          style={styles.input}
+                        />
+                      </div>
+                      <div>
+                        <label style={{...styles.label,marginTop:0}}>간격</label>
+                        <select
+                          value={scheduleRepeatIntervalDays}
+                          onChange={(e) => setScheduleRepeatIntervalDays(e.target.value)}
+                          style={styles.input}
+                        >
+                          <option value={7}>매주 같은 요일</option>
+                          <option value={14}>2주마다</option>
+                          <option value={1}>매일</option>
+                        </select>
+                      </div>
+                    </div>
+                    <p style={{margin:"10px 0 0",fontSize:13,color:"#555",fontWeight:900,lineHeight:1.55}}>
+                      저장 예정: {getScheduleRepeatDates().slice(0, 5).map((date) => formatDate(date)).join(" · ")}{getScheduleRepeatDates().length > 5 ? ` 외 ${getScheduleRepeatDates().length - 5}개` : ""}
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
 
             {scheduleStartTime &&
               getSelectedDateActiveSchedules().some((schedule) => {
