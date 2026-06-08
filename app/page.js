@@ -2868,9 +2868,11 @@ const [workoutExercises, setWorkoutExercises] = useState([
   async function addSchedule() {
     const memberIds = getScheduleFormMemberIds();
 
+    const isRepeatMode = scheduleRepeatEnabled && !editingSchedule;
+
     if (memberIds.length === 0) return alert("회원을 선택하세요.");
-    if (!scheduleDate) return alert("날짜를 선택하세요.");
-    if (!scheduleStartTime) return alert("시작 시간을 입력하세요.");
+    if (!isRepeatMode && !scheduleDate) return alert("날짜를 선택하세요.");
+    if (!isRepeatMode && !scheduleStartTime) return alert("시작 시간을 입력하세요.");
 
     if (scheduleType === "group" && memberIds.length < 2) {
       alert("그룹PT는 최소 2명 이상 선택하세요. 최대 3명까지 등록할 수 있습니다.");
@@ -9371,6 +9373,8 @@ getLastWorkoutSummary={getLastWorkoutSummary}
             </div>
 
 
+            {(!scheduleRepeatEnabled || editingSchedule) && (
+              <>
             <div style={styles.schedulePreviewBox}>
               <div style={styles.schedulePreviewTop}>
                 <strong>선택 날짜 예약 현황</strong>
@@ -9434,12 +9438,15 @@ getLastWorkoutSummary={getLastWorkoutSummary}
               </p>
             </div>
 
+              </>
+            )}
+
             {!editingSchedule && (
               <div style={{marginTop:12,marginBottom:12,padding:16,borderRadius:18,background:scheduleRepeatEnabled ? "#f7f7f7" : "#fff",border:"1px solid #e2e2e2"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
                   <div>
                     <strong style={{display:"block",fontSize:16,color:"#111",marginBottom:5}}>여러 수업 한 번에 등록</strong>
-                    <p style={{margin:0,fontSize:13,color:"#777",fontWeight:800}}>켜면 주 단위로 날짜·시간·운동부위를 각각 지정해서 저장합니다.</p>
+                    <p style={{margin:0,fontSize:13,color:"#777",fontWeight:800}}>켜면 아래 일반 날짜·시간 선택은 숨기고, 회차별 날짜·시간·운동부위만 저장합니다.</p>
                   </div>
                   <button
                     type="button"
@@ -9462,7 +9469,7 @@ getLastWorkoutSummary={getLastWorkoutSummary}
                       whiteSpace:"nowrap"
                     }}
                   >
-                    {scheduleRepeatEnabled ? "여러 개 등록 중" : "여러 개 등록 켜기"}
+                    {scheduleRepeatEnabled ? "일반 등록으로 돌아가기" : "여러 개 등록하기"}
                   </button>
                 </div>
 
@@ -9486,7 +9493,7 @@ getLastWorkoutSummary={getLastWorkoutSummary}
                         </select>
                       </div>
                       <p style={{margin:"0 0 12px",fontSize:13,color:"#666",fontWeight:900,lineHeight:1.55}}>
-                        기본은 1주일 간격으로 날짜가 자동 배치됩니다. 필요한 날짜와 시간은 아래에서 직접 바꿀 수 있습니다.
+                        처음에는 1주일 간격으로 자동 배치됩니다. 각 회차의 날짜·시간·운동부위를 직접 바꾼 뒤 맨 아래 저장을 누르세요.
                       </p>
                     </div>
 
@@ -9588,6 +9595,8 @@ getLastWorkoutSummary={getLastWorkoutSummary}
             </select>
 
 
+            {(!scheduleRepeatEnabled || editingSchedule) && (
+              <>
             <div style={styles.scheduleBodyPartBox}>
               <div style={styles.scheduleBodyPartHeader}>
                 <div>
@@ -9623,6 +9632,9 @@ getLastWorkoutSummary={getLastWorkoutSummary}
               </div>
             </div>
 
+              </>
+            )}
+
             <label style={styles.label}>메모</label>
             <textarea
               value={scheduleMemo}
@@ -9633,7 +9645,7 @@ getLastWorkoutSummary={getLastWorkoutSummary}
 
             <div style={styles.editActions}>
               <button onClick={addSchedule} style={styles.primaryButton}>
-                {editingSchedule ? "수정 저장" : scheduleType === "group" ? "그룹PT 저장" : "저장"}
+                {editingSchedule ? "수정 저장" : scheduleRepeatEnabled ? "여러 수업 저장" : scheduleType === "group" ? "그룹PT 저장" : "저장"}
               </button>
               <button onClick={closeScheduleModal} style={styles.cancelButton}>
                 취소
