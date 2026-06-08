@@ -392,7 +392,7 @@ function TodayScheduleSectionV2({
                 ? "노쇼"
                 : schedule.status === "cancelled"
                   ? "취소"
-                  : "미정";
+                  : "";
 
           return (
             <div key={schedule.id} style={{
@@ -415,9 +415,11 @@ function TodayScheduleSectionV2({
                 <div style={{fontSize:18,color:hasWorkoutParts ? "#f4f4f4" : "#aaa",fontWeight:1000,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",lineHeight:1.15}}>
                   {hasWorkoutParts ? workoutText : "운동 미정"}
                 </div>
-                <div style={{fontSize:11,color:isDone ? "#e0ae49" : "#aaa",fontWeight:900,marginTop:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                  {scheduleStatusText}
-                </div>
+                {scheduleStatusText && (
+                  <div style={{fontSize:11,color:isDone ? "#e0ae49" : "#aaa",fontWeight:900,marginTop:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                    {scheduleStatusText}
+                  </div>
+                )}
               </div>
 
               <div style={{minWidth:0}}>
@@ -714,6 +716,10 @@ const [workoutExercises, setWorkoutExercises] = useState([
   const [scheduleType, setScheduleType] = useState("pt");
   const [scheduleMemo, setScheduleMemo] = useState("");
   const [scheduleBodyParts, setScheduleBodyParts] = useState([]);
+  const [scheduleRepeatCount, setScheduleRepeatCount] = useState(1);
+  const [scheduleRepeatIntervalDays, setScheduleRepeatIntervalDays] = useState(7);
+  const [schedulePreviousWorkoutList, setSchedulePreviousWorkoutList] = useState([]);
+  const [schedulePreviousWorkoutLoading, setSchedulePreviousWorkoutLoading] = useState(false);
   const [exitToast, setExitToast] = useState("");
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [scheduleActionMenuId, setScheduleActionMenuId] = useState(null);
@@ -957,6 +963,17 @@ const [workoutExercises, setWorkoutExercises] = useState([
     loadScheduleCheckList(scheduleCheckDate);
     loadScheduleCheckMonthList(scheduleCheckDate);
   }, [showScheduleCheckModal, scheduleCheckDate]);
+
+
+  useEffect(() => {
+    if (!showScheduleModal) return;
+
+    const timer = setTimeout(() => {
+      loadPreviousWorkoutsForScheduleForm(getScheduleFormMemberIds(), scheduleDate);
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [showScheduleModal, scheduleMemberId, scheduleSecondMemberId, scheduleThirdMemberId, scheduleDate]);
 
   async function loadMembers() {
     let { data, error } = await supabase
@@ -2436,6 +2453,9 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setScheduleType("pt");
     setScheduleMemo("");
     setScheduleBodyParts([]);
+    setScheduleRepeatCount(1);
+    setScheduleRepeatIntervalDays(7);
+    setSchedulePreviousWorkoutList([]);
     setSelectedDateSchedules([]);
   }
 
@@ -2468,6 +2488,8 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setScheduleType(schedule.type || "pt");
     setScheduleMemo(getScheduleDisplayMemo(schedule));
     setScheduleBodyParts(Array.isArray(schedule?.body_parts) ? schedule.body_parts : []);
+    setScheduleRepeatCount(1);
+    setScheduleRepeatIntervalDays(7);
     setReturnToScheduleCheckAfterAdd(showScheduleCheckModal);
     setShowScheduleCheckModal(false);
     setShowScheduleModal(true);
@@ -2688,6 +2710,55 @@ const [workoutExercises, setWorkoutExercises] = useState([
     return Array.from(new Set(ids));
   }
 
+  function addDaysToDateString(dateText, days) {
+    const base = dateText ? new Date(dateText) : new Date();
+    base.setDate(base.getDate() + Number(days || 0));
+    return getDateOnlyString(base);
+  }
+
+  function getScheduleRepeatDates() {
+    const count = Math.max(1, Math.min(30, Number(scheduleRepeatCount || 1)));
+    const interval = Math.max(1, Number(scheduleRepeatIntervalDays || 7));
+
+    return Array.from({ length: count }, (_, index) => addDaysToDateString(scheduleDate, index * interval));
+  }
+
+  async function loadPreviousWorkoutsForScheduleForm(memberIds = getScheduleFormMemberIds(), baseDate = scheduleDate) {
+    const ids = Array.from(new Set((memberIds || []).filter(Boolean)));
+
+    if (ids.length === 0) {
+      setSchedulePreviousWorkoutList([]);
+      return;
+    }
+
+    setSchedulePreviousWorkoutLoading(true);
+
+    const results = [];
+
+    for (const memberId of ids) {
+      const member = getFreshMember(memberId) || activeMembers.find((item) => item.id === memberId);
+
+      const { data, error } = await supabase
+        .from("workout_sessions")
+        .select("*, workout_sets(*)")
+        .eq("member_id", memberId)
+        .lte("workout_date", baseDate || getTodayDateString())
+        .order("workout_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.error("스케줄 등록용 이전 운동 불러오기 실패:", error.message);
+        results.push({ memberId, member, workout: null, error: error.message });
+      } else {
+        results.push({ memberId, member, workout: data?.[0] || null });
+      }
+    }
+
+    setSchedulePreviousWorkoutList(results);
+    setSchedulePreviousWorkoutLoading(false);
+  }
+
   function toggleScheduleBodyPart(part) {
     setScheduleBodyParts((prev) => {
       const current = Array.isArray(prev) ? prev : [];
@@ -2760,32 +2831,39 @@ const [workoutExercises, setWorkoutExercises] = useState([
       return;
     }
 
-    const { data: sameDateSchedules, error: checkError } = await supabase
-      .from("schedules")
-      .select("*, members(*), schedule_members(*, members(*))")
-      .eq("schedule_date", scheduleDate)
-      .order("start_time", { ascending: true });
+    const repeatDates = editingSchedule ? [scheduleDate] : getScheduleRepeatDates();
+    const allConflicts = [];
 
-    if (checkError) {
-      alert("중복 확인 실패: " + checkError.message);
-      return;
+    for (const targetDate of repeatDates) {
+      const { data: sameDateSchedules, error: checkError } = await supabase
+        .from("schedules")
+        .select("*, members(*), schedule_members(*, members(*))")
+        .eq("schedule_date", targetDate)
+        .order("start_time", { ascending: true });
+
+      if (checkError) {
+        alert("중복 확인 실패: " + checkError.message);
+        return;
+      }
+
+      const conflicts = (sameDateSchedules || []).filter((schedule) => {
+        if (schedule.status === "cancelled") return false;
+        if (editingSchedule && schedule.id === editingSchedule.id) return false;
+
+        const existingStart = timeToMinutes(schedule.start_time);
+        const existingEnd = timeToMinutes(schedule.end_time || addMinutesToTime(schedule.start_time, 60));
+
+        if (existingStart === null || existingEnd === null) return false;
+
+        return existingStart < endMinutes && existingEnd > startMinutes;
+      });
+
+      conflicts.forEach((schedule) => allConflicts.push({ ...schedule, __conflictDate: targetDate }));
     }
 
-    const conflicts = (sameDateSchedules || []).filter((schedule) => {
-      if (schedule.status === "cancelled") return false;
-      if (editingSchedule && schedule.id === editingSchedule.id) return false;
-
-      const existingStart = timeToMinutes(schedule.start_time);
-      const existingEnd = timeToMinutes(schedule.end_time || addMinutesToTime(schedule.start_time, 60));
-
-      if (existingStart === null || existingEnd === null) return false;
-
-      return existingStart < endMinutes && existingEnd > startMinutes;
-    });
-
-    if (conflicts.length > 0) {
-      const conflictText = conflicts
-        .map((schedule) => `${formatScheduleRange(schedule)} · ${getScheduleTypeText(schedule.type)} · ${getScheduleMemberNames(schedule)}`)
+    if (allConflicts.length > 0) {
+      const conflictText = allConflicts
+        .map((schedule) => `${formatDate(schedule.__conflictDate || schedule.schedule_date)} · ${formatScheduleRange(schedule)} · ${getScheduleTypeText(schedule.type)} · ${getScheduleMemberNames(schedule)}`)
         .join("\n");
 
       alert(`이미 해당 시간대에 수업이 있습니다.\n\n${conflictText}\n\n운영 규칙상 1시간에는 수업 1개만 등록할 수 있습니다.`);
@@ -2793,9 +2871,8 @@ const [workoutExercises, setWorkoutExercises] = useState([
       return;
     }
 
-    const row = {
+    const baseRow = {
       member_id: memberIds[0],
-      schedule_date: scheduleDate,
       start_time: scheduleStartTime,
       end_time: endTime,
       type: scheduleType,
@@ -2805,6 +2882,11 @@ const [workoutExercises, setWorkoutExercises] = useState([
     };
 
     if (editingSchedule) {
+      const row = {
+        ...baseRow,
+        schedule_date: scheduleDate,
+      };
+
       const { error } = await supabase
         .from("schedules")
         .update(row)
@@ -2831,19 +2913,25 @@ const [workoutExercises, setWorkoutExercises] = useState([
       return;
     }
 
-    const { data: inserted, error } = await supabase
+    const rows = repeatDates.map((date) => ({
+      ...baseRow,
+      schedule_date: date,
+    }));
+
+    const { data: insertedRows, error } = await supabase
       .from("schedules")
-      .insert(row)
-      .select()
-      .single();
+      .insert(rows)
+      .select();
 
     if (error) {
       alert("스케줄 저장 실패: " + error.message);
       return;
     }
 
-    const ok = await syncScheduleMembers(inserted.id, memberIds);
-    if (!ok) return;
+    for (const inserted of insertedRows || []) {
+      const ok = await syncScheduleMembers(inserted.id, memberIds);
+      if (!ok) return;
+    }
 
     const shouldReturnToScheduleCheck = returnToScheduleCheckAfterAdd;
     closeScheduleModal();
@@ -2855,17 +2943,20 @@ const [workoutExercises, setWorkoutExercises] = useState([
       setShowScheduleCheckModal(true);
     }
 
-    alert(scheduleType === "group" ? "그룹PT 스케줄이 1개 수업으로 저장되었습니다." : "스케줄이 저장되었습니다.");
+    const savedCount = insertedRows?.length || rows.length;
+    alert(savedCount > 1 ? `${savedCount}개 스케줄이 한 번에 저장되었습니다.` : (scheduleType === "group" ? "그룹PT 스케줄이 1개 수업으로 저장되었습니다." : "스케줄이 저장되었습니다."));
 
-    if (confirm("이 스케줄을 기본 캘린더에 추가할까요?")) {
-      addToDeviceCalendar({
-        ...inserted,
-        schedule_members: memberIds.map((memberId, index) => ({
-          member_id: memberId,
-          position: index + 1,
-          members: getFreshMember(memberId),
-        })),
-        members: getFreshMember(memberIds[0]),
+    if (insertedRows?.length > 0 && confirm("저장한 스케줄을 기본 캘린더에 추가할까요?")) {
+      insertedRows.forEach((inserted, index) => {
+        addToDeviceCalendar({
+          ...inserted,
+          schedule_members: memberIds.map((memberId, memberIndex) => ({
+            member_id: memberId,
+            position: memberIndex + 1,
+            members: getFreshMember(memberId),
+          })),
+          members: getFreshMember(memberIds[0]),
+        });
       });
     }
   }
@@ -9153,6 +9244,85 @@ getLastWorkoutSummary={getLastWorkoutSummary}
               type="date"
               style={styles.input}
             />
+
+            <div style={{marginTop:12,marginBottom:12,padding:16,borderRadius:18,background:"#f7f7f7",border:"1px solid #e2e2e2"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:10}}>
+                <div>
+                  <strong style={{fontSize:16,color:"#111"}}>이전 운동 확인</strong>
+                  <p style={{margin:"4px 0 0",fontSize:13,color:"#777",fontWeight:800}}>선택한 회원의 최근 운동 기록을 보고 오늘 부위를 정하세요.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => loadPreviousWorkoutsForScheduleForm(getScheduleFormMemberIds(), scheduleDate)}
+                  style={{border:"1px solid #ddd",background:"#fff",borderRadius:12,padding:"9px 12px",fontWeight:900,color:"#111"}}
+                >
+                  새로고침
+                </button>
+              </div>
+
+              {schedulePreviousWorkoutLoading ? (
+                <p style={{margin:0,color:"#777",fontWeight:800}}>이전 운동을 불러오는 중입니다.</p>
+              ) : schedulePreviousWorkoutList.length === 0 ? (
+                <p style={{margin:0,color:"#777",fontWeight:800}}>회원을 선택하면 이전 운동이 표시됩니다.</p>
+              ) : (
+                <div style={{display:"grid",gap:8}}>
+                  {schedulePreviousWorkoutList.map((item) => {
+                    const summary = getLastWorkoutSummary(item.workout);
+                    return (
+                      <div key={item.memberId} style={{padding:12,borderRadius:14,background:"#fff",border:"1px solid #e5e5e5"}}>
+                        <strong style={{display:"block",fontSize:15,color:"#111",marginBottom:5}}>
+                          {item.member?.name || "회원"}
+                        </strong>
+                        {summary ? (
+                          <div style={{fontSize:13,color:"#444",fontWeight:800,lineHeight:1.55}}>
+                            <div>{summary.workoutDate ? `${formatDate(summary.workoutDate)} · ` : ""}{summary.bodyPartText ? `지난부위: ${summary.bodyPartText}` : "지난부위 기록 없음"}</div>
+                            <div>지난운동: {summary.exerciseText}</div>
+                            {summary.conditionLine ? <div>{summary.conditionLine}</div> : null}
+                          </div>
+                        ) : (
+                          <p style={{margin:0,fontSize:13,color:"#777",fontWeight:800}}>저장된 운동 기록이 없습니다.</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {!editingSchedule && (
+              <div style={{marginTop:12,marginBottom:12,padding:16,borderRadius:18,background:"#fff",border:"1px solid #e2e2e2"}}>
+                <strong style={{display:"block",fontSize:16,color:"#111",marginBottom:6}}>여러 수업 한 번에 등록</strong>
+                <p style={{margin:"0 0 12px",fontSize:13,color:"#777",fontWeight:800}}>같은 회원·같은 시간으로 주 단위 예약을 여러 개 만들 때 사용하세요.</p>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <div>
+                    <label style={{...styles.label,marginTop:0}}>등록 개수</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="30"
+                      value={scheduleRepeatCount}
+                      onChange={(e) => setScheduleRepeatCount(e.target.value)}
+                      style={styles.input}
+                    />
+                  </div>
+                  <div>
+                    <label style={{...styles.label,marginTop:0}}>반복 간격</label>
+                    <select
+                      value={scheduleRepeatIntervalDays}
+                      onChange={(e) => setScheduleRepeatIntervalDays(e.target.value)}
+                      style={styles.input}
+                    >
+                      <option value={7}>매주 같은 요일</option>
+                      <option value={14}>2주마다</option>
+                      <option value={1}>매일</option>
+                    </select>
+                  </div>
+                </div>
+                <p style={{margin:"8px 0 0",fontSize:13,color:"#777",fontWeight:800}}>
+                  저장 예정: {getScheduleRepeatDates().slice(0, 5).map((date) => formatDate(date)).join(" · ")}{getScheduleRepeatDates().length > 5 ? ` 외 ${getScheduleRepeatDates().length - 5}개` : ""}
+                </p>
+              </div>
+            )}
 
             <div style={styles.schedulePreviewBox}>
               <div style={styles.schedulePreviewTop}>
