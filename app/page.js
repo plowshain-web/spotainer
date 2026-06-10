@@ -428,26 +428,6 @@ function TodayScheduleSectionV2({
               opacity:schedule.status === "cancelled" ? .55 : (isCompleted ? .88 : 1),
               minHeight:72
             }}>
-              {isCompleted && (
-                <div style={{
-                  position:"absolute",
-                  top:8,
-                  right:10,
-                  width:18,
-                  height:18,
-                  borderRadius:999,
-                  border:"1px solid rgba(212,161,74,.68)",
-                  background:"rgba(212,161,74,.14)",
-                  color:"#e0ae49",
-                  display:"flex",
-                  alignItems:"center",
-                  justifyContent:"center",
-                  fontSize:12,
-                  fontWeight:1000,
-                  lineHeight:1,
-                  pointerEvents:"none"
-                }}>✓</div>
-              )}
               <div style={{display:"flex",alignItems:"center"}}>
                 <div style={{fontSize:21,color:"#e0ae49",fontWeight:1000,letterSpacing:-.5,lineHeight:1}}>{formatTime(schedule.start_time)}</div>
               </div>
