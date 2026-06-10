@@ -284,7 +284,9 @@ function TodayScheduleSectionV2({
   getSchedulePreferenceTags,
   getScheduleMemberPtText,
   lastWorkoutMap,
-  getLastWorkoutSummary
+  getLastWorkoutSummary,
+  lastAction,
+  undo
 }) {
   const formatTime=(time)=>{
     if(!time) return "--:--";
@@ -393,6 +395,10 @@ function TodayScheduleSectionV2({
                 : schedule.status === "cancelled"
                   ? "취소"
                   : "";
+          const showInlineDeductNotice = lastAction?.type === "pt" && lastAction?.scheduleId === schedule.id;
+          const inlineDeductText = showInlineDeductNotice
+            ? `${lastAction.memberName || member.name || "회원"} PT 1회 차감 완료`
+            : "";
 
           return (
             <div key={schedule.id} style={{
@@ -438,6 +444,18 @@ function TodayScheduleSectionV2({
                   <span style={{color:"#777",margin:"0 8px"}}>|</span>
                   지난 이슈 : {issueText}
                 </div>
+                {showInlineDeductNotice && (
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6,whiteSpace:"nowrap",overflow:"hidden"}}>
+                    <span style={{fontSize:12,color:"#e0ae49",fontWeight:1000,overflow:"hidden",textOverflow:"ellipsis"}}>✓ {inlineDeductText}</span>
+                    <button
+                      type="button"
+                      onClick={undo}
+                      style={{border:"1px solid rgba(212,161,74,.55)",background:"rgba(212,161,74,.12)",color:"#f3d18a",borderRadius:999,padding:"4px 9px",fontSize:11,fontWeight:1000,flex:"0 0 auto"}}
+                    >
+                      실행 취소
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",whiteSpace:"nowrap"}}>
@@ -3491,15 +3509,24 @@ const [workoutExercises, setWorkoutExercises] = useState([
       return;
     }
 
+    let insertedAttendanceLogs = [];
+
     if (!schedule.attendance_checked) {
       const attendanceRows = scheduleMembers.map((member) => ({ member_id: member.id }));
-      const { error: attendanceError } = await supabase.from("attendance_logs").insert(attendanceRows);
+      const { data: attendanceInsertRows, error: attendanceError } = await supabase
+        .from("attendance_logs")
+        .insert(attendanceRows)
+        .select("id");
 
       if (attendanceError) {
         alert("출석 체크 실패: " + attendanceError.message);
         return;
       }
+
+      insertedAttendanceLogs = attendanceInsertRows || [];
     }
+
+    let insertedPtLogIds = [];
 
     if (shouldUsePt && !schedule.pt_used) {
       for (const member of scheduleMembers) {
@@ -3513,11 +3540,17 @@ const [workoutExercises, setWorkoutExercises] = useState([
           return;
         }
 
-        const { error: logError } = await supabase.from("pt_logs").insert({
-          member_id: member.id,
-          type: "use",
-          amount: 1,
-        });
+        const { data: insertedPtLog, error: logError } = await supabase
+          .from("pt_logs")
+          .insert({
+            member_id: member.id,
+            type: "use",
+            amount: 1,
+          })
+          .select("id")
+          .single();
+
+        if (insertedPtLog?.id) insertedPtLogIds.push(insertedPtLog.id);
 
         if (logError) {
           alert(`${member.name} PT 사용 기록 저장 실패: ${logError.message}`);
@@ -3527,9 +3560,19 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
       setLastAction({
         type: "pt",
+        scheduleId: schedule.id,
+        previousScheduleStatus: schedule.status || "scheduled",
+        previousAttendanceChecked: !!schedule.attendance_checked,
+        previousPtUsed: !!schedule.pt_used,
+        attendanceLogIds: insertedAttendanceLogs?.map((row) => row.id).filter(Boolean) || [],
+        ptLogIds: insertedPtLogIds,
+        affectedMembers: scheduleMembers.map((member) => ({
+          id: member.id,
+          previousPt: member.pt_remaining || 0,
+        })),
         memberId: primaryMember.id,
         previousPt: primaryMember.pt_remaining || 0,
-        memberName: primaryMember.name,
+        memberName: scheduleMembers.length > 1 ? memberNames : primaryMember.name,
       });
     }
 
@@ -3609,6 +3652,8 @@ const [workoutExercises, setWorkoutExercises] = useState([
       return;
     }
 
+    let insertedPtLogIds = [];
+
     if (!schedule.pt_used) {
       for (const member of scheduleMembers) {
         const { error: memberError } = await supabase
@@ -3621,11 +3666,17 @@ const [workoutExercises, setWorkoutExercises] = useState([
           return;
         }
 
-        const { error: logError } = await supabase.from("pt_logs").insert({
-          member_id: member.id,
-          type: "use",
-          amount: 1,
-        });
+        const { data: insertedPtLog, error: logError } = await supabase
+          .from("pt_logs")
+          .insert({
+            member_id: member.id,
+            type: "use",
+            amount: 1,
+          })
+          .select("id")
+          .single();
+
+        if (insertedPtLog?.id) insertedPtLogIds.push(insertedPtLog.id);
 
         if (logError) {
           alert(`${member.name} PT 사용 기록 저장 실패: ${logError.message}`);
@@ -3635,9 +3686,19 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
       setLastAction({
         type: "pt",
+        scheduleId: schedule.id,
+        previousScheduleStatus: schedule.status || "scheduled",
+        previousAttendanceChecked: !!schedule.attendance_checked,
+        previousPtUsed: !!schedule.pt_used,
+        attendanceLogIds: [],
+        ptLogIds: insertedPtLogIds,
+        affectedMembers: scheduleMembers.map((member) => ({
+          id: member.id,
+          previousPt: member.pt_remaining || 0,
+        })),
         memberId: scheduleMembers[0].id,
         previousPt: scheduleMembers[0].pt_remaining || 0,
-        memberName: scheduleMembers[0].name,
+        memberName: scheduleMembers.length > 1 ? memberNames : scheduleMembers[0].name,
       });
     }
 
@@ -4512,13 +4573,49 @@ const [workoutExercises, setWorkoutExercises] = useState([
   async function undo() {
     if (!lastAction) return;
 
-    await supabase
-      .from("members")
-      .update({ pt_remaining: lastAction.previousPt })
-      .eq("id", lastAction.memberId);
+    const affectedMembers = lastAction.affectedMembers?.length
+      ? lastAction.affectedMembers
+      : [{ id: lastAction.memberId, previousPt: lastAction.previousPt }];
+
+    for (const item of affectedMembers) {
+      if (!item?.id && !item?.memberId) continue;
+      await supabase
+        .from("members")
+        .update({ pt_remaining: item.previousPt })
+        .eq("id", item.id || item.memberId);
+    }
+
+    if (lastAction.ptLogIds?.length) {
+      await supabase
+        .from("pt_logs")
+        .update({ is_cancelled: true, cancelled_at: new Date().toISOString() })
+        .in("id", lastAction.ptLogIds);
+    }
+
+    if (lastAction.attendanceLogIds?.length) {
+      await supabase
+        .from("attendance_logs")
+        .update({ is_cancelled: true, cancelled_at: new Date().toISOString() })
+        .in("id", lastAction.attendanceLogIds);
+    }
+
+    if (lastAction.scheduleId) {
+      await supabase
+        .from("schedules")
+        .update({
+          status: lastAction.previousScheduleStatus || "scheduled",
+          attendance_checked: !!lastAction.previousAttendanceChecked,
+          pt_used: !!lastAction.previousPtUsed,
+        })
+        .eq("id", lastAction.scheduleId);
+    }
 
     setLastAction(null);
-    loadMembers();
+    await loadMembers();
+    await loadSchedules(getTodayDateString());
+    if (showScheduleCheckModal) {
+      await loadScheduleCheckList(scheduleCheckDate);
+    }
   }
 
   async function checkAttendance(member, askPtAfter = false) {
@@ -8307,6 +8404,8 @@ getSchedulePreferenceTags={getSchedulePreferenceTags}
 getScheduleMemberPtText={getScheduleMemberPtText}
 lastWorkoutMap={lastWorkoutMap}
 getLastWorkoutSummary={getLastWorkoutSummary}
+lastAction={lastAction}
+undo={undo}
 />
 
       <section style={styles.mainLauncherGrid}>
@@ -11615,20 +11714,8 @@ ${link}`;
         </div>
       )}
 
-      {lastAction && (
-        <div style={styles.notice}>
-          <span>
-            <strong>{lastAction.memberName}</strong>
-            {lastAction.type === "pt" ? " PT 1회 차감됨" : " 출석 체크됨"}
-          </span>
+      {false && lastAction && null}
 
-          {lastAction.type === "pt" && (
-            <button onClick={undo} style={styles.noticeButton}>
-              실행 취소
-            </button>
-          )}
-        </div>
-      )}
 
 
 
