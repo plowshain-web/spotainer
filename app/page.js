@@ -317,6 +317,21 @@ function TodayScheduleSectionV2({
 
   const currentSMSSchedule = smsMode && getCurrentSMSSchedule ? getCurrentSMSSchedule() : null;
   const currentSMSMember = smsMode && getCurrentSMSTargetMember ? getCurrentSMSTargetMember(currentSMSSchedule) : null;
+  const [showDeductUndo, setShowDeductUndo] = useState(false);
+
+  useEffect(() => {
+    if (!lastAction || lastAction.type !== "pt") {
+      setShowDeductUndo(false);
+      return;
+    }
+
+    setShowDeductUndo(true);
+    const timer = setTimeout(() => {
+      setShowDeductUndo(false);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [lastAction]);
 
   return (
     <section style={{
@@ -387,6 +402,7 @@ function TodayScheduleSectionV2({
           const statusText=preview || condition?.condition_level || "보통";
           const issueText=condition?.memo || "없음";
           const isDone = schedule.status === "completed" || schedule.status === "noshow" || schedule.status === "cancelled";
+          const isCompleted = schedule.status === "completed";
           const scheduleStatusText =
             schedule.status === "completed"
               ? "완료"
@@ -395,24 +411,43 @@ function TodayScheduleSectionV2({
                 : schedule.status === "cancelled"
                   ? "취소"
                   : "";
-          const showInlineDeductNotice = lastAction?.type === "pt" && lastAction?.scheduleId === schedule.id;
-          const inlineDeductText = showInlineDeductNotice
-            ? `${lastAction.memberName || member.name || "회원"} PT 1회 차감 완료`
-            : "";
+          const isLastDeductAction = lastAction?.type === "pt" && lastAction?.scheduleId === schedule.id;
+          const showInlineDeductNotice = isLastDeductAction || (isCompleted && !!schedule.pt_used);
 
           return (
             <div key={schedule.id} style={{
+              position:"relative",
               display:"grid",
-              gridTemplateColumns:"76px 150px minmax(0,1fr) 240px",
+              gridTemplateColumns:"76px 150px minmax(0,1fr) 300px 240px",
               alignItems:"center",
               gap:12,
               padding:"8px 14px",
               borderRadius:16,
-              border:isDone ? "1px solid rgba(212,161,74,.45)" : "1px solid rgba(255,255,255,.08)",
-              background:isDone ? "rgba(212,161,74,.08)" : "rgba(255,255,255,.025)",
-              opacity:schedule.status === "cancelled" ? .55 : 1,
+              border:"1px solid rgba(212,161,74,.38)",
+              background:isCompleted ? "rgba(255,255,255,.018)" : "rgba(255,255,255,.025)",
+              opacity:schedule.status === "cancelled" ? .55 : (isCompleted ? .88 : 1),
               minHeight:72
             }}>
+              {isCompleted && (
+                <div style={{
+                  position:"absolute",
+                  top:8,
+                  right:10,
+                  width:18,
+                  height:18,
+                  borderRadius:999,
+                  border:"1px solid rgba(212,161,74,.68)",
+                  background:"rgba(212,161,74,.14)",
+                  color:"#e0ae49",
+                  display:"flex",
+                  alignItems:"center",
+                  justifyContent:"center",
+                  fontSize:12,
+                  fontWeight:1000,
+                  lineHeight:1,
+                  pointerEvents:"none"
+                }}>✓</div>
+              )}
               <div style={{display:"flex",alignItems:"center"}}>
                 <div style={{fontSize:21,color:"#e0ae49",fontWeight:1000,letterSpacing:-.5,lineHeight:1}}>{formatTime(schedule.start_time)}</div>
               </div>
@@ -444,16 +479,21 @@ function TodayScheduleSectionV2({
                   <span style={{color:"#777",margin:"0 8px"}}>|</span>
                   지난 이슈 : {issueText}
                 </div>
+              </div>
+
+              <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",whiteSpace:"nowrap",minWidth:0,paddingRight:6}}>
                 {showInlineDeductNotice && (
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6,whiteSpace:"nowrap",overflow:"hidden"}}>
-                    <span style={{fontSize:12,color:"#e0ae49",fontWeight:1000,overflow:"hidden",textOverflow:"ellipsis"}}>✓ {inlineDeductText}</span>
-                    <button
-                      type="button"
-                      onClick={undo}
-                      style={{border:"1px solid rgba(212,161,74,.55)",background:"rgba(212,161,74,.12)",color:"#f3d18a",borderRadius:999,padding:"4px 9px",fontSize:11,fontWeight:1000,flex:"0 0 auto"}}
-                    >
-                      실행 취소
-                    </button>
+                  <div style={{display:"flex",alignItems:"center",gap:8,justifyContent:"flex-end",minWidth:0,overflow:"hidden"}}>
+                    <span style={{fontSize:13,color:"#e0ae49",fontWeight:1000,overflow:"hidden",textOverflow:"ellipsis"}}>✓ PT 차감 완료</span>
+                    {isLastDeductAction && showDeductUndo && (
+                      <button
+                        type="button"
+                        onClick={undo}
+                        style={{border:"1px solid rgba(212,161,74,.55)",background:"rgba(212,161,74,.12)",color:"#f3d18a",borderRadius:999,padding:"4px 9px",fontSize:11,fontWeight:1000,flex:"0 0 auto"}}
+                      >
+                        실행 취소
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
