@@ -318,6 +318,15 @@ function TodayScheduleSectionV2({
   const currentSMSSchedule = smsMode && getCurrentSMSSchedule ? getCurrentSMSSchedule() : null;
   const currentSMSMember = smsMode && getCurrentSMSTargetMember ? getCurrentSMSTargetMember(currentSMSSchedule) : null;
   const [showDeductUndo, setShowDeductUndo] = useState(false);
+  const [openAttentionScheduleId, setOpenAttentionScheduleId] = useState(null);
+
+  useEffect(() => {
+    if (!openAttentionScheduleId) return undefined;
+
+    const closeAttentionPopover = () => setOpenAttentionScheduleId(null);
+    document.addEventListener("click", closeAttentionPopover);
+    return () => document.removeEventListener("click", closeAttentionPopover);
+  }, [openAttentionScheduleId]);
 
   useEffect(() => {
     if (!lastAction || lastAction.type !== "pt") {
@@ -397,7 +406,12 @@ function TodayScheduleSectionV2({
           const workoutText=formatWorkoutParts(body);
           const hasWorkoutParts=normalizeWorkoutParts(body).length > 0;
           const preview=getConditionPreviewText(condition);
-          const tags=(getSchedulePreferenceTags ? getSchedulePreferenceTags(schedule) : []).slice(0,2);
+          const allTags=getSchedulePreferenceTags ? getSchedulePreferenceTags(schedule) : [];
+          const attentionItems=[...new Set(allTags
+            .filter((tag)=>String(tag || "").includes("주의"))
+            .map((tag)=>String(tag || "").replace(/^(OT|PT)\s+/g, "").trim())
+            .filter(Boolean))];
+          const tags=allTags.filter((tag)=>!String(tag || "").includes("주의")).slice(0,2);
           const ptText=getScheduleMemberPtText ? getScheduleMemberPtText(schedule) : `PT ${member.pt_remaining || member.remaining_pt || member.pt_count || 0}회`;
           const statusText=preview || condition?.condition_level || "보통";
           const issueText=condition?.memo || "없음";
@@ -444,11 +458,66 @@ function TodayScheduleSectionV2({
               </div>
 
               <div style={{minWidth:0}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0,whiteSpace:"nowrap",overflow:"hidden"}}>
-                  <span style={{fontSize:20,fontWeight:1000,color:"#fff",lineHeight:1.1,overflow:"hidden",textOverflow:"ellipsis"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0,whiteSpace:"nowrap",overflow:"visible"}}>
+                  <span style={{fontSize:20,fontWeight:1000,color:"#fff",lineHeight:1.1,overflow:"hidden",textOverflow:"ellipsis",minWidth:0}}>
                     {member.name || "회원"}
                   </span>
                   <span style={{fontSize:14,color:"#d8d8d8",fontWeight:900,flex:"0 0 auto"}}>{ptText}</span>
+                  {attentionItems.length > 0 && (
+                    <span style={{position:"relative",display:"inline-flex",alignItems:"center",flex:"0 0 auto"}} onClick={(event)=>event.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={(event)=>{
+                          event.stopPropagation();
+                          setOpenAttentionScheduleId(openAttentionScheduleId === schedule.id ? null : schedule.id);
+                        }}
+                        style={{
+                          width:24,
+                          height:24,
+                          borderRadius:999,
+                          border:"1px solid rgba(212,161,74,.65)",
+                          background:"rgba(212,161,74,.12)",
+                          color:"#f3c76f",
+                          fontSize:13,
+                          fontWeight:1000,
+                          lineHeight:1,
+                          display:"inline-flex",
+                          alignItems:"center",
+                          justifyContent:"center",
+                          padding:0
+                        }}
+                        aria-label="주의사항 보기"
+                      >
+                        ⚠
+                      </button>
+                      {openAttentionScheduleId === schedule.id && (
+                        <div
+                          style={{
+                            position:"absolute",
+                            top:28,
+                            left:0,
+                            zIndex:100,
+                            width:240,
+                            maxWidth:"min(240px, 80vw)",
+                            background:"#fff",
+                            color:"#111",
+                            border:"1px solid rgba(0,0,0,.12)",
+                            borderRadius:12,
+                            boxShadow:"0 12px 28px rgba(0,0,0,.28)",
+                            padding:"12px 13px",
+                            whiteSpace:"normal"
+                          }}
+                        >
+                          <div style={{fontSize:14,fontWeight:1000,marginBottom:8}}>주의사항 ({attentionItems.length}건)</div>
+                          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                            {attentionItems.map((item)=>(
+                              <div key={item} style={{fontSize:13,fontWeight:800,lineHeight:1.35,color:"#222"}}>• {item}</div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </span>
+                  )}
                   {tags.map((tag)=>(
                     <span key={tag} style={{fontSize:11,color:"#f2f2f2",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.08)",borderRadius:999,padding:"2px 7px",fontWeight:900,flex:"0 0 auto"}}>{tag}</span>
                   ))}
