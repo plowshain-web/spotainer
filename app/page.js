@@ -3185,7 +3185,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   function getTimeOptions() {
     const options = [];
 
-    for (let hour = 11; hour <= 22; hour += 1) {
+    for (let hour = 9; hour <= 22; hour += 1) {
       [0, 30].forEach((minute) => {
         if (hour === 22 && minute > 0) return;
 
