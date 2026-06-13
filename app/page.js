@@ -2839,9 +2839,9 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
   function createScheduleRepeatItem(index = 0) {
     return {
-      date: addDaysToDateString(scheduleDate || getTodayDateString(), index * 7),
-      startTime: scheduleStartTime || "",
-      bodyParts: index === 0 && Array.isArray(scheduleBodyParts) ? scheduleBodyParts : [],
+      date: "",
+      startTime: "",
+      bodyParts: [],
     };
   }
 
@@ -2854,8 +2854,8 @@ const [workoutExercises, setWorkoutExercises] = useState([
     return Array.from({ length: count }, (_, index) => {
       const saved = scheduleRepeatItems[index] || {};
       return {
-        date: saved.date || addDaysToDateString(scheduleDate || getTodayDateString(), index * 7),
-        startTime: saved.startTime || scheduleStartTime || "",
+        date: saved.date || "",
+        startTime: saved.startTime || "",
         bodyParts: Array.isArray(saved.bodyParts) ? saved.bodyParts : [],
       };
     });
@@ -2865,10 +2865,10 @@ const [workoutExercises, setWorkoutExercises] = useState([
     const count = Math.max(2, Math.min(12, Number(nextCount || 4)));
     setScheduleRepeatCount(count);
     setScheduleRepeatItems(
-      Array.from({ length: count }, (_, index) => ({
-        date: addDaysToDateString(scheduleDate || getTodayDateString(), index * 7),
-        startTime: scheduleStartTime || "",
-        bodyParts: index === 0 && Array.isArray(scheduleBodyParts) ? scheduleBodyParts : [],
+      Array.from({ length: count }, () => ({
+        date: "",
+        startTime: "",
+        bodyParts: [],
       }))
     );
   }
@@ -9517,6 +9517,8 @@ undo={undo}
               </>
             )}
 
+            {(!scheduleRepeatEnabled || editingSchedule) && (
+              <>
             <label style={styles.label}>날짜</label>
             <input
               value={scheduleDate}
@@ -9568,6 +9570,8 @@ undo={undo}
                 </div>
               )}
             </div>
+              </>
+            )}
 
 
             {(!scheduleRepeatEnabled || editingSchedule) && (
@@ -9643,7 +9647,7 @@ undo={undo}
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
                   <div>
                     <strong style={{display:"block",fontSize:16,color:"#111",marginBottom:5}}>여러 수업 한 번에 등록</strong>
-                    <p style={{margin:0,fontSize:13,color:"#777",fontWeight:800}}>켜면 아래 일반 날짜·시간 선택은 숨기고, 회차별 날짜·시간·운동부위만 저장합니다.</p>
+                    <p style={{margin:0,fontSize:13,color:"#777",fontWeight:800}}>켜면 일반 날짜·시간 입력은 사라지고, 회차별로 직접 선택한 날짜·시간·운동부위만 저장합니다.</p>
                   </div>
                   <button
                     type="button"
