@@ -2996,13 +2996,22 @@ const [workoutExercises, setWorkoutExercises] = useState([
       return;
     }
 
-    const scheduleItems = editingSchedule
+    const rawScheduleItems = editingSchedule
       ? [{ date: scheduleDate, startTime: scheduleStartTime, bodyParts: Array.isArray(scheduleBodyParts) ? scheduleBodyParts : [] }]
       : getScheduleRepeatItems();
 
+    const scheduleItems = isRepeatMode
+      ? rawScheduleItems.filter((item) => String(item?.date || "").trim() && String(item?.startTime || "").trim())
+      : rawScheduleItems;
+
+    if (isRepeatMode && scheduleItems.length === 0) {
+      alert("저장할 수업의 날짜와 시간을 1개 이상 선택하세요.");
+      return;
+    }
+
     for (const item of scheduleItems) {
-      if (!item.date) return alert("등록할 날짜를 모두 선택하세요.");
-      if (!item.startTime) return alert("등록할 시간을 모두 선택하세요.");
+      if (!item.date) return alert("등록할 날짜를 선택하세요.");
+      if (!item.startTime) return alert("등록할 시간을 선택하세요.");
 
       const startMinutes = timeToMinutes(item.startTime);
       const endTime = getAutoScheduleEndTime(item.startTime);
@@ -9681,7 +9690,7 @@ undo={undo}
                         </select>
                       </div>
                       <p style={{margin:"0 0 12px",fontSize:13,color:"#666",fontWeight:900,lineHeight:1.55}}>
-                        처음에는 1주일 간격으로 자동 배치됩니다. 각 회차의 날짜·시간·운동부위를 직접 바꾼 뒤 맨 아래 저장을 누르세요.
+                        날짜와 시간이 선택된 회차만 저장됩니다. 비워둔 회차는 저장하지 않고 건너뜁니다.
                       </p>
                     </div>
 
