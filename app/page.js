@@ -949,14 +949,14 @@ const [workoutExercises, setWorkoutExercises] = useState([
         return;
       }
 
-      // v11 핵심 수정:
-      // PWA 설치앱은 manifest/start_url 또는 오래된 캐시 때문에
-      // 태블릿에서 /mobile-schedule로 실행되는 경우가 있습니다.
-      // 그래서 최종 판정은 아래처럼 고정합니다.
+      // v16 수정:
+      // /mobile-schedule 주소로 들어오면 기기 크기와 상관없이 휴대폰 화면을 유지합니다.
+      // 기존 로직은 태블릿 크기에서 /mobile-schedule 접속 시 /?view=tablet으로 주소를 바꿔
+      // 모바일 주소가 태블릿 화면으로 강제 전환되는 문제가 있었습니다.
       // 1) ?view=tablet  -> 무조건 태블릿
       // 2) ?view=phone   -> 무조건 휴대폰
-      // 3) /mobile-schedule + 실제 화면이 휴대폰 크기 -> 휴대폰
-      // 4) 그 외, 특히 태블릿 크기/PWA 실행 -> 무조건 태블릿
+      // 3) /mobile-schedule -> 무조건 휴대폰
+      // 4) 그 외 기본 주소 -> 태블릿
       const innerWidth = window.innerWidth || 0;
       const innerHeight = window.innerHeight || 0;
       const visualWidth = window.visualViewport?.width || innerWidth || 0;
@@ -979,18 +979,10 @@ const [workoutExercises, setWorkoutExercises] = useState([
         nextMobileMode = false;
       } else if (viewParam === "phone") {
         nextMobileMode = true;
-      } else if (pathWantsMobile && phoneLike && !tabletLike) {
+      } else if (pathWantsMobile) {
         nextMobileMode = true;
       } else {
         nextMobileMode = false;
-      }
-
-      if (!nextMobileMode && pathWantsMobile && viewParam !== "phone") {
-        try {
-          window.history.replaceState(null, "", "/?view=tablet");
-        } catch (error) {
-          console.warn("태블릿 주소 정리 실패", error);
-        }
       }
 
       try {
@@ -1014,7 +1006,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
         phoneLike,
         pathWantsMobile,
         nextMobileMode,
-        reason: nextMobileMode ? "phone-route-and-phone-size" : "tablet-forced-root-or-tablet-size",
+        reason: nextMobileMode ? "mobile-schedule-route-or-phone-view" : "tablet-root-or-tablet-view",
       });
 
       setIsMobileEmergencyMode(Boolean(nextMobileMode));
