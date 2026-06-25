@@ -117,25 +117,6 @@ export default function MobileSchedulePage() {
     console.log("Spotainer mobile schedule patch:", PATCH_VERSION);
   }, []);
 
-  // 태블릿 설치앱이 실수로 /mobile-schedule 로 시작하면 즉시 태블릿 메인으로 복구합니다.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const params = new URLSearchParams(window.location.search);
-    const forcePhone = params.get("view") === "phone";
-
-    const width = window.innerWidth || window.screen?.width || 0;
-    const height = window.innerHeight || window.screen?.height || 0;
-    const longSide = Math.max(width, height);
-    const shortSide = Math.min(width, height);
-
-    const isTabletLike = longSide >= 900 && shortSide >= 500;
-
-    if (isTabletLike && !forcePhone) {
-      window.location.replace("/?view=tablet");
-    }
-  }, []);
-
   useEffect(() => {
     loadSchedules(selectedDate);
     loadScheduleSMSLogs(selectedDate);
