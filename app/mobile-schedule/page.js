@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-export default function MobileScheduleRedirectPage() {
+export default function MobileSchedulePage() {
   useEffect(() => {
     window.location.replace("/?view=phone");
   }, []);
