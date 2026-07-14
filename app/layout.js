@@ -1,14 +1,9 @@
-import "./globals.css";
-
 export const metadata = {
-  title: "Spotainer",
-  description: "PT 회원관리 프로그램",
+  title: "Spotainer 모바일",
+  description: "여성전용 PT 모바일 일정관리",
+  manifest: "/mobile-manifest.webmanifest",
 };
 
-export default function RootLayout({ children }) {
-  return (
-    <html lang="ko">
-      <body>{children}</body>
-    </html>
-  );
+export default function MobileScheduleLayout({ children }) {
+  return children;
 }
