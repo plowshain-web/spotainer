@@ -1,12 +1,13 @@
 export default function manifest() {
   return {
+    id: "/?view=tablet",
     name: "Spotainer",
     short_name: "Spotainer",
     description: "여성전용 PT 회원관리",
-    start_url: "/mobile-schedule?view=phone",
+    start_url: "/?view=tablet",
     scope: "/",
     display: "standalone",
-    orientation: "portrait",
+    orientation: "landscape",
     background_color: "#090909",
     theme_color: "#090909",
 
