@@ -3,10 +3,10 @@ export default function manifest() {
     name: "Spotainer",
     short_name: "Spotainer",
     description: "여성전용 PT 회원관리",
-    start_url: "/?view=tablet",
+    start_url: "/mobile-schedule?view=phone",
     scope: "/",
     display: "standalone",
-    orientation: "landscape",
+    orientation: "portrait",
     background_color: "#090909",
     theme_color: "#090909",
 
