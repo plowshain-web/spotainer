@@ -975,23 +975,14 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
       let nextMobileMode = false;
 
-      // /mobile-schedule 경로는 URL에 ?view=tablet 이 붙어 있어도 무조건 모바일 화면으로 유지합니다.
-      if (pathWantsMobile) {
-        nextMobileMode = true;
-      } else if (viewParam === "tablet") {
+      if (viewParam === "tablet") {
         nextMobileMode = false;
       } else if (viewParam === "phone") {
         nextMobileMode = true;
+      } else if (pathWantsMobile) {
+        nextMobileMode = true;
       } else {
         nextMobileMode = false;
-      }
-
-      if (pathWantsMobile && viewParam === "tablet") {
-        try {
-          window.history.replaceState(null, "", "/mobile-schedule?view=phone");
-        } catch (error) {
-          console.warn("모바일 주소 정리 실패", error);
-        }
       }
 
       try {
