@@ -229,7 +229,7 @@ const circuitPrograms = [
   },
 ];
 
-const SPOTAINER_PATCH_VERSION = "2026-05-25-v11-pwa-tablet-install-rescue";
+const SPOTAINER_PATCH_VERSION = "2026-07-26-v12-dom-stability-fix";
 const ptOptions = [1, 10, 12, 24, 36, 48, 60, 72];
 
 const memberStageOptions = [
@@ -975,14 +975,23 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
       let nextMobileMode = false;
 
-      if (viewParam === "tablet") {
+      // /mobile-schedule 경로는 URL에 ?view=tablet 이 붙어 있어도 무조건 모바일 화면으로 유지합니다.
+      if (pathWantsMobile) {
+        nextMobileMode = true;
+      } else if (viewParam === "tablet") {
         nextMobileMode = false;
       } else if (viewParam === "phone") {
         nextMobileMode = true;
-      } else if (pathWantsMobile) {
-        nextMobileMode = true;
       } else {
         nextMobileMode = false;
+      }
+
+      if (pathWantsMobile && viewParam === "tablet") {
+        try {
+          window.history.replaceState(null, "", "/mobile-schedule?view=phone");
+        } catch (error) {
+          console.warn("모바일 주소 정리 실패", error);
+        }
       }
 
       try {
@@ -3400,8 +3409,14 @@ const [workoutExercises, setWorkoutExercises] = useState([
     link.href = url;
     link.download = fileName;
     document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      link.click();
+    } finally {
+      // 다른 렌더링/브라우저 동작이 노드를 먼저 제거해도 NotFoundError가 나지 않게 합니다.
+      if (link.parentNode) {
+        link.parentNode.removeChild(link);
+      }
+    }
 
     URL.revokeObjectURL(url);
   }
@@ -8140,6 +8155,11 @@ async function saveMemberPreference() {
     }, 80);
   }
 
+  // 서버 렌더링과 브라우저 첫 렌더링의 DOM 구조를 동일하게 유지합니다.
+  // 이 가드보다 앞에서 화면별 루트를 반환하면 hydration 중 React가 document 노드를
+  // 잘못 교체하려 하면서 appendChild/removeChild 오류가 연쇄 발생할 수 있습니다.
+  if (!mounted) return null;
+
   if (publicOtCheckMemberId) {
     return (
       <main
@@ -8342,8 +8362,6 @@ async function saveMemberPreference() {
       </main>
     );
   }
-
-  if (!mounted) return null;
 
   return (
     <main style={styles.page}>
