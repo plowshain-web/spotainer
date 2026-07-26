@@ -3,7 +3,6 @@ import "./globals.css";
 export const metadata = {
   title: "Spotainer",
   description: "여성전용 PT 일정관리",
-  manifest: "/mobile-manifest.webmanifest",
 };
 
 export default function RootLayout({ children }) {
