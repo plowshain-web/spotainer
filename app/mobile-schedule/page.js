@@ -8,7 +8,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-const PATCH_VERSION = "mobile-schedule-real-db-v1-2026-05-25";
+const PATCH_VERSION = "mobile-schedule-no-tablet-redirect-v1-2026-07-27";
 
 function getTodayDateString() {
   const now = new Date();
@@ -117,8 +117,6 @@ export default function MobileSchedulePage() {
     console.log("Spotainer mobile schedule patch:", PATCH_VERSION);
   }, []);
 
-  // 태블릿 설치앱이 실수로 /mobile-schedule 로 시작하면 즉시 태블릿 메인으로 복구합니다.
-  
   useEffect(() => {
     loadSchedules(selectedDate);
     loadScheduleSMSLogs(selectedDate);
