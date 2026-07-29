@@ -2595,7 +2595,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
     setScheduleEndTime(
       schedule.end_time
         ? normalizeTimeValue(schedule.end_time)
-        : addMinutesToTime(schedule.start_time, 60)
+        : addMinutesToTime(schedule.start_time, 50)
     );
     setScheduleType(schedule.type || "pt");
     setScheduleMemo(getScheduleDisplayMemo(schedule));
@@ -3047,7 +3047,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
         if (editingSchedule && schedule.id === editingSchedule.id) return false;
 
         const existingStart = timeToMinutes(schedule.start_time);
-        const existingEnd = timeToMinutes(schedule.end_time || addMinutesToTime(schedule.start_time, 60));
+        const existingEnd = timeToMinutes(schedule.end_time || addMinutesToTime(schedule.start_time, 50));
 
         if (existingStart === null || existingEnd === null) return false;
 
@@ -3302,7 +3302,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   }
 
   function formatScheduleRange(schedule) {
-    const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 60);
+    const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 50);
     return `${formatTime(schedule.start_time)} ~ ${formatTime(endTime)}`;
   }
 
@@ -3324,7 +3324,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
   function addToGoogleCalendar(schedule) {
     const member = getScheduleMember(schedule) || schedule.members;
-    const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 60);
+    const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 50);
     const memberNames = getScheduleMemberNames(schedule);
     const memberPtText = getScheduleMemberPtText(schedule);
 
@@ -3363,7 +3363,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
 
   function addToDeviceCalendar(schedule) {
     const member = getScheduleMember(schedule) || schedule.members;
-    const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 60);
+    const endTime = schedule.end_time || addMinutesToTime(schedule.start_time, 50);
     const memberNames = getScheduleMemberNames(schedule);
     const memberPtText = getScheduleMemberPtText(schedule);
 
@@ -3489,7 +3489,7 @@ const [workoutExercises, setWorkoutExercises] = useState([
   }
 
   function getAutoScheduleEndTime(startTime) {
-    return startTime ? addMinutesToTime(startTime, 60) : "";
+    return startTime ? addMinutesToTime(startTime, 50) : "";
   }
 
   function openScheduleMember(schedule) {
@@ -9827,7 +9827,7 @@ undo={undo}
                 const newStart = timeToMinutes(scheduleStartTime);
                 const newEnd = timeToMinutes(scheduleEndTime || getAutoScheduleEndTime(scheduleStartTime));
                 const oldStart = timeToMinutes(schedule.start_time);
-                const oldEnd = timeToMinutes(schedule.end_time || addMinutesToTime(schedule.start_time, 60));
+                const oldEnd = timeToMinutes(schedule.end_time || addMinutesToTime(schedule.start_time, 50));
 
                 if (newStart === null || newEnd === null || oldStart === null || oldEnd === null) return false;
 
