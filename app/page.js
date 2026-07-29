@@ -3261,19 +3261,26 @@ const [workoutExercises, setWorkoutExercises] = useState([
     return `${period} ${displayHour}:${minute}`;
   }
 
-  function getTimeOptions() {
-    const options = [];
+  function getScheduleHourOptions() {
+    return Array.from({ length: 14 }, (_, index) => String(index + 9).padStart(2, "0"));
+  }
 
-    for (let hour = 9; hour <= 22; hour += 1) {
-      [0, 30].forEach((minute) => {
-        if (hour === 22 && minute > 0) return;
+  function getScheduleMinuteOptions(hour = "") {
+    if (String(hour) === "22") return ["00"];
+    return ["00", "10", "20", "30", "40", "50"];
+  }
 
-        const value = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-        options.push(value);
-      });
-    }
+  function getTimeHour(time) {
+    return normalizeTimeValue(time).split(":")[0] || "";
+  }
 
-    return options;
+  function getTimeMinute(time) {
+    return normalizeTimeValue(time).split(":")[1] || "";
+  }
+
+  function combineScheduleTime(hour, minute) {
+    if (!hour || minute === "") return "";
+    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
   }
 
   function normalizeTimeValue(time) {
@@ -9623,22 +9630,47 @@ undo={undo}
             </div>
 
             <label style={styles.label}>시작 시간</label>
-            <select
-              value={scheduleStartTime}
-              onChange={(e) => {
-                const value = e.target.value;
-                setScheduleStartTime(value);
-                setScheduleEndTime(getAutoScheduleEndTime(value));
-              }}
-              style={styles.input}
-            >
-              <option value="">시작 시간을 선택하세요</option>
-              {getTimeOptions().map((time) => (
-                <option key={time} value={time}>
-                  {formatTime(time)}
-                </option>
-              ))}
-            </select>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <select
+                value={getTimeHour(scheduleStartTime)}
+                onChange={(e) => {
+                  const hour = e.target.value;
+                  const currentMinute = getTimeMinute(scheduleStartTime) || "00";
+                  const minute = getScheduleMinuteOptions(hour).includes(currentMinute) ? currentMinute : "00";
+                  const value = combineScheduleTime(hour, minute);
+                  setScheduleStartTime(value);
+                  setScheduleEndTime(getAutoScheduleEndTime(value));
+                }}
+                style={styles.input}
+              >
+                <option value="">시 선택</option>
+                {getScheduleHourOptions().map((hour) => (
+                  <option key={hour} value={hour}>
+                    {Number(hour)}시
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={getTimeMinute(scheduleStartTime)}
+                onChange={(e) => {
+                  const minute = e.target.value;
+                  const hour = getTimeHour(scheduleStartTime);
+                  const value = combineScheduleTime(hour, minute);
+                  setScheduleStartTime(value);
+                  setScheduleEndTime(getAutoScheduleEndTime(value));
+                }}
+                style={styles.input}
+                disabled={!getTimeHour(scheduleStartTime)}
+              >
+                <option value="">분 선택</option>
+                {getScheduleMinuteOptions(getTimeHour(scheduleStartTime)).map((minute) => (
+                  <option key={minute} value={minute}>
+                    {minute}분
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div style={styles.autoEndTimeBox}>
               <strong>종료 시간</strong>
@@ -9719,18 +9751,45 @@ undo={undo}
                               onChange={(e) => updateScheduleRepeatItem(index, { date: e.target.value })}
                               style={styles.input}
                             />
-                            <select
-                              value={item.startTime}
-                              onChange={(e) => updateScheduleRepeatItem(index, { startTime: e.target.value })}
-                              style={styles.input}
-                            >
-                              <option value="">시간 선택</option>
-                              {getTimeOptions().map((time) => (
-                                <option key={time} value={time}>
-                                  {formatTime(time)}
-                                </option>
-                              ))}
-                            </select>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              <select
+                                value={getTimeHour(item.startTime)}
+                                onChange={(e) => {
+                                  const hour = e.target.value;
+                                  const currentMinute = getTimeMinute(item.startTime) || "00";
+                                  const minute = getScheduleMinuteOptions(hour).includes(currentMinute) ? currentMinute : "00";
+                                  updateScheduleRepeatItem(index, {
+                                    startTime: combineScheduleTime(hour, minute),
+                                  });
+                                }}
+                                style={styles.input}
+                              >
+                                <option value="">시 선택</option>
+                                {getScheduleHourOptions().map((hour) => (
+                                  <option key={hour} value={hour}>
+                                    {Number(hour)}시
+                                  </option>
+                                ))}
+                              </select>
+
+                              <select
+                                value={getTimeMinute(item.startTime)}
+                                onChange={(e) => {
+                                  updateScheduleRepeatItem(index, {
+                                    startTime: combineScheduleTime(getTimeHour(item.startTime), e.target.value),
+                                  });
+                                }}
+                                style={styles.input}
+                                disabled={!getTimeHour(item.startTime)}
+                              >
+                                <option value="">분 선택</option>
+                                {getScheduleMinuteOptions(getTimeHour(item.startTime)).map((minute) => (
+                                  <option key={minute} value={minute}>
+                                    {minute}분
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
                           </div>
 
                           <div style={{display:"grid",gridTemplateColumns:"repeat(4, minmax(0, 1fr))",gap:8,marginTop:10}}>
